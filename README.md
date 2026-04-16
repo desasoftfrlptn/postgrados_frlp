@@ -45,6 +45,21 @@
 
 **Cualquier duda** → Pregunta primero en el canal de #general o abre un Issue.
 
+**Completa luego** [`docs\onboarding\TEAM_CHARTER.md`] (TEAM_CHARTER.md) 
+
+---
+
+## Documentación: Por Dónde Empezar
+
+Lee en este orden antes de escribir código:
+
+0. **Lee este docmento README completamente. **
+1. 📋 [`docs\Documentación técnica y funcional\SRS.md`](docs/SRS.md) — Qué debe hacer el sistema (fuente de verdad de requisitos)
+2. 🗺️ [`docs\Documentación técnica y funcional\BFD.md`](docs/BFD.md) — Cómo funciona el negocio hoy y cómo debe ser
+3. 📦 [`docs\Documentación técnica y funcional\PRD.md`](docs/PRD.md) — Detalle funcional con criterios de aceptación (Gherkin)
+4. 🏗️ [`docs\Documentación técnica y funcional\ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
+5. 🗓️ [`docs\Documentación técnica y funcional\CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
+6. 🚀 [`docs\onboarding\Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
 ---
 
 ## Estructura de Módulos
@@ -182,31 +197,31 @@ Una historia de usuario está **terminada** cuando cumple **todos** estos criter
 
 ---
 
+## Stack Tecnológico 
+** Template a completar por el equipo** 
+
 ## Stack Tecnológico
 
-| Capa | Opción A (Node) | Opción B (Python) | Común |
-|------|-----------------|-------------------|-------|
-| Frontend | React 18 + TypeScript + Vite + TailwindCSS | ← igual | ← igual |
-| Backend | NestJS | FastAPI | — |
-| ORM | Prisma | SQLAlchemy + Alembic | — |
-| BD | PostgreSQL 15 (Docker) | ← igual | ← igual |
-| Testing | Vitest + Supertest | Pytest + HTTPX | Playwright (E2E) |
-| DevOps | Docker · Docker Compose · GitHub Actions | ← igual | ← igual |
+| Capa              | Recomendado (Prioridad: Simplicidad + Demanda) | Alternativa (Mayor estructura / Enterprise) | Justificación |
+|-------------------|------------------------------------------------|---------------------------------------------|-------------|
+| **Frontend**     | **React 19 + TypeScript + Vite + TailwindCSS + TanStack Query** | Next.js 15+ (App Router) | React sigue siendo la tecnología frontend **más demandada** del mercado. Vite es muy rápido y simple. TanStack Query simplifica mucho la gestión de datos. |
+| **Backend**      | **FastAPI (Python 3.12+)**                    | NestJS (TypeScript)                        | FastAPI es **mucho más simple**, rápido de desarrollar, tiene documentación automática (Swagger) y excelente rendimiento. Ideal para proyectos académicos y APIs modernas. NestJS ofrece más estructura pero aumenta la complejidad. |
+| **ORM / DB Layer** | **SQLAlchemy 2.0 + Alembic** (con async support) | Tortoise ORM o Prisma (si vas full TypeScript) | SQLAlchemy es el estándar más maduro y potente para Python. Alembic maneja migraciones muy bien. Para proyectos simples también puedes usar **SQLModel** (de tiangolo, creador de FastAPI) → aún más simple. |
+| **Base de Datos** | **PostgreSQL 16/17 (Docker)**                 | ← igual                                    | Mejor relación rendimiento / features / ecosistema. Excelente con Docker. |
+| **Testing**       | **Pytest + HTTPX** (unitarias + integración) + **Playwright** (E2E opcional) | Vitest + Supertest (si usas NestJS)       | Pytest es muy simple y potente. Enfocarte solo en **unitarias** como dijiste es una buena decisión para no complicar el proyecto. |
+| **DevOps / Infra**| **Docker + Docker Compose + GitHub Actions** | ← igual                                    | Estándar actual. Muy simple de configurar con `docker-compose.yml`. |
 
+### Por qué elegimos este stack
+
+- **Alta empleabilidad**: React y PostgreSQL son de las tecnologías más solicitadas en 2026.
+- **Simplicidad y velocidad de desarrollo**: FastAPI + SQLModel permite crear APIs completas con muy poco código.
+- **Moderno pero maduro**: Evitamos tecnologías demasiado experimentales.
+- **Full Docker**: Todo el entorno se levanta con un solo comando (`docker compose up`).
+
+**¿Quieres cambiar algo?**  
+El stack es flexible. Si prefieres **full TypeScript** (React + NestJS + Prisma), también es una excelente opción (más demandada en algunas empresas, pero más verbose).
 > El stack es sugerido. Si el equipo quiere otra tecnología, debe presentar un **RFC aprobado antes de la semana 4**.
 
----
-
-## Documentación: Por Dónde Empezar
-
-Lee en este orden antes de escribir código:
-
-1. 📋 [`docs/SRS.md`](docs/SRS.md) — Qué debe hacer el sistema (fuente de verdad de requisitos)
-2. 🗺️ [`docs/BFD.md`](docs/BFD.md) — Cómo funciona el negocio hoy y cómo debe ser
-3. 📦 [`docs/PRD.md`](docs/PRD.md) — Detalle funcional con criterios de aceptación (Gherkin)
-4. 🏗️ [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
-5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
-6. 🚀 [`docs/onboarding/GUIA_KICKOFF.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
 
 ---
 
