@@ -1,4 +1,4 @@
-# Definition of Done (DoD) — Fenix Posgrado 2026
+# Definition of Done (DoD) — Sistema de Posgrado 2026
 
 **Aprobado por:** Todos los equipos · Semana 2 del kickoff  
 **Vigencia:** Todo el proyecto (2026)  
@@ -93,7 +93,7 @@ Para evitar confusiones:
 
 Al inicio del proyecto, cada integrante de cada equipo firma:
 
-> *"Entiendo y me comprometo con el Definition of Done del proyecto Fenix Posgrado 2026. No presionaré para marcar historias como Done si no cumplen todos los criterios, aunque implique no completar el sprint completo."*
+> *"Entiendo y me comprometo con el Definition of Done del proyecto Sistema de Posgrado 2026. No presionaré para marcar historias como Done si no cumplen todos los criterios, aunque implique no completar el sprint completo."*
 
 | Equipo | Integrante | Rol Inicial | Firma | Fecha |
 |--------|-----------|------------|-------|-------|

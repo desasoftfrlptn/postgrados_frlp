@@ -1,4 +1,4 @@
-# Rúbrica de Evaluación — Fenix Posgrado 2026
+# Rúbrica de Evaluación — Sistema de Posgrado 2026
 
 **Cátedra:** Desarrollo de Software · UTN FRLP  
 **Modalidad:** Evaluación continua por competencias + entrega final  

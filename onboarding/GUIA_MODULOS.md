@@ -297,7 +297,7 @@ El Módulo D tiene el mayor desafío de UX del proyecto. El dashboard debe ser:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  FENIX POSGRADO — Dashboard Conducción                  │
+│  SISTEMA POSGRADO — Dashboard Conducción                │
 ├─────────────┬───────────────┬───────────────────────────┤
 │ Cohorte     │ Inscriptos    │ Retención   │ Graduados   │
 │ 2024        │     42        │    78%      │     8       │

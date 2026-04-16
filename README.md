@@ -54,12 +54,12 @@
 Lee en este orden antes de escribir código:
 
 0. **Lee este docmento README completamente. **
-1. 📋 [`docs\Documentación técnica y funcional\SRS.md`](docs/SRS.md) — Qué debe hacer el sistema (fuente de verdad de requisitos)
-2. 🗺️ [`docs\Documentación técnica y funcional\BFD.md`](docs/BFD.md) — Cómo funciona el negocio hoy y cómo debe ser
-3. 📦 [`docs\Documentación técnica y funcional\PRD.md`](docs/PRD.md) — Detalle funcional con criterios de aceptación (Gherkin)
-4. 🏗️ [`docs\Documentación técnica y funcional\ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
-5. 🗓️ [`docs\Documentación técnica y funcional\CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
-6. 🚀 [`docs\onboarding\Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
+1. 📋 [`docs/SRS.md`](docs/SRS.md) — Qué debe hacer el sistema (fuente de verdad de requisitos)
+2. 🗺️ [`docs/BFD.md`](docs/BFD.md) — Cómo funciona el negocio hoy y cómo debe ser
+3. 📦 [`docs/PRD.md`](docs/PRD.md) — Detalle funcional con criterios de aceptación (Gherkin)
+4. 🏗️ [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
+5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
+6. 🚀 [`onboarding/Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
 ---
 
 ## Estructura de Módulos

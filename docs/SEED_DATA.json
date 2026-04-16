@@ -1,6 +1,6 @@
 {
   "_comentario": "Datos de prueba para desarrollo — 50 aspirantes ficticios + cohorte 2026",
-  "_instruccion": "Importar con: docker exec fenix-backend npm run db:seed",
+  "_instruccion": "Importar con: docker exec postgrado-backend npm run db:seed",
   
   "cohortes": [
     {

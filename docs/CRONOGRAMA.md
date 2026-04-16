@@ -1,4 +1,4 @@
-# Cronograma del Proyecto — Fenix Posgrado 2026
+# Cronograma del Proyecto — Sistema Posgrado 2026
 
 **Inicio:** 14 de abril de 2026  
 **Entrega Final:** 23 de octubre de 2026  

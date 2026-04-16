@@ -2,7 +2,7 @@
 
 ---
 
-# 🚀 KICKOFF PROJECT: FENIX POSGRADO
+# 🚀 KICKOFF PROJECT: Sistema POSTGRADO
 **Fecha:** Semanas 1-3 del ciclo lectivo  
 **Duración total:** 6 horas presenciales distribuidas + trabajo asíncrono  
 **Modalidad:** Híbrida (Presencial obligatorio + Aula invertida)  

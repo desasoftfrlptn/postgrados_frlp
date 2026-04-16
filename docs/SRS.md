@@ -1,5 +1,5 @@
 # SRS-001: Especificación de Requisitos de Software
-## Fenix Posgrado · UTN FRLP · 2026
+## Sistema de Posgrado · UTN FRLP · 2026
 
 **Versión:** 1.0 | **Fecha:** Abril 2026 | **Estado:** Aprobado (vigente hasta semana 6)
 **Basado en:** IEEE 830-1998 adaptado | **Referencias:** PRD-001, BFD-001
@@ -10,11 +10,11 @@
 
 ### 1.1 Propósito
 
-Este documento especifica de forma completa y verificable los requisitos del sistema **Fenix Posgrado**. Sirve como **contrato técnico** entre el cliente (representado por el docente como Product Owner) y los equipos de desarrollo (estudiantes). Toda discrepancia entre este documento y una implementación es un **defecto**, no una interpretación alternativa.
+Este documento especifica de forma completa y verificable los requisitos del sistema **Sistema de Posgrado**. Sirve como **contrato técnico** entre el cliente (representado por el docente como Product Owner) y los equipos de desarrollo (estudiantes). Toda discrepancia entre este documento y una implementación es un **defecto**, no una interpretación alternativa.
 
 ### 1.2 Alcance del Sistema
 
-Fenix digitaliza el ciclo de vida académico y administrativo del posgrado de UTN FRLP: desde la preinscripción hasta la graduación. Reemplaza el flujo actual de email + Excel + carpetas físicas.
+Sistema  digitaliza el ciclo de vida académico y administrativo del posgrado de UTN FRLP: desde la preinscripción hasta la graduación. Reemplaza el flujo actual de email + Excel + carpetas físicas.
 
 **Dentro del alcance:**
 - Inscripción digital de aspirantes con upload de documentos PDF
@@ -24,7 +24,7 @@ Fenix digitaliza el ciclo de vida académico y administrativo del posgrado de UT
 - Dashboards y exportación de estadísticas para conducción
 
 **Fuera del alcance (MVP):**
-- Integración con SIU-Guaraní
+- Integración con CVG, SIU-Guaraní u otro sistema externo
 - Firma digital certificada
 - Pasarela de pagos
 - App móvil nativa

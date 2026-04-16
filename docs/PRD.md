@@ -1,8 +1,8 @@
-Presentamos el  **Product Requirements Document (PRD)** completo para el proyecto **"Fenix Posgrado"**, estructurado según estándares IEEE 830-1998 y metodologías modernas de gestión de producto (Atlassian, SAFe). Este documento sirve como referencia contractual entre el negocio (Secretaría de Posgrado UTN-FRLP) y los equipos de desarrollo (estudiantes).
+Presentamos el  **Product Requirements Document (PRD)** completo para el proyecto **"Sistema de Posgrado"**, estructurado según estándares IEEE 830-1998 y metodologías modernas de gestión de producto (Atlassian, SAFe). Este documento sirve como referencia contractual entre el negocio (Secretaría de Posgrado UTN-FRLP) y los equipos de desarrollo (estudiantes).
 
 ---
 
-# PRD-001: Sistema de Gestión Académica de Posgrado (Fenix)
+# PRD-001: Sistema de Gestión Académica de Posgrado (Sistema)
 **Versión:** 2.0  
 **Fecha:** 07/04/2026  
 **Estado:** Aprobado para desarrollo  
@@ -60,7 +60,7 @@ Presentamos el  **Product Requirements Document (PRD)** completo para el proyect
 
 ### 4.2 User Persona Detallada (Ejemplo Crítico)
 
-**Nombre:** María González (CON-001)  
+**Nombre:** María Ayelén Díaz Lapérgola (CON-001)  
 **Contexto:** Coordina la Especialización en Sistemas de Información (60 estudiantes, 8 seminarios).  
 **Dolor actual:** "Necesito 3 horas cada fin de mes para cruzar planillas de asistencias con actas de examen para saber quién está en condición de dar el final."  
 **Expectativa:** "Quiero ver en una pantalla quiénes están en riesgo de recursar antes de que sea tarde para recuperarlos."
@@ -85,7 +85,7 @@ Presentamos el  **Product Requirements Document (PRD)** completo para el proyect
 | MOD-D | Analytics & Reporting | Dashboard de inscripciones por cohorte, tasa de retención/desgranamiento, notificaciones automáticas a docentes. |
 
 ### 5.2 Out-of-Scope (Explicitamente Excluido)
-- **Integración con SIU-Guaraní:** No se conectará con sistemas institucionales legacy en esta versión (carga manual de actas).
+- **Integración:** No se conectará con sistemas institucionales legacy en esta versión (carga manual de actas).
 - **Firma Digital Certificada:** Se usa upload de PDF firmado en forma analógica escaneado.
 - **Pasarela de Pagos:** La gestión de pagos de matrícula permanece en sistema financiero externo.
 - **App Móvil Nativa:** Solo web responsive (mobile-first).
@@ -352,7 +352,7 @@ Response: 200 OK
 ### 10.2 Interfaces Externas
 - **Servicio de Email:** SMTP institucional (UTN-FRLP) para notificaciones.
 - **Storage:** Filesystem local (desarrollo) / MinIO o S3 (producción futura).
-- **No se integra con:** SIU-Guaraní (carga manual de actas en este MVP).
+- **No se integra con:** CVG, SIU-Guaraní u otro sistema (carga manual de actas en este MVP).
 
 ---
 
@@ -438,7 +438,7 @@ Para considerar una funcionalidad como "completa" (Done), debe cumplir:
 - Estándar IEEE 830-1998 para especificación de requisitos.
 
 ### Anexo C: Mockups de Referencia
-*Nota: Los wireframes de interfaz se encuentran en el repositorio `/docs/mockups/` en formato Figma/PDF.*
+*Nota: Los wireframes de interfaz se deberan encuentrar en el repositorio `/docs/mockups/` en formato Figma/PDF.*
 
 ---
 

@@ -1,4 +1,4 @@
-# Changelog — Fenix Posgrado
+# Changelog — Sistema de  Posgrado
 
 Todos los cambios notables de este proyecto se documentan en este archivo.
 
