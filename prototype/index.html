@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prototype - Sistema de Posgrado UTN FRLP</title>
+  <style>
+    :root{
+      --ink:#2f3748;
+      --muted:#6b7890;
+      --line:#cdd6e5;
+      --line-dark:#2f3748;
+      --bg:#f7f9fc;
+      --panel:#ffffff;
+      --primary:#2f3748;
+      --primary-hover:#1f2633;
+      --soft:#eef3f8;
+      --ok:#1f8a4c;
+      --warn:#c98900;
+      --bad:#c83c3c;
+      --blue:#2f67d8;
+      --shadow:0 8px 24px rgba(47,55,72,.08);
+      --radius:14px;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      color:var(--ink);
+      background:var(--bg);
+    }
+
+    .app{
+      min-height:100vh;
+      border:4px solid var(--primary);
+      background:#fff;
+    }
+
+    header{
+      height:100px;
+      border-bottom:2px solid var(--line-dark);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 7%;
+      background:#fff;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      font-weight:800;
+    }
+    .logo{
+      width:36px;
+      height:50px;
+      border:3px solid var(--primary);
+      border-radius:6px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      line-height:.8;
+      font-weight:900;
+      font-size:24px;
+    }
+    .logo small{ font-size:8px; margin-top:4px; }
+    .nav-actions{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+
+    button, .btn{
+      border:2px solid var(--primary);
+      background:#fff;
+      color:var(--primary);
+      border-radius:6px;
+      font-weight:700;
+      padding:12px 18px;
+      cursor:pointer;
+      font-size:15px;
+      transition:.15s ease;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    button:hover, .btn:hover{ transform:translateY(-1px); box-shadow:0 3px 12px rgba(0,0,0,.08); }
+    .btn-primary{ background:var(--primary); color:#fff; }
+    .btn-primary:hover{ background:var(--primary-hover); }
+    .btn-ghost{ border-color:transparent; background:transparent; }
+    .btn-danger{ border-color:var(--bad); color:var(--bad); }
+    .btn-ok{ border-color:var(--ok); color:var(--ok); }
+    .btn-warning{ border-color:var(--warn); color:var(--warn); }
+    .btn-small{ padding:7px 10px; font-size:13px; }
+
+    main{ padding:42px 7% 72px; min-height:calc(100vh - 104px); }
+    .screen{ display:none; }
+    .screen.active{ display:block; animation:fade .16s ease; }
+    @keyframes fade{ from{opacity:.4; transform:translateY(4px)} to{opacity:1; transform:translateY(0)} }
+
+    .center{ max-width:720px; margin:0 auto; text-align:center; }
+    .wide{ max-width:1120px; margin:0 auto; }
+    h1{ margin:0 0 12px; font-size:42px; letter-spacing:-.5px; }
+    h2{ margin:0 0 8px; font-size:32px; }
+    h3{ margin:0 0 14px; }
+    .subtitle{ color:var(--muted); font-size:24px; margin:0 0 26px; }
+    .lead{ color:var(--muted); font-size:18px; line-height:1.55; }
+
+    .grid{ display:grid; gap:22px; }
+    .grid-2{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .grid-3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .grid-4{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+
+    .card{
+      background:var(--panel);
+      border:2px solid #dfe6f0;
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:var(--shadow);
+      text-align:left;
+    }
+    .metric{ text-align:center; min-height:116px; display:flex; flex-direction:column; justify-content:center; }
+    .metric strong{ display:block; font-size:38px; margin-top:10px; color:#202633; }
+    .metric span{ color:var(--muted); font-weight:700; }
+
+    .form{ max-width:520px; margin:0 auto; text-align:left; }
+    label{ font-weight:700; display:block; margin:16px 0 8px; }
+    input, select, textarea{
+      width:100%;
+      border:2px solid var(--line);
+      border-radius:6px;
+      padding:13px 14px;
+      font-size:16px;
+      color:var(--ink);
+      background:#fff;
+    }
+    textarea{ min-height:105px; resize:vertical; }
+    input:focus, select:focus, textarea:focus{ outline:3px solid rgba(47,103,216,.18); border-color:var(--blue); }
+    .hint{ color:var(--muted); font-size:13px; margin-top:6px; display:block; }
+    .error{ color:var(--bad); font-size:13px; margin-top:6px; display:none; }
+    .invalid{ border-color:var(--bad)!important; background:#fffafa; }
+
+    .bottom-actions{
+      display:flex;
+      justify-content:space-between;
+      gap:20px;
+      align-items:center;
+      max-width:1080px;
+      margin:42px auto 0;
+    }
+
+    .steps{ max-width:560px; margin:38px auto 0; display:flex; align-items:center; justify-content:center; gap:0; }
+    .step-line{ height:2px; flex:1; background:var(--line); }
+    .step-dot{ width:24px; height:24px; border:4px solid var(--primary); border-radius:50%; background:#fff; position:relative; }
+    .step-dot.active::before{
+      content:attr(data-step);
+      position:absolute; left:50%; transform:translateX(-50%); bottom:30px;
+      background:var(--primary); color:#fff; padding:10px 16px; border-radius:4px; font-size:15px;
+    }
+    .step-dot.active::after{
+      content:""; position:absolute; left:50%; transform:translateX(-50%); bottom:21px;
+      border-left:8px solid transparent; border-right:8px solid transparent; border-top:8px solid var(--primary);
+    }
+
+    .switch{ display:flex; align-items:center; gap:10px; margin:16px 0; }
+    .switch input{ width:18px; height:18px; }
+
+    .file-row{
+      display:grid; grid-template-columns:1.2fr 1fr .9fr; align-items:center; gap:18px;
+      padding:15px 0; border-bottom:1px solid #e7edf5;
+    }
+    .file-row:last-child{ border-bottom:0; }
+    .file-status{ font-weight:700; color:var(--muted); }
+    .file-status.ok{ color:var(--ok); }
+    .file-status.bad{ color:var(--bad); }
+
+    .layout{ display:grid; grid-template-columns:250px 1fr; gap:26px; align-items:start; }
+    aside{
+      border:2px solid #dfe6f0;
+      border-radius:var(--radius);
+      background:#fff;
+      padding:16px;
+      position:sticky; top:20px;
+    }
+    .menu-title{ font-weight:800; margin:6px 10px 12px; }
+    .menu button{
+      width:100%; justify-content:flex-start; margin:5px 0; border-color:transparent; background:transparent;
+    }
+    .menu button.active-menu{ background:var(--soft); border-color:#dfe6f0; }
+
+    table{ width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; }
+    th,td{ padding:13px 14px; border-bottom:1px solid #e5ebf3; text-align:left; font-size:14px; vertical-align:middle; }
+    th{ background:#f2f5f9; font-weight:800; color:#3a4559; }
+    tr:hover td{ background:#fbfcfe; }
+
+    .badge{ display:inline-block; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:800; }
+    .badge.pending{ background:#fff4d7; color:#805c00; }
+    .badge.review{ background:#e5efff; color:#174a9b; }
+    .badge.ok{ background:#def8e7; color:#116432; }
+    .badge.obs{ background:#ffe4e4; color:#a12b2b; }
+    .badge.active{ background:#e9e7ff; color:#42359e; }
+    .badge.green{ background:#def8e7; color:#116432; }
+    .badge.yellow{ background:#fff4d7; color:#805c00; }
+    .badge.red{ background:#ffe4e4; color:#a12b2b; }
+
+    .filters{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr auto; gap:14px; align-items:end; margin:20px 0; }
+    .filters label{ margin-top:0; font-size:13px; }
+
+    .alert{
+      border-left:5px solid var(--blue);
+      background:#eef5ff;
+      padding:14px 16px;
+      border-radius:10px;
+      margin:18px 0;
+      color:#23416f;
+    }
+    .alert.warn{ border-color:var(--warn); background:#fff7e4; color:#735300; }
+    .alert.bad{ border-color:var(--bad); background:#fff0f0; color:#7f1d1d; }
+    .alert.ok{ border-color:var(--ok); background:#effbf4; color:#155a31; }
+
+    .chart{
+      height:240px;
+      border-left:2px solid #dbe3ee;
+      border-bottom:2px solid #dbe3ee;
+      margin-top:14px;
+      position:relative;
+      overflow:hidden;
+    }
+    .chart svg{ width:100%; height:100%; }
+    .bar-chart{ display:flex; align-items:flex-end; gap:18px; height:220px; padding:24px 14px 0; border-bottom:2px solid #dbe3ee; }
+    .bar{ flex:1; min-width:46px; background:var(--primary); border-radius:8px 8px 0 0; position:relative; opacity:.88; }
+    .bar span{ position:absolute; top:-24px; left:50%; transform:translateX(-50%); font-weight:800; }
+    .bar small{ position:absolute; bottom:-30px; left:50%; transform:translateX(-50%); color:var(--muted); }
+
+    .modal-backdrop{ position:fixed; inset:0; background:rgba(30,36,49,.38); display:none; align-items:center; justify-content:center; z-index:10; padding:20px; }
+    .modal-backdrop.show{ display:flex; }
+    .modal{ background:#fff; border-radius:16px; border:2px solid var(--primary); padding:24px; width:min(560px,100%); box-shadow:0 20px 80px rgba(0,0,0,.25); }
+    .modal-actions{ display:flex; justify-content:flex-end; gap:12px; margin-top:20px; }
+
+    .tabs{ display:flex; gap:8px; border-bottom:2px solid #e5ebf3; margin-bottom:18px; flex-wrap:wrap; }
+    .tab{ border:0; border-radius:8px 8px 0 0; background:transparent; padding:12px 16px; }
+    .tab.active{ background:#eef3f8; }
+    .tab-panel{ display:none; }
+    .tab-panel.active{ display:block; }
+
+    .doc-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .doc-card{ padding:16px; border:1px solid #dfe6f0; border-radius:10px; }
+
+    @media(max-width:900px){
+      header{ height:auto; min-height:90px; padding:18px 5%; }
+      main{ padding:28px 5% 52px; }
+      h1{ font-size:34px; }
+      .subtitle{ font-size:20px; }
+      .grid-2,.grid-3,.grid-4,.layout,.filters,.file-row{ grid-template-columns:1fr; }
+      .bottom-actions{ flex-direction:column; align-items:stretch; }
+      aside{ position:static; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand" onclick="go('home')" role="button" tabindex="0" aria-label="Ir al inicio">
+        <div class="logo">✱<small>UTN<br>LP</small></div>
+        <span class="brand-text">Posgrado UTN FRLP</span>
+      </div>
+      <nav class="nav-actions" id="publicNav">
+        <button onclick="go('register')">Registrarse</button>
+        <button class="btn-primary" onclick="go('login')">Iniciar sesión</button>
+      </nav>
+      <nav class="nav-actions" id="privateNav" style="display:none">
+        <button onclick="go('home')">Cerrar sesión</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- HOME -->
+      <section id="home" class="screen active">
+        <div class="center">
+          <h1>Sistema de Posgrado UTN FRLP</h1>
+          <p class="subtitle">Gestión académica y administrativa de carreras de posgrado</p>
+          <p class="lead">Prototype navegable basado en el wireframe original. Permite simular preinscripción, carga documental, revisión de legajos, gestión docente, semáforo académico, tesis/TFI y reportes.</p>
+          <div class="grid grid-3" style="margin-top:32px;text-align:left">
+            <div class="card"><h3>Aspirante</h3><p>Completa el formulario público, adjunta PDF y obtiene número de seguimiento.</p><button class="btn-primary" onclick="go('pre1')">Iniciar preinscripción</button></div>
+            <div class="card"><h3>Conducción</h3><p>Busca legajos, valida documentación, cambia estados y consulta estadísticas.</p><button onclick="go('login')">Ingresar al sistema</button></div>
+            <div class="card"><h3>Docente</h3><p>Accede a seminarios, carga asistencia, notas y exporta planillas.</p><button onclick="go('docente')">Ver módulo docente</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- REGISTER -->
+      <section id="register" class="screen">
+        <div class="center">
+          <h1>Crear cuenta</h1>
+          <p class="subtitle">Registro para seguimiento del trámite</p>
+          <form class="form" onsubmit="event.preventDefault(); showToast('Cuenta creada para el prototype. Ahora podés iniciar sesión.','ok'); go('login')">
+            <label>Nombre y apellido</label><input required placeholder="Ej: Ana Pérez" />
+            <label>Email</label><input required type="email" placeholder="usuario@correo.com" />
+            <label>Contraseña</label><input required type="password" placeholder="Mínimo 8 caracteres" minlength="8" />
+            <button class="btn-primary" style="width:100%;margin-top:22px">Registrarme</button>
+            <button type="button" class="btn-ghost" style="width:100%;margin-top:8px" onclick="showToast('Login con Google simulado. Requerimiento marcado como Won\'t en el backlog.', 'warn')">Ingresar con Google</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- PREINSCRIPCION PASO 1 -->
+      <section id="pre1" class="screen">
+        <div class="center">
+          <h1>Preinscripción 2026</h1>
+          <p class="subtitle">Paso 1 de 3: Datos Personales</p>
+        </div>
+        <form class="form" id="formPre1">
+          <label for="carrera">Carrera</label>
+          <select id="carrera" required>
+            <option value="">Seleccionar</option>
+            <option>Especialización en Ingeniería de Software</option>
+            <option>Maestría en Sistemas de Información</option>
+            <option>Doctorado en Ingeniería</option>
+          </select>
+          <label for="dni">DNI / Pasaporte</label><input id="dni" required placeholder="Ej: 32933123" />
+          <label for="nombre">Nombre</label><input id="nombre" required placeholder="Ej: Franco" />
+          <label for="apellido">Apellido</label><input id="apellido" required placeholder="Ej: Pagani" />
+          <label for="email">Email</label><input id="email" required type="email" placeholder="nombre@mail.com" />
+          <label for="telefono">Teléfono</label><input id="telefono" required placeholder="Ej: 221 555 5555" />
+          <label class="switch"><span>¿Solicitaste beca?</span><input type="checkbox" id="beca" /></label>
+        </form>
+        <div class="bottom-actions">
+          <button onclick="go('home')">Atrás</button>
+          <button onclick="validateAndGo('formPre1','pre2')">Siguiente</button>
+        </div>
+        <div class="steps"><span class="step-dot active" data-step="1"></span><span class="step-line"></span><span class="step-dot" data-step="2"></span><span class="step-line"></span><span class="step-dot" data-step="3"></span></div>
+      </section>
+
+      <!-- PREINSCRIPCION PASO 2 -->
+      <section id="pre2" class="screen">
+        <div class="center">
+          <h1>Preinscripción 2026</h1>
+          <p class="subtitle">Paso 2 de 3: Datos Personales 2</p>
+        </div>
+        <form class="form" id="formPre2">
+          <label>Nacionalidad</label><input required placeholder="Ej: Argentina" />
+          <label>Domicilio</label><input required placeholder="Calle, número, piso/depto" />
+          <label>Ciudad</label><input required placeholder="Ej: La Plata" />
+          <label>Provincia</label><input required placeholder="Ej: Buenos Aires" />
+          <label>País</label><input required placeholder="Ej: Argentina" />
+          <label>¿Cómo conoció la oferta?</label>
+          <select required>
+            <option value="">Seleccione una opción</option>
+            <option>Redes Sociales / Instagram / Facebook</option>
+            <option>LinkedIn</option>
+            <option>Correo institucional</option>
+            <option>Sitio web UTN</option>
+            <option>Estudiantes / Egresados UTN</option>
+            <option>Otro</option>
+          </select>
+          <label>Título de grado</label><input required placeholder="Ej: Ingeniero en Sistemas" />
+          <label>Motivación</label><textarea required minlength="50" placeholder="Describí brevemente por qué querés realizar la carrera. Mínimo 50 caracteres."></textarea><span class="hint">Este campo ayuda a completar el legajo académico inicial.</span>
+        </form>
+        <div class="bottom-actions">
+          <button onclick="go('pre1')">Atrás</button>
+          <button onclick="validateAndGo('formPre2','pre3')">Siguiente</button>
+        </div>
+        <div class="steps"><span class="step-dot" data-step="1"></span><span class="step-line"></span><span class="step-dot active" data-step="2"></span><span class="step-line"></span><span class="step-dot" data-step="3"></span></div>
+      </section>
+
+      <!-- PREINSCRIPCION PASO 3 -->
+      <section id="pre3" class="screen">
+        <div class="center">
+          <h1>Preinscripción 2026</h1>
+          <p class="subtitle">Paso 3 de 3: Carga de Documentos</p>
+        </div>
+        <div class="form" style="max-width:680px">
+          <div class="alert">Solo se aceptan archivos PDF. Tamaño máximo simulado: 5MB.</div>
+          <div class="file-row">
+            <strong>DNI / Pasaporte</strong>
+            <input type="file" accept="application/pdf" data-required="true" onchange="checkFile(this)" />
+            <span class="file-status">Pendiente</span>
+          </div>
+          <div class="file-row">
+            <strong>Título de grado</strong>
+            <input type="file" accept="application/pdf" data-required="true" onchange="checkFile(this)" />
+            <span class="file-status">Pendiente</span>
+          </div>
+          <div class="file-row">
+            <strong>Partida de nacimiento</strong>
+            <input type="file" accept="application/pdf" data-required="true" onchange="checkFile(this)" />
+            <span class="file-status">Pendiente</span>
+          </div>
+          <div class="file-row">
+            <strong>Formulario de beca <small style="color:var(--muted)">Opcional</small></strong>
+            <input type="file" accept="application/pdf" onchange="checkFile(this)" />
+            <span class="file-status">Opcional</span>
+          </div>
+        </div>
+        <div class="bottom-actions">
+          <button onclick="go('pre2')">Atrás</button>
+          <button onclick="finishPreinscription()">Finalizar</button>
+        </div>
+        <div class="steps"><span class="step-dot" data-step="1"></span><span class="step-line"></span><span class="step-dot" data-step="2"></span><span class="step-line"></span><span class="step-dot active" data-step="3"></span></div>
+      </section>
+
+      <!-- CONFIRMACION -->
+      <section id="confirm" class="screen">
+        <div class="center">
+          <div class="card" style="text-align:center">
+            <h1>Preinscripción enviada</h1>
+            <p class="subtitle">Tu legajo quedó en estado <strong>Pendiente</strong></p>
+            <div class="alert ok"><strong>Número de seguimiento:</strong> 26-001-045</div>
+            <p>Recibirás un correo de confirmación y podrás consultar el avance del trámite desde tu perfil.</p>
+            <button class="btn-primary" onclick="go('seguimiento')">Consultar seguimiento</button>
+            <button onclick="go('home')">Volver al inicio</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SEGUIMIENTO ASPIRANTE/ESTUDIANTE -->
+      <section id="seguimiento" class="screen">
+        <div class="wide">
+          <h1>Mi seguimiento</h1>
+          <p class="subtitle">Estado administrativo y académico del estudiante</p>
+          <div class="grid grid-3">
+            <div class="card"><h3>Legajo</h3><p>26-001-045</p><span class="badge pending">Pendiente</span></div>
+            <div class="card"><h3>Cohorte</h3><p>2026</p><span class="badge active">Especialización</span></div>
+            <div class="card"><h3>Documentación</h3><p>3 de 4 documentos cargados</p><span class="badge obs">Revisión pendiente</span></div>
+          </div>
+          <div class="card" style="margin-top:24px">
+            <h3>Mis seminarios</h3>
+            <table>
+              <thead><tr><th>Seminario</th><th>Asistencia</th><th>Nota</th><th>Estado</th></tr></thead>
+              <tbody>
+                <tr><td>Gestión de Proyectos de Software</td><td>80%</td><td>8</td><td><span class="badge ok">Aprobado</span></td></tr>
+                <tr><td>Arquitectura de Software</td><td>72%</td><td>-</td><td><span class="badge pending">En curso</span></td></tr>
+              </tbody>
+            </table>
+            <div class="alert warn">El semáforo académico interno no se muestra al estudiante. Es información restringida para conducción.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LOGIN -->
+      <section id="login" class="screen">
+        <div class="center">
+          <h1>Iniciar sesión</h1>
+          <p class="subtitle">Seleccioná un rol para recorrer el prototype</p>
+          <form class="form" onsubmit="event.preventDefault(); loginAs(document.getElementById('role').value)">
+            <label>Email</label><input type="email" value="usuario@frlp.utn.edu.ar" required />
+            <label>Contraseña</label><input type="password" value="12345678" required />
+            <label>Rol</label>
+            <select id="role">
+              <option value="conduccion">Conducción / Coordinación</option>
+              <option value="docente">Docente</option>
+              <option value="cpr">CPR</option>
+              <option value="seguimiento">Estudiante</option>
+            </select>
+            <button class="btn-primary" style="width:100%;margin-top:22px">Ingresar</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- CONDUCCION DASHBOARD -->
+      <section id="conduccion" class="screen private">
+        <div class="layout wide">
+          <aside>
+            <div class="menu-title">Menú conducción</div>
+            <div class="menu">
+              <button class="active-menu" onclick="go('conduccion')">Dashboard</button>
+              <button onclick="go('legajos')">Legajos</button>
+              <button onclick="go('semaforo')">Semáforo académico</button>
+              <button onclick="go('periodos')">Períodos de inscripción</button>
+              <button onclick="go('docente')">Gestión docente</button>
+              <button onclick="go('cpr')">Tesis / TFI</button>
+            </div>
+          </aside>
+          <section>
+            <h1>Panel de Conducción</h1>
+            <p class="subtitle">Estadísticas y Reportes Académicos</p>
+            <div class="filters" style="grid-template-columns:1fr 1fr auto">
+              <div><label>Cohorte</label><select><option>Todas</option><option>2026</option><option>2025</option></select></div>
+              <div><label>Carrera</label><select><option>Todas las carreras</option><option>Especialización</option><option>Maestría</option></select></div>
+              <button onclick="showToast('Filtros aplicados en el prototype','ok')">Filtrar</button>
+            </div>
+            <div class="grid grid-4">
+              <div class="card metric"><span>Total inscriptos</span><strong>210</strong></div>
+              <div class="card metric"><span>Graduados</span><strong>67</strong></div>
+              <div class="card metric"><span>Estudiantes en riesgo</span><strong>7</strong></div>
+              <div class="card metric"><span>Retención</span><strong>82%</strong></div>
+            </div>
+            <div class="grid grid-2" style="margin-top:24px">
+              <div class="card"><h3>Evolución de inscripciones</h3><div class="chart"><svg viewBox="0 0 600 230" preserveAspectRatio="none"><polyline points="40,175 245,105 420,84 560,55" fill="none" stroke="#2f3748" stroke-width="5"/><circle cx="40" cy="175" r="8" fill="#fff" stroke="#2f3748" stroke-width="5"/><circle cx="245" cy="105" r="8" fill="#fff" stroke="#2f3748" stroke-width="5"/><circle cx="420" cy="84" r="8" fill="#fff" stroke="#2f3748" stroke-width="5"/><circle cx="560" cy="55" r="8" fill="#fff" stroke="#2f3748" stroke-width="5"/></svg></div></div>
+              <div class="card"><h3>Desgranamiento por cohorte</h3><div class="bar-chart"><div class="bar" style="height:38%"><span>18%</span><small>2023</small></div><div class="bar" style="height:28%"><span>12%</span><small>2024</small></div><div class="bar" style="height:22%"><span>9%</span><small>2025</small></div><div class="bar" style="height:14%"><span>6%</span><small>2026</small></div></div></div>
+            </div>
+            <div class="bottom-actions"><button onclick="go('home')">Atrás</button><button onclick="exportCSV('estadisticas')">Exportar Excel</button></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- LEGAJOS -->
+      <section id="legajos" class="screen private">
+        <div class="layout wide">
+          <aside><div class="menu-title">Menú conducción</div><div class="menu"><button onclick="go('conduccion')">Dashboard</button><button class="active-menu" onclick="go('legajos')">Legajos</button><button onclick="go('semaforo')">Semáforo académico</button><button onclick="go('periodos')">Períodos</button></div></aside>
+          <section>
+            <h1>Búsqueda y Listado de Legajos</h1>
+            <p class="subtitle">Gestión del workflow administrativo</p>
+            <div class="filters">
+              <div><label>Buscar</label><input id="buscarLegajo" placeholder="DNI, apellido o número de legajo" /></div>
+              <div><label>Estado</label><select><option>Todos</option><option>Pendiente</option><option>En revisión</option><option>Observado</option><option>Activo</option></select></div>
+              <div><label>Cohorte</label><select><option>Todas</option><option>2026</option><option>2025</option></select></div>
+              <div><label>Beca</label><select><option>Todas</option><option>Solicitada</option><option>No solicitada</option></select></div>
+              <button onclick="filterLegajos()">Buscar</button>
+            </div>
+            <table id="legajosTable">
+              <thead><tr><th>Nº Legajo</th><th>Nombre</th><th>DNI</th><th>Carrera</th><th>Estado</th><th>Acción</th></tr></thead>
+              <tbody>
+                <tr><td>26-001-045</td><td>Ana Pérez</td><td>30456789</td><td>Especialización</td><td><span class="badge pending">Pendiente</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver</button></td></tr>
+                <tr><td>26-001-046</td><td>Luis Gómez</td><td>31777111</td><td>Maestría</td><td><span class="badge review">En revisión</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver</button></td></tr>
+                <tr><td>26-001-047</td><td>Carla Díaz</td><td>33222999</td><td>Doctorado</td><td><span class="badge obs">Observado</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver</button></td></tr>
+                <tr><td>25-003-011</td><td>Matías Silva</td><td>29888111</td><td>Especialización</td><td><span class="badge active">Activo</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver</button></td></tr>
+              </tbody>
+            </table>
+            <div id="noResults" class="alert warn" style="display:none">No se encontraron estudiantes.</div>
+            <div class="bottom-actions"><button onclick="go('conduccion')">Atrás</button><button onclick="exportCSV('legajos')">Exportar Excel</button></div>
+          </section>
+        </div>
+      </section>
+
+      <!-- DETALLE LEGAJO -->
+      <section id="detalleLegajo" class="screen private">
+        <div class="wide">
+          <h1>Legajo 26-001-045</h1>
+          <p class="subtitle">Estado actual: <span id="estadoLegajo" class="badge review">En revisión</span></p>
+          <div class="tabs">
+            <button class="tab active" onclick="tab('datos')">Datos personales</button>
+            <button class="tab" onclick="tab('docs')">Documentación</button>
+            <button class="tab" onclick="tab('academico')">Perfil académico</button>
+            <button class="tab" onclick="tab('tutorias')">Tutorías</button>
+          </div>
+          <div id="datos" class="tab-panel active card">
+            <h3>Datos del aspirante</h3>
+            <div class="grid grid-2">
+              <p><strong>Nombre:</strong> Ana Pérez</p><p><strong>DNI:</strong> 30456789</p>
+              <p><strong>Email:</strong> ana.perez@mail.com</p><p><strong>Teléfono:</strong> 221 555 5555</p>
+              <p><strong>Carrera:</strong> Especialización en Ingeniería de Software</p><p><strong>Cohorte:</strong> 2026</p>
+            </div>
+          </div>
+          <div id="docs" class="tab-panel card">
+            <h3>Documentación adjunta</h3>
+            <div class="doc-grid">
+              <div class="doc-card"><strong>DNI.pdf</strong><p>Formato válido - 1.2 MB</p><button class="btn-small">Ver</button> <button class="btn-small btn-ok" onclick="showToast('Documento aprobado','ok')">Aprobar</button></div>
+              <div class="doc-card"><strong>Titulo.pdf</strong><p>Requiere copia legalizada</p><button class="btn-small">Ver</button> <button class="btn-small btn-warning" onclick="openObserveModal()">Observar</button></div>
+              <div class="doc-card"><strong>Partida.pdf</strong><p>Formato válido - 900 KB</p><button class="btn-small">Ver</button> <button class="btn-small btn-ok" onclick="showToast('Documento aprobado','ok')">Aprobar</button></div>
+              <div class="doc-card"><strong>FormularioBeca.pdf</strong><p>Opcional - no presentado</p><span class="badge pending">Pendiente opcional</span></div>
+            </div>
+          </div>
+          <div id="academico" class="tab-panel card">
+            <h3>Perfil académico</h3>
+            <table><thead><tr><th>Seminario</th><th>Asistencia</th><th>Nota</th><th>Acta</th><th>Estado</th></tr></thead><tbody><tr><td>Gestión de Proyectos de Software</td><td>80%</td><td>8</td><td>12/05/2026</td><td><span class="badge ok">Aprobado</span></td></tr><tr><td>Arquitectura de Software</td><td>62%</td><td>-</td><td>-</td><td><span class="badge obs">No regular</span></td></tr></tbody></table>
+            <div class="alert bad">Alerta de vencimiento: estudiante próximo al límite de regularidad.</div>
+          </div>
+          <div id="tutorias" class="tab-panel card">
+            <h3>Registro de tutorías</h3>
+            <label>Fecha</label><input type="date" />
+            <label>Detalle</label><textarea maxlength="240" placeholder="Registrar avance, acuerdos y observaciones de la tutoría"></textarea>
+            <button class="btn-primary" onclick="showToast('Tutoría registrada en el historial','ok')">Guardar tutoría</button>
+          </div>
+          <div class="card" style="margin-top:22px">
+            <h3>Acciones de workflow</h3>
+            <p>El cambio de estado queda registrado en el historial del legajo.</p>
+            <button class="btn-warning" onclick="openObserveModal()">Observar</button>
+            <button class="btn-ok" onclick="setEstado('Aprobado','ok')">Aprobar</button>
+            <button class="btn-danger" onclick="setEstado('Rechazado','obs')">Rechazar</button>
+            <button class="btn-primary" onclick="setEstado('Activo','active')">Matricular / Activar</button>
+          </div>
+          <div class="bottom-actions"><button onclick="go('legajos')">Atrás</button><button onclick="exportCSV('detalle_legajo')">Exportar legajo</button></div>
+        </div>
+      </section>
+
+      <!-- SEMAFORO -->
+      <section id="semaforo" class="screen private">
+        <div class="layout wide">
+          <aside><div class="menu-title">Menú conducción</div><div class="menu"><button onclick="go('conduccion')">Dashboard</button><button onclick="go('legajos')">Legajos</button><button class="active-menu" onclick="go('semaforo')">Semáforo académico</button><button onclick="go('periodos')">Períodos</button></div></aside>
+          <section>
+            <h1>Semáforo Académico</h1>
+            <p class="subtitle">Clasificación automática del riesgo académico</p>
+            <div class="alert">Verde: avance normal. Amarillo: atención preventiva. Rojo: riesgo alto por plazos u obligaciones adeudadas.</div>
+            <table>
+              <thead><tr><th>Estudiante</th><th>Carrera</th><th>Días en carrera</th><th>Seminarios aprobados</th><th>Obligaciones</th><th>Riesgo</th><th>Acción</th></tr></thead>
+              <tbody>
+                <tr><td>Ana Pérez</td><td>Especialización</td><td>240</td><td>5/8</td><td>1 pendiente</td><td><span class="badge yellow">Amarillo</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver perfil</button></td></tr>
+                <tr><td>Luis Gómez</td><td>Maestría</td><td>910</td><td>3/10</td><td>TFI sin registrar</td><td><span class="badge red">Rojo</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver perfil</button></td></tr>
+                <tr><td>Carla Díaz</td><td>Doctorado</td><td>120</td><td>2/12</td><td>Al día</td><td><span class="badge green">Verde</span></td><td><button class="btn-small" onclick="go('detalleLegajo')">Ver perfil</button></td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </section>
+
+      <!-- PERIODOS -->
+      <section id="periodos" class="screen private">
+        <div class="layout wide">
+          <aside><div class="menu-title">Menú conducción</div><div class="menu"><button onclick="go('conduccion')">Dashboard</button><button onclick="go('legajos')">Legajos</button><button onclick="go('semaforo')">Semáforo</button><button class="active-menu" onclick="go('periodos')">Períodos</button></div></aside>
+          <section>
+            <h1>Períodos de inscripción</h1>
+            <p class="subtitle">Apertura y cierre del formulario público</p>
+            <div class="card">
+              <div class="grid grid-2">
+                <div><label>Cohorte</label><input value="2026" /></div>
+                <div><label>Estado</label><select><option>Abierto</option><option>Cerrado</option></select></div>
+                <div><label>Fecha inicio</label><input type="date" value="2026-02-01" /></div>
+                <div><label>Fecha cierre</label><input type="date" value="2026-03-31" /></div>
+              </div>
+              <label>Enlace público generado</label>
+              <input readonly value="https://posgrado.frlp.utn.edu.ar/preinscripcion/2026" />
+              <div style="margin-top:18px"><button class="btn-primary" onclick="showToast('Período actualizado. Link generado para enviar por email.','ok')">Guardar configuración</button></div>
+            </div>
+            <div class="alert warn">Si el período está cerrado, el enlace público muestra una pantalla de inscripción finalizada.</div>
+          </section>
+        </div>
+      </section>
+
+      <!-- DOCENTE -->
+      <section id="docente" class="screen private">
+        <div class="wide">
+          <h1>Gestión Docente</h1>
+          <p class="subtitle">Carga de Asistencia y Calificaciones</p>
+          <div class="filters" style="grid-template-columns:1.4fr 1fr auto">
+            <div><label>Seleccione el Seminario</label><select><option>Gestión de Proyectos de Software</option><option>Arquitectura de Software</option></select></div>
+            <div><label>Fecha límite de notas</label><input type="date" value="2026-06-30" /></div>
+            <button onclick="showToast('Link único de acceso docente copiado','ok')">Copiar link docente</button>
+          </div>
+          <div class="alert warn">Recordatorio automático: faltan menos de 48 horas para la fecha límite y hay notas sin cargar.</div>
+          <table>
+            <thead><tr><th>Estudiante</th><th>Email</th><th>1/6</th><th>8/6</th><th>15/6</th><th>% Asist.</th><th>Nota final</th><th>Estado</th></tr></thead>
+            <tbody>
+              <tr><td>Takara Joaquín</td><td>joaquin@mail.com</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><input type="checkbox"></td><td>66%</td><td><input type="number" min="1" max="10" value="6" onchange="validateNota(this)"></td><td><span class="badge pending">Cargando</span></td></tr>
+              <tr><td>Pagani Franco</td><td>franco@mail.com</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td>100%</td><td><input type="number" min="1" max="10" onchange="validateNota(this)"></td><td><span class="badge pending">Pendiente</span></td></tr>
+              <tr><td>Veliz Ruben</td><td>ruben@mail.com</td><td><input type="checkbox" checked></td><td><input type="checkbox"></td><td><input type="checkbox"></td><td>33%</td><td><input type="number" min="1" max="10" onchange="validateNota(this)"></td><td><span class="badge obs">No regular</span></td></tr>
+              <tr><td>Esperanza Franco</td><td>esperanza@mail.com</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td><td>100%</td><td><input type="number" min="1" max="10" value="9" onchange="validateNota(this)"></td><td><span class="badge ok">Aprobado</span></td></tr>
+            </tbody>
+          </table>
+          <div class="bottom-actions"><button onclick="go('conduccion')">Atrás</button><div><button onclick="exportCSV('planilla_docente')">Exportar Excel</button> <button onclick="downloadPDFMock()">Descargar PDF</button></div></div>
+        </div>
+      </section>
+
+      <!-- CPR -->
+      <section id="cpr" class="screen private">
+        <div class="wide">
+          <h1>Registro de Trabajo Final / Tesis</h1>
+          <p class="subtitle">Módulo CPR</p>
+          <div class="card">
+            <div class="grid grid-2">
+              <div><label>Estudiante</label><select><option>Ana Pérez - 26-001-045</option><option>Luis Gómez - 26-001-046</option></select></div>
+              <div><label>Tipo</label><select><option>TFI</option><option>Tesis de maestría</option><option>Tesis doctoral</option></select></div>
+              <div><label>Título</label><input placeholder="Título del trabajo final o tesis" required></div>
+              <div><label>Director/a</label><input placeholder="Nombre del director" required></div>
+              <div><label>Número de resolución</label><input id="resolucion" placeholder="Ej: Res. 123/2026" required></div>
+              <div><label>Fecha de aprobación</label><input type="date"></div>
+            </div>
+            <label>Observaciones</label><textarea placeholder="Comentarios adicionales"></textarea>
+            <button class="btn-primary" onclick="saveTesis()">Guardar TFI / Tesis</button>
+          </div>
+          <div class="bottom-actions"><button onclick="go('conduccion')">Atrás</button><button onclick="exportCSV('tesis_tfi')">Exportar</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="modal" class="modal-backdrop">
+    <div class="modal">
+      <h2>Observar legajo</h2>
+      <p>Ingresá una observación clara para que el aspirante pueda corregir el problema.</p>
+      <label>Motivo</label>
+      <textarea id="observacion" placeholder="Ej: Falta copia legalizada del título de grado."></textarea>
+      <div class="modal-actions">
+        <button onclick="closeModal()">Cancelar</button>
+        <button class="btn-warning" onclick="confirmObserve()">Guardar observación</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" style="position:fixed;right:20px;bottom:20px;display:none;max-width:360px;padding:16px 18px;border-radius:12px;background:#2f3748;color:#fff;box-shadow:0 8px 32px rgba(0,0,0,.25);font-weight:700;z-index:20"></div>
+
+  <script>
+    const publicNav = document.getElementById('publicNav');
+    const privateNav = document.getElementById('privateNav');
+
+    function go(id){
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo({top:0, behavior:'smooth'});
+      const isPrivate = document.getElementById(id).classList.contains('private') || ['seguimiento'].includes(id);
+      publicNav.style.display = isPrivate ? 'none' : 'flex';
+      privateNav.style.display = isPrivate ? 'flex' : 'none';
+    }
+
+    function validateAndGo(formId, next){
+      const form = document.getElementById(formId);
+      if(!form.checkValidity()){
+        form.reportValidity();
+        showToast('Revisá los campos obligatorios antes de continuar.', 'bad');
+        return;
+      }
+      go(next);
+    }
+
+    function checkFile(input){
+      const status = input.parentElement.querySelector('.file-status');
+      if(!input.files.length){ status.textContent = input.dataset.required ? 'Pendiente' : 'Opcional'; status.className='file-status'; return; }
+      const file = input.files[0];
+      if(!file.name.toLowerCase().endsWith('.pdf')){
+        status.textContent = 'Solo PDF';
+        status.className = 'file-status bad';
+        input.value='';
+        showToast("El archivo debe estar en formato PDF.", 'bad');
+        return;
+      }
+      if(file.size > 5 * 1024 * 1024){
+        status.textContent = 'Máx. 5MB';
+        status.className = 'file-status bad';
+        input.value='';
+        showToast("El archivo es demasiado grande. Máximo permitido: 5MB.", 'bad');
+        return;
+      }
+      status.textContent = 'Cargado ✓';
+      status.className = 'file-status ok';
+    }
+
+    function finishPreinscription(){
+      const required = [...document.querySelectorAll('#pre3 input[data-required="true"]')];
+      const missing = required.filter(i => !i.files.length);
+      if(missing.length){
+        showToast('Faltan documentos obligatorios para enviar el legajo.', 'bad');
+        missing[0].focus();
+        return;
+      }
+      go('confirm');
+    }
+
+    function loginAs(role){
+      go(role);
+      showToast('Sesión iniciada como ' + role + '.', 'ok');
+    }
+
+    function filterLegajos(){
+      const q = document.getElementById('buscarLegajo').value.toLowerCase().trim();
+      const rows = [...document.querySelectorAll('#legajosTable tbody tr')];
+      let visible = 0;
+      rows.forEach(r => {
+        const show = !q || r.innerText.toLowerCase().includes(q);
+        r.style.display = show ? '' : 'none';
+        if(show) visible++;
+      });
+      document.getElementById('noResults').style.display = visible ? 'none' : 'block';
+    }
+
+    function tab(id){
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(id).classList.add('active');
+    }
+
+    function setEstado(text, cls){
+      const e = document.getElementById('estadoLegajo');
+      e.textContent = text;
+      e.className = 'badge ' + cls;
+      showToast('Estado actualizado a: ' + text, 'ok');
+    }
+
+    function openObserveModal(){ document.getElementById('modal').classList.add('show'); }
+    function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+    function confirmObserve(){
+      const obs = document.getElementById('observacion').value.trim();
+      if(!obs){ showToast('La observación no puede estar vacía.', 'bad'); return; }
+      setEstado('Observado','obs');
+      closeModal();
+      showToast('Observación registrada y notificación enviada al aspirante.', 'warn');
+    }
+
+    function validateNota(input){
+      const v = Number(input.value);
+      if(input.value && (v < 1 || v > 10)){
+        input.classList.add('invalid');
+        showToast('La nota debe estar entre 1 y 10.', 'bad');
+      }else{
+        input.classList.remove('invalid');
+        showToast('Nota guardada automáticamente.', 'ok');
+      }
+    }
+
+    function saveTesis(){
+      const r = document.getElementById('resolucion');
+      if(!r.value.trim()){
+        r.classList.add('invalid');
+        showToast('El número de resolución es obligatorio para avanzar.', 'bad');
+        return;
+      }
+      r.classList.remove('invalid');
+      showToast('Datos de TFI/Tesis guardados en el legajo.', 'ok');
+    }
+
+    function exportCSV(name){
+      const csv = 'Modulo,Registro,Estado\n' + name + ',Prototype exportado,OK\n';
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Exportación generada en formato CSV compatible con Excel.', 'ok');
+    }
+
+    function downloadPDFMock(){
+      const text = 'Planilla docente - Prototype\nEstudiante, Email, Asistencia, Nota\nTakara Joaquin, joaquin@mail.com, 66%, 6';
+      const blob = new Blob([text], {type:'text/plain;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'planilla_docente_mock.txt';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      showToast('Descarga simulada de planilla para impresión.', 'ok');
+    }
+
+    function showToast(msg, type){
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      t.style.background = type === 'bad' ? '#a12b2b' : type === 'warn' ? '#805c00' : type === 'ok' ? '#116432' : '#2f3748';
+      clearTimeout(window.toastTimer);
+      window.toastTimer = setTimeout(() => t.style.display = 'none', 3200);
+    }
+  </script>
+</body>
+</html>
