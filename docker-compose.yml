@@ -1,11 +1,11 @@
 # docker-compose.yml — Ambiente de desarrollo Fenix Posgrado
+
 # Ejecutar: docker-compose up -d
 # Detener:  docker-compose down
 # Ver logs: docker-compose logs -f [servicio]
 
-version: '3.9'
-
 services:
+
   # ──────────────────────────────────────────
   # BASE DE DATOS PostgreSQL
   # ──────────────────────────────────────────
@@ -21,7 +21,7 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./src/core/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./src/backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgrado_user} -d ${DB_NAME:-postgrado_dev}"]
       interval: 10s
@@ -29,11 +29,11 @@ services:
       retries: 5
 
   # ──────────────────────────────────────────
-  # BACKEND API
+  # BACKEND API (FastAPI)
   # ──────────────────────────────────────────
   backend:
     build:
-      context: ./src/core
+      context: ./src/backend
       dockerfile: Dockerfile.dev
     container_name: postgrado-backend
     restart: unless-stopped
@@ -41,22 +41,21 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
       STORAGE_PATH: /var/postgrado-storage
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
-      NODE_ENV: development
+      ENVIRONMENT: development
     ports:
       - "8000:8000"
     volumes:
-      - ./src:/app/src
+      - ./src/backend:/app
       - postgrado-storage:/var/postgrado-storage
-      - /app/node_modules  # Evita sobreescribir node_modules del container
-    command: npm run dev  # Hot reload en desarrollo
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
   # ──────────────────────────────────────────
-  # FRONTEND
+  # FRONTEND - PARA DEV
   # ──────────────────────────────────────────
   frontend:
     build:
@@ -71,8 +70,9 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - ./src/frontend/src:/app/src
+      - ./src/frontend:/app
       - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 3000
 
   # ──────────────────────────────────────────
   # MAILHOG — Servidor de email falso para desarrollo
@@ -96,9 +96,9 @@ volumes:
 #
 # Primera vez:
 #   cp .env.example .env
-#   docker-compose up -d
-#   docker exec postgrado-backend npm run db:migrate
-#   docker exec postgrado-backend npm run db:seed  # Datos de prueba
+#   docker compose up -d
+#   FALTA IMPLEMENTAR EN PYTHON docker exec postgrado-backend npm run db:migrate
+#   FALTA IMPLEMENTAR EN PYTHON docker exec postgrado-backend npm run db:seed  # Datos de prueba
 #
 # Ver emails enviados por el sistema:
 #   Abrir http://localhost:8025
@@ -107,5 +107,5 @@ volumes:
 #   docker exec -it postgrado-db psql -U postgrado_user -d postgrado_dev
 #
 # Si algo no funciona:
-#   docker-compose down && docker-compose up -d --build
+#   docker compose down && docker compose up -d --build
 # ──────────────────────────────────────────────────────────────

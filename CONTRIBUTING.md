@@ -1,59 +1,92 @@
-# Guía de Contribución — postgrado Posgrado
+# Guía de Contribución — postgrado Posgrado (Modificada)
 
-Leé este documento antes de hacer tu primer commit. Estas convenciones existen para que el trabajo de 4 personas en paralelo no genere caos.
+Leé este documento antes de comenzar a rabajar en el proyecto. La idea es que los 4 podamos trabajar en paralelo sin pisarnos cambios ni romper main.
+---
+
+## 1. Tecnologias del proyecto
+
+El proyecto está dividido en frontend y backend
+
+Frontend: React, TypeScript, Vite, React Router y Tailwind CSS
+
+Backend: Python 3.12, FastAPI, Uvicorn, SQLAlchemy, Alembic, PostgreSQL
+
+Herramientas: Git, GitHub y Docker/Docker compose
+---
+## 2. Estructura general (por ahora)
+
+La estructura principal es: 
+
+postgrados_frlp/
+│
+├── src/
+│   ├── backend/
+│   │   ├── main.py
+│   │   ├── requirements.txt
+│   │   ├── database/
+│   │   └── src/
+│   │
+│   └── frontend/  --> Buscamos separar las funcionalidades por modulos
+│       ├── src/
+│       │   ├── assets/
+│       │   ├── dashboard/
+│       │   ├── home/
+│       │   ├── inscripcion/
+│       │   └── shared/  --> Shred es la unica que contiene elementos que son reutilizables en todo el proyecto
+│       │
+│       └── package.json
+│
+├── docs/
+├── docker-compose.yml
+├── .env
+└── .env.example
 
 ---
 
-## 1. Estrategia de Ramas (GitFlow simplificado)
+## 3. Ramas de Git
 
-```
-main          ← Solo versiones estables. Tags de release (v0.5, v1.0). NUNCA push directo.
-  └── develop ← Integración continua. Aquí mergean los features. NUNCA push directo.
-        └── feature/US-CORE-001-formulario-inscripcion  ← Tu rama de trabajo
-        └── feature/US-B-002-planilla-asistencia
-        └── fix/bug-descripcion-del-bug
-        └── docs/actualizar-asr
-```
+Para evitar que varias personas trabajen directamente sobre main, cada integrante debe trabajar en su propia rama.
 
-**Regla de oro: Si no es un Pull Request, no existe.**
+La rama MAIN es la principal y es la qu nos tenemos queasegurar que siempre funcione
 
+
+Pasos para crear las ramas:
+
+Primero asegurate de estar en main actualizado (Trarnos los ultimos cambios que alguien haya hecho): 
+
+git checkout main
+git pull origin main
+
+Ahora si, crear tu rama:
+
+git checkout -b rama-ursula
+
+Luego, podemos ver en que rama estamos parados: En la rama que estamos parados aparece con un *
+
+git branch 
 ---
 
-## 2. Nomenclatura de Ramas
+## 4. Guardar cambios
 
-```
-feature/US-[MOD]-[NNN]-[descripcion-corta]
-fix/[descripcion-del-bug]
-docs/[descripcion]
-refactor/[descripcion]
-test/[descripcion]
-```
+Una vez terminado de modificar lo que queremos subir hacemos un para agregar todo lo modificado:
 
-**Ejemplos válidos:**
-- `feature/US-CORE-001-formulario-inscripcion`
-- `feature/US-B-002-planilla-asistencia`
-- `fix/validacion-dni-duplicado`
-- `docs/actualizar-swagger-legajos`
+git add .
 
-**Ejemplos inválidos:**
-- `mi-rama` ← sin contexto
-- `feature/arreglos` ← sin ID de historia
-- `WIP` ← nunca mergear Work In Progress
+si no, tambien podemos subir de forma especifica:
 
----
+git add src/home/pages/HomePage.tsx  -- Esta se una mas para los conflictos al momento de mergear, siempre recomiendo al primera.
 
-## 3. Convención de Commits (Conventional Commits)
+Despues podemos hacer un:
+
+git status
+
+El cual nos sirve para corroborar que todos nuestros cambios se esten subiendo correctamente
+
+## 5. Crear un Commit
+
+Se suele utilizar una forma universal para que todos lo entendamos:
 
 Formato: `tipo(alcance): descripción en presente, sin mayúscula inicial, sin punto final`
-
-```
-feat(core): agrega validación de DNI en formulario de inscripción
-fix(auth): corrige expiración de JWT refresh token
-docs(api): actualiza swagger para endpoint de documentos
-test(semaforo): agrega tests para regla de semaforo rojo en Maestría
-refactor(legajo): extrae lógica de transición de estados a clase LegajoStateMachine
-chore(ci): configura pipeline de GitHub Actions para linting
-```
 
 **Tipos válidos:**
 
@@ -67,22 +100,35 @@ chore(ci): configura pipeline de GitHub Actions para linting
 | `chore` | Tareas de mantenimiento (CI, dependencias) |
 | `style` | Formato (linting, espacios) sin cambio de lógica |
 
-**Referencia al requisito:** Si el commit implementa un requisito del SRS, incluirlo:
-```
-feat(core): implementa upload de PDFs con validación MIME
-
-Implementa RF-CORE-002. El sistema verifica magic bytes del archivo
-antes de almacenarlo, independientemente del Content-Type del cliente.
-```
-
+Ejemplos:
+feat(home): agrega pagina principal
+feat(navbar): agrega navegacion principal
+fix(auth): corrige redireccion despues del login
+refactor(inscripcion): reorganiza componentes
+docs(readme): actualiza instrucciones de instalacion
+chore(deps): actualiza dependencias
 ---
 
-## 4. Pull Requests
+## 6.  Subir mi rama a GitHub
 
-### Cuándo abrir un PR
-- Cuando la historia de usuario está **funcionando** (no cuando está "casi lista")
-- Cuando los tests pasan localmente
-- Cuando el linter no tiene errores
+Despues del Commit usamos: (El -u es solo para la primera vez, despues ya no se pone)
+
+git push -u origin rama-julian
+
+---
+## 7.  Pull Request
+
+Una vez ya este todo subido a nuestra rama tenemos que saber que el push no lo hace directamente al main para no romper nada justamente.
+Entonces el Pull Request permite que otro integrante revise los cambios antes de incorporarlos.
+
+Antes de pasar al como se hace un PR verificamos que:
+- El proyecto compila.
+- No hay errores.
+- La funcionalidad funciona.
+- No se rompieron funcionalidades existentes.
+- Los cambios están relacionados con lo que se quería implementar.
+
+Despues si vas a la pagina de GitHub y solicitas un Pull Request de loq ue acabas de subir a tu rama con el main
 
 ### Qué incluir en el PR
 
@@ -99,71 +145,42 @@ Cierra #[número de issue en GitHub] — US-CORE-001
 ## Cambios principales
 - [Lista de cambios relevantes]
 
-## Cómo probarlo
-1. Levantar el ambiente: `docker-compose up -d`
-2. Ir a `http://localhost:3000/inscripcion`
-3. Completar el formulario con datos válidos
-4. Verificar que el legajo aparece en el dashboard del coordinador
 
-## Screenshots (si hay cambios de UI)
-[Imagen o GIF del antes/después]
+## 8.  Mantener actualizada mi rama:
 
-## Checklist del DoD
-- [ ] Tests pasando (cobertura ≥70% en lógica nueva)
-- [ ] Linter sin errores
-- [ ] Swagger actualizado (si hay endpoints nuevos)
-- [ ] Probado en la máquina de otro integrante
-- [ ] CHANGELOG.md actualizado
-```
+Como otras personas pueden mergear cambios a main, antes de seguir trabajando conviene actualizarse.
 
-### Code Review: qué revisar
+git checkout main
+git pull origin main
 
-Como **reviewer**, enfocate en:
-1. **¿La lógica de negocio es correcta?** (¿el semáforo calcula bien? ¿la transición de estados es válida?)
-2. **¿Hay problemas de seguridad?** (¿se validan las entradas? ¿el endpoint tiene auth guard?)
-3. **¿Los tests cubren los casos edge?** (null, strings vacíos, valores límite)
-4. **¿El código es entendible?** (nombres claros, funciones cortas, comentarios donde hacen falta)
+Después volver a nuestra rama:
 
-NO es responsabilidad del reviewer:
-- Encontrar typos de UI (eso va en un issue separado)
-- Revisar que el diseño "se vea lindo" (eso es del QA/UX)
+git checkout rama-matias
+
+y traer esas actualizaciones que por ahora solo llegaron al main:
+
+git merge main
 
 ---
 
-## 5. Workflow Paso a Paso
+--- Importante!!! ---
+## 9. Instalaciones del proyecto:
 
-```bash
-# 1. Siempre trabajar desde develop actualizado
-git checkout develop
-git pull origin develop
 
-# 2. Crear rama para la historia
-git checkout -b feature/US-CORE-001-formulario-inscripcion
+Cada area va a tener ciertas dependencias por lo que cada una debe estar actualizada para que no nos falte ninguna. Como se hace:
 
-# 3. Desarrollar, commitear frecuentemente (no solo al final)
-git add .
-git commit -m "feat(core): agrega campos básicos del formulario de inscripción"
-git commit -m "feat(core): agrega validación de DNI y email"
-git commit -m "test(core): agrega tests de validación del formulario"
+Comprobamos la version: py -3.12 --version
 
-# 4. Antes de abrir el PR: sincronizar con develop
-git fetch origin develop
-git rebase origin/develop
-# Si hay conflictos: resolverlos, luego git rebase --continue
+Backend:
+cd src/backend
+py -3.12 -m pip install -r requirements.txt
 
-# 5. Push y abrir PR en GitHub
-git push origin feature/US-CORE-001-formulario-inscripcion
-# Abrir PR en GitHub contra la rama develop
+Frontend:
+cd src/frontend
+npm install
 
-# 6. Después del merge: limpiar rama local
-git checkout develop
-git pull origin develop
-git branch -d feature/US-CORE-001-formulario-inscripcion
-```
 
----
-
-## 6. Variables de Entorno
+## 10. Variables de Entorno
 
 **NUNCA commitear el archivo `.env`**. Está en `.gitignore`.
 
@@ -209,5 +226,3 @@ docker exec -it postgrado-db psql -U postgrado_user -d postgrado_dev
 ```
 
 ---
-
-*¿Dudas sobre el proceso? → Canal `#postgrado-general` en Github Discussion o Issues en GitHub.*
