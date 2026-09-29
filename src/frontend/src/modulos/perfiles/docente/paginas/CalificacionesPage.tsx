@@ -30,7 +30,7 @@ export default function CalificacionesPage() {
           <p className="text-sm text-slate-500 mt-1">Cohorte 2026 - Acta de Cierre</p>
         </header>
 
-        {/* Formulario semántico que envuelve toda la tabla de carga de notas */}
+        {/* Formulario que envuelve toda la tabla de carga de notas */}
         <form onSubmit={handleSubmit} className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
