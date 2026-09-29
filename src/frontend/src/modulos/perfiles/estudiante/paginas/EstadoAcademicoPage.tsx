@@ -81,7 +81,7 @@ export default function EstadoAcademicoPage() {
                   
                   <td className={`p-4 text-center font-extrabold text-base ${
                     seminario.nota === "-" ? 'text-slate-400' : 
-                    seminario.nota >= 7 ? 'text-emerald-600' : 'text-red-600'
+                    (typeof seminario.nota === 'number' && seminario.nota >= 7) ? 'text-emerald-600' : 'text-red-600'
                   }`}>
                     {seminario.nota}
                   </td>
