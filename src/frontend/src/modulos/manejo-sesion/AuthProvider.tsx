@@ -1,18 +1,8 @@
 // Proveedor global de autenticación para manejar el usuario y su sesión.
 
 import { useState } from "react";
-import { api } from "../../shared/api/client";
 import { AuthContext, type AuthState } from "./useAuth";
 import type { Rol } from "../../shared/tipos";
-
-interface LoginRespuestaAPI {
-  id: string;
-  nombre: string;
-  apellido: string;
-  correo_electronico: string;
-  tipo_usuario: Rol;
-  token: string;
-}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthState | null>(null);
@@ -22,21 +12,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("El email y la contraseña son obligatorios");
     }
 
-    const respuesta = await api.post<LoginRespuestaAPI>(
-      "/autenticacion/login",
-      {
-        correo_electronico: email.trim(),
-        contrasena: password,
-      }
-    );
+    // MODO DEMO PARA PRESENTACIÓN (Mock Login)
+    // Evitamos depender del backend de Python que no compila en Windows por falta de C++ Build Tools
+    let rolAsignado: Rol = "ESTUDIANTE";
+    let nombreAsignado = "Juan";
+    let apellidoAsignado = "Pérez";
+    
+    if (email.toLowerCase().includes("docente") || email.toLowerCase().includes("profe")) {
+      rolAsignado = "DOCENTE";
+      nombreAsignado = "Margarita";
+      apellidoAsignado = "Gómez";
+    } else if (email.toLowerCase().includes("admin") || email.toLowerCase().includes("coordinador")) {
+      rolAsignado = "COORDINADOR";
+      nombreAsignado = "Carlos";
+      apellidoAsignado = "López";
+    }
 
     const usuario: AuthState = {
-      id: respuesta.id,
-      email: respuesta.correo_electronico,
-      nombre: respuesta.nombre,
-      apellido: respuesta.apellido,
-      rol: respuesta.tipo_usuario,
-      token: respuesta.token,
+      id: "mock-123",
+      email,
+      nombre: nombreAsignado,
+      apellido: apellidoAsignado,
+      rol: rolAsignado,
+      token: "mock-jwt-token",
     };
 
     setUser(usuario);
