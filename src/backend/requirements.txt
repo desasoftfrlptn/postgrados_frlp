@@ -9,3 +9,4 @@ pydantic[email]
 passlib[bcrypt]
 python-jose[cryptography]
 python-dotenv>=1.0,<2.0
+pwdlib[argon2]
