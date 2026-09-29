@@ -45,6 +45,7 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
+    
     return {"message": "Bienvenido a la API del Sistema de Posgrado (FastAPI)"}
 
 

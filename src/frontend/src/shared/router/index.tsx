@@ -17,6 +17,7 @@ import TrabajoFinalPage from "../../modulos/perfiles/estudiante/paginas/TrabajoF
 import TutoriasPage from "../../modulos/perfiles/estudiante/paginas/TutoriasPage";
 import CertificadosPage from "../../modulos/perfiles/estudiante/paginas/CertificadosPage";
 import AsistenciasEstudiantePage from "../../modulos/perfiles/estudiante/paginas/AsistenciasEstudiantePage";
+import DashboardRolGeneralPage from "../../modulos/perfiles/shared/paginas/DashboardRolGeneralPage";
 
 import DashboardLayout from "../../modulos/perfiles/shared/disposiciones/DashboardLayout";
 import MiPerfilPage from "../../modulos/perfiles/shared/paginas/MiPerfilPage";
@@ -92,6 +93,10 @@ export const router = createBrowserRouter([
           {
             path: "dashboard",
             element: <DashboardEstudiantePage />,
+          },
+          {
+            path: "dashboard/general",
+            element: <DashboardRolGeneralPage />,
           },
           {
             path: "dashboard/perfil",

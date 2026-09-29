@@ -1,5 +1,6 @@
 ﻿import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
+import { useAuth } from "../../../manejo-sesion/useAuth";
 
 interface TarjetaMetricaProps {
   titulo: string;
@@ -34,10 +35,11 @@ function TarjetaMetrica({
 }
 
 export default function DashboardEstudiantePage() {
+  const { user } = useAuth();
   return (
     <section className="perfil-pagina">
       <header className="perfil-pagina-encabezado">
-        <h1>Hola, Juan!</h1>
+        <h1>Hola, {user?.nombre ?? "Estudiante"}!</h1>
 
         <p>
           Bienvenido/a a tu panel de estudiante.
