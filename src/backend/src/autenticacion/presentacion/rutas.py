@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 
 from src.compartido.conexion import get_db
-from src.autenticacion.presentacion.esquema import LoginPeticion, LoginRespuesta, HistorialItem
-from src.autenticacion.aplicacion.servicio import iniciar_sesion, crear_token, obtener_historial
+from src.autenticacion.presentacion.esquema import LoginPeticion, LoginRespuesta
+from src.autenticacion.aplicacion.servicio import iniciar_sesion, crear_token
 
 enrutador = APIRouter(prefix="/api/v1/autenticacion", tags=["Autenticación"])
 
@@ -21,7 +20,3 @@ async def login(datos: LoginPeticion, db: AsyncSession = Depends(get_db)):
         tipo_usuario=tipo_usuario,
         token=token,
     )
-
-@enrutador.get("/historial/{usuario_id}", response_model=list[HistorialItem])
-async def historial(usuario_id: UUID, db: AsyncSession = Depends(get_db)):
-    return await obtener_historial(usuario_id, db)

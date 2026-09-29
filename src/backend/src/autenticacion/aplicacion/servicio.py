@@ -1,45 +1,62 @@
-from datetime import datetime, timedelta
-from sqlalchemy.ext.asyncio import AsyncSession
-from passlib.context import CryptContext
-from jose import jwt
+import os
+from datetime import datetime, timedelta, timezone
+from uuid import UUID
+from dotenv import load_dotenv
 from fastapi import HTTPException
+from jose import jwt
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from src.autenticacion.infraestructura import repositorio
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from src.autenticacion.aplicacion.seguridad import verificar_password
+from src.autenticacion.infraestructura.orm_modelos import UsuarioORM
 
-SECRET_KEY = "CAMBIAR_ESTO_POR_VARIABLE_DE_ENTORNO"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("Falta definir SECRET_KEY")
+
 ALGORITHM = "HS256"
 EXPIRACION_MINUTOS = 60
 
 
-def crear_token(usuario_id, tipo_usuario: str) -> str:
-    payload = {
+async def iniciar_sesion(
+    correo: str,
+    contrasena: str,
+    db: AsyncSession,
+) -> tuple[UsuarioORM, str]:
+    consulta = (
+        select(UsuarioORM)
+        .options(selectinload(UsuarioORM.rol))
+        .where(UsuarioORM.correo_electronico == correo.strip().lower())
+    )
+
+    usuario = await db.scalar(consulta)
+
+    if (
+        usuario is None
+        or not usuario.activo
+        or not verificar_password(contrasena, usuario.contrasena_hash)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Correo o contraseña incorrectos",
+        )
+
+    return usuario, usuario.rol.nombre
+
+
+def crear_token(usuario_id: UUID, tipo_usuario: str) -> str:
+    vencimiento = datetime.now(timezone.utc) + timedelta(
+        minutes=EXPIRACION_MINUTOS
+    )
+
+    contenido = {
         "sub": str(usuario_id),
         "tipo_usuario": tipo_usuario,
-        "exp": datetime.utcnow() + timedelta(minutes=EXPIRACION_MINUTOS),
+        "exp": vencimiento,
     }
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-
-async def iniciar_sesion(correo: str, contrasena: str, db: AsyncSession):
-    alumno = await repositorio.buscar_alumno_por_correo(db, correo)
-    if alumno and alumno.contrasena_hash and pwd_context.verify(contrasena, alumno.contrasena_hash):
-        await repositorio.guardar_historial(db, alumno.id, "ALUMNO", correo, True)
-        return alumno, "ALUMNO"
-
-    docente = await repositorio.buscar_docente_por_correo(db, correo)
-    if docente and pwd_context.verify(contrasena, docente.contrasena_hash):
-        await repositorio.guardar_historial(db, docente.id, "DOCENTE", correo, True)
-        return docente, "DOCENTE"
-
-    usuario_fallido = alumno or docente
-    if usuario_fallido:
-        tipo = "ALUMNO" if alumno else "DOCENTE"
-        await repositorio.guardar_historial(db, usuario_fallido.id, tipo, correo, False)
-
-    raise HTTPException(status_code=401, detail="Credenciales inválidas")
-
-
-async def obtener_historial(usuario_id, db: AsyncSession):
-    return await repositorio.obtener_historial_por_usuario(db, usuario_id)
+    return jwt.encode(contenido, SECRET_KEY, algorithm=ALGORITHM)

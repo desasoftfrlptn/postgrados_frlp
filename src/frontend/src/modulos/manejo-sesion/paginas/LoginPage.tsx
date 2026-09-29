@@ -27,14 +27,18 @@ export default function LoginPage() {
       return;
     }
 
-    try {
-      await login(email, password);
-      navigate("/dashboard");
+     try {
+      const sesion = await login(email, password);
+      if (sesion.rol === "DOCENTE") {
+        navigate("/dashboard/docente");
+      } else {
+        navigate("/dashboard");
+      }
     } catch {
       setError("Credenciales invÃ¡lidas");
       setCaptchaToken("");
     }
-  };
+  }
 
   return (
     <section

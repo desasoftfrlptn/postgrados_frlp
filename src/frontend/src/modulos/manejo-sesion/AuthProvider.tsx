@@ -1,8 +1,18 @@
-﻿// Proveedor global de autenticación para manejar el usuario y su sesión.
+// Proveedor global de autenticación para manejar el usuario y su sesión.
 
 import { useState } from "react";
+import { api } from "../../shared/api/client";
 import { AuthContext, type AuthState } from "./useAuth";
 import type { Rol } from "../../shared/tipos";
+
+interface LoginRespuestaAPI {
+  id: string;
+  nombre: string;
+  apellido: string;
+  correo_electronico: string;
+  tipo_usuario: Rol;
+  token: string;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthState | null>(null);
@@ -12,20 +22,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error("El email y la contraseña son obligatorios");
     }
 
-    // Asignación de rol mockeada según el email para pruebas
-    let rolAsignado: Rol = "ESTUDIANTE"; // Por defecto estudiante
-    
-    if (email.toLowerCase().includes("docente")) {
-      rolAsignado = "DOCENTE";
-    } else if (email.toLowerCase().includes("admin") || email.toLowerCase().includes("coordinador")) {
-      rolAsignado = "COORDINADOR";
-    }
+    const respuesta = await api.post<LoginRespuestaAPI>(
+      "/autenticacion/login",
+      {
+        correo_electronico: email.trim(),
+        contrasena: password,
+      }
+    );
 
-    setUser({
-      email,
-      rol: rolAsignado,
-      token: "mock-jwt-token",
-    });
+    const usuario: AuthState = {
+      id: respuesta.id,
+      email: respuesta.correo_electronico,
+      nombre: respuesta.nombre,
+      apellido: respuesta.apellido,
+      rol: respuesta.tipo_usuario,
+      token: respuesta.token,
+    };
+
+    setUser(usuario);
+    return usuario;
   };
 
   const logout = () => setUser(null);

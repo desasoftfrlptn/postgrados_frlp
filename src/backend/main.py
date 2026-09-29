@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.autenticacion.infraestructura import orm_modelos as _modelos_autenticacion
+from src.autenticacion.presentacion.rutas import enrutador as autenticacion_rutas
 
 load_dotenv()
 
@@ -53,3 +54,4 @@ def health_check():
 
 
 app.include_router(inscripcion_rutas)
+app.include_router(autenticacion_rutas)

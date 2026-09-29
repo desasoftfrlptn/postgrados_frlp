@@ -4,7 +4,7 @@ from datetime import datetime
 
 class LoginPeticion(BaseModel):
     correo_electronico: EmailStr
-    contraseña: str
+    contrasena: str
     
 class LoginRespuesta(BaseModel):
     id: UUID

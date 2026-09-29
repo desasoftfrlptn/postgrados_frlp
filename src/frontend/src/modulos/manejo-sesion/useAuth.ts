@@ -4,14 +4,17 @@ import { createContext, useContext } from "react";
 import type { Rol } from "../../shared/tipos";
 
 export interface AuthState {
+  id: string;
   email: string;
+  nombre: string;
+  apellido: string;
   rol: Rol;
   token: string;
 }
 
 export interface AuthContextValue {
   user: AuthState | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthState>;
   logout: () => void;
 }
 
@@ -26,3 +29,4 @@ export function useAuth() {
 
   return ctx;
 }
+
