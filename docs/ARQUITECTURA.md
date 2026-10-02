@@ -24,6 +24,12 @@ Todo endpoint es privado hasta que se demuestre que debe ser público. Todo arch
 ### 1.5 Decisiones documentadas
 Toda decisión arquitectónica significativa —elección de stack, estrategia de almacenamiento, mecanismo de autenticación— debe registrarse en un ADR antes de implementarse. No para pedir permiso, sino para poder revisarla cuando el contexto cambie.
 
+### 1.6 Workspace explícito por frente
+Cada frente de trabajo debe tener una carpeta dedicada y documentada. Para este equipo, el workspace inicial es `apps/ingresantes-wizard/`, reservado al wizard de inscripción en Expo.
+
+### 1.7 Notificaciones del wizard
+El frente de Ingresantes usa `expo-notifications` para pruebas locales de avisos y futuras confirmaciones de trámite.
+
 ---
 
 ## 2. Arquitectura de Software Adoptada
@@ -79,6 +85,12 @@ src/
   graduacion/        ← Grita "seguimos la graduación"
   analytics/         ← Grita "analizamos datos"
   shared/            ← Infraestructura compartida
+```
+
+**Workspace del frente actual:**
+```
+apps/
+  ingresantes-wizard/ ← Frontend Expo del wizard de inscripción
 ```
 
 Dentro de cada módulo de dominio, Clean Architecture organiza las capas. Los dos principios se complementan: Screaming Architecture te dice *cómo organizar los módulos*, Clean Architecture te dice *cómo organizar el interior de cada módulo*.
