@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "scheme": "acme",
+    "plugins": [
+      "expo-router",
+      "expo-status-bar"
+    ],
+    "name": "ingresantes-wizard",
+    "slug": "ingresantes-wizard"
+  }
+}

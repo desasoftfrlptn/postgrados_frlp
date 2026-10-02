@@ -1,18 +1,20 @@
 # ADR-001: Elección del Stack Tecnológico
 
-**Estado:** [Propuesto — el equipo debe completar y aprobar]  
-**Fecha:** ___/05/2026  
+**Estado:** [Aprobado para el frente de Ingresantes]  
+**Fecha:** 17/08/2026  
 **Autor:** [Tech Lead del equipo]
 
 ---
 
 ## Contexto
 
-Debemos elegir las tecnologías para implementar el sistema Fenix Posgrado antes de comenzar el desarrollo. La elección debe balancear:
+Este frente solo desarrollará el **wizard de Ingresantes / inscripción pública**. El login y la web principal autenticada quedan fuera de alcance y serán resueltos por otro integrante.
+
+La elección debe balancear:
 - **Conocimiento previo del equipo** (curva de aprendizaje)
 - **Soporte de la cátedra** (las tecnologías sugeridas tienen soporte garantizado)
 - **Madurez del ecosistema** (documentación, librerías, comunidad)
-- **Adecuación al problema** (el sistema es principalmente CRUD + lógica de negocio)
+- **Adecuación al problema** (el wizard es principalmente formularios, validación y carga de archivos)
 
 ---
 
@@ -26,24 +28,32 @@ Debemos elegir las tecnologías para implementar el sistema Fenix Posgrado antes
 **Ventajas:** Sintaxis más directa, tipado con Pydantic, muy popular en data science (útil para Módulo D), SQLAlchemy robusto.  
 **Desventajas:** Gestión de dependencias más compleja (virtualenv/poetry).
 
-### Frontend: React 18 + TypeScript + Vite
-**Ventajas:** Ecosistema más maduro, TailwindCSS simplifica el estilo, componentes reutilizables.  
-**Alternativa:** Vue 3 (similar complejidad, menos demanda laboral en Argentina actualmente).
+### Frontend: React web + Vite
+**Ventajas:** UI rápida para escritorio, ecosistema maduro, fácil de desplegar como sitio estático.  
+**Desventajas:** para mobile-ready suele requerir más adaptación posterior.
+
+### Frontend: Expo + React Native + TypeScript
+**Ventajas:** base mobile-first desde el inicio, un solo código para validar el wizard en escritorio y luego en móvil, componentes reutilizables, mejor encaje con el objetivo final responsive.  
+**Desventajas:** la validación visual en escritorio no es idéntica a web nativa, y algunas piezas del ecosistema web quedan fuera.
 
 ---
 
 ## Decisión
 
-[El equipo debe completar esta sección]
+Decidimos usar **Expo + React Native + TypeScript** para el wizard de Ingresantes porque nos permite construir primero el prototipo de escritorio y terminar en una experiencia móvil responsive sin rehacer la base visual.
 
-"Decidimos usar **[backend elegido]** y **React 18 + TypeScript** porque [razones específicas del equipo]."
+El login y la web principal se documentan y desarrollan aparte, por lo que este ADR aplica solo al frente de inscripción pública.
 
 ---
 
 ## Consecuencias
 
 ### Positivas
-- [El equipo completa]
+- Base mobile-ready desde el inicio
+- Mejor reutilización del wizard entre escritorio y móvil
+- Menor fricción para iterar pantallas de formulario
+- Alineación con el objetivo final de versión móvil responsive
 
 ### Negativas (trade-offs)
-- [El equipo completa]
+- Menor fidelidad a patrones web clásicos
+- Algunas decisiones de layout deben validarse dos veces: escritorio y móvil

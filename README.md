@@ -11,7 +11,9 @@
 
 ## ¿Qué es este proyecto?
 
-**Sistema Postgrados** reemplaza el proceso manual de gestión de posgrado de UTN FRLP —hoy basado en Excel, carpetas físicas y correos— por una plataforma web centralizada que digitaliza el ciclo de vida del estudiante: desde la preinscripción hasta la graduación.
+**Sistema Postgrados** reemplaza el proceso manual de gestión de posgrado de UTN FRLP —hoy basado en Excel, carpetas físicas y correos— por una plataforma digital que cubre desde la preinscripción hasta la graduación.
+
+**Alcance de este frente frontend:** solo el **wizard de Ingresantes / inscripción pública**. El login y la web principal autenticada quedan a cargo de otro integrante/equipo.
 
 **Este repositorio es el punto de entrada único** para todos los equipos del curso. Cada equipo implementa el **Módulo Core (obligatorio para todos)** más **un módulo especializado** asignado por sorteo.
 
@@ -21,9 +23,12 @@
 
 | Nombre              | Rol                          | GitHub                          | Email                          |
 |---------------------|------------------------------|---------------------------------|--------------------------------|
-| Tu Nombre           | Líder / Desarrollador Principal | [@tuusuario](https://github.com/tuusuario) | tuemail@ejemplo.com           |
-| Nombre Compañero 1  | Desarrollador Backend        | [@usuario2](https://github.com/usuario2)   | email2@ejemplo.com            |
-| Nombre Compañero 2  | Diseñador / Frontend         | [@usuario3](https://github.com/usuario3)   | email3@ejemplo.com            |
+| Ibañez Tiago Manuel          | Líder / Desarrollador Principal | [@Bebedor22](https://github.com/Bebedor22) | tiago.ibanez@alu.frlp.utn.edu.ar           |
+| Dylan Benavente  | Desarrollador Backend        | [@dylanbenavente025-arg](https://github.com/dylanbenavente025-arg)   | dylanbenavente025@gmail.com            |
+| Lautaro Scarselletta  | Diseñador / Frontend         | [@lauscarsel](https://github.com/lauscarsel)   | scarselllautaro@gmail.com |
+| Facundo Colavitte| Diseñador / Frontend         | [@fcolavitte](https://github.com/fcolavitte)   | facundocolavitte@gmail.com            |
+| Alexis Mendez| Diseñador / Frontend         | [@alemendez](https://github.com/alemendez)   | aleemm19922@gmail.com            |
+
 
 ### Reglas básicas del equipo
 
@@ -60,6 +65,7 @@ Lee en este orden antes de escribir código:
 4. 🏗️ [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
 5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
 6. 🚀 [`onboarding/Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
+7. 🔌 [`docs/DATA_MAPPING.md`](docs/DATA_MAPPING.md) — **Mapeo de datos Frontend ↔ Backend (FastAPI)**
 ---
 
 ## Estructura de Módulos
@@ -92,6 +98,8 @@ docker-compose up -d
 npm install        # Si usás Node/NestJS
 # -- ó --
 pip install -r requirements.txt  # Si usás Python/FastAPI
+# Wizard Expo:
+cd apps/ingresantes-wizard && npm install
 
 # 5. Ejecutá las migraciones de base de datos
 npm run db:migrate   # Prisma
@@ -99,10 +107,12 @@ npm run db:migrate   # Prisma
 alembic upgrade head  # SQLAlchemy
 
 # 6. Iniciá el servidor de desarrollo
-npm run dev
+cd apps/ingresantes-wizard && npx expo start   # Wizard de Ingresantes
+# -- ó --
+npm run dev      # Si estás trabajando sobre el portal web en paralelo
 ```
 
-✅ **Criterio de éxito:** La app corre en `http://localhost:3000` sin errores en consola.
+✅ **Criterio de éxito:** El wizard levanta sin errores en Expo y navega entre pasos correctamente.
 
 ---
 
@@ -115,6 +125,8 @@ postgrado-[equipo]/
 ├── CHANGELOG.md                  ← Historial de cambios por versión
 ├── docker-compose.yml            ← Ambiente local unificado
 ├── .env.example                  ← Variables de entorno de referencia
+├── apps/
+│   └── ingresantes-wizard/       ← Frontend Expo para el wizard de inscripción + notifications
 │
 ├── docs/
 │   ├── SRS.md                    ← Especificación de Requisitos (fuente de verdad)
@@ -204,7 +216,7 @@ Una historia de usuario está **terminada** cuando cumple **todos** estos criter
 
 | Capa              | Recomendado (Prioridad: Simplicidad + Demanda) | Alternativa (Mayor estructura / Enterprise) | Justificación |
 |-------------------|------------------------------------------------|---------------------------------------------|-------------|
-| **Frontend**     | **React 19 + TypeScript + Vite + TailwindCSS + TanStack Query** | Next.js 15+ (App Router) | React sigue siendo la tecnología frontend **más demandada** del mercado. Vite es muy rápido y simple. TanStack Query simplifica mucho la gestión de datos. |
+| **Frontend**     | **Expo + React Native + TypeScript** | React web + Vite | Para este subfrente, Expo permite construir el wizard de Ingresantes con una base mobile-ready desde el inicio. El primer prototipo puede validarse en escritorio, pero el producto final apunta a una versión móvil responsive reutilizable. |
 | **Backend**      | **FastAPI (Python 3.12+)**                    | NestJS (TypeScript)                        | FastAPI es **mucho más simple**, rápido de desarrollar, tiene documentación automática (Swagger) y excelente rendimiento. Ideal para proyectos académicos y APIs modernas. NestJS ofrece más estructura pero aumenta la complejidad. |
 | **ORM / DB Layer** | **SQLAlchemy 2.0 + Alembic** (con async support) | Tortoise ORM o Prisma (si vas full TypeScript) | SQLAlchemy es el estándar más maduro y potente para Python. Alembic maneja migraciones muy bien. Para proyectos simples también puedes usar **SQLModel** (de tiangolo, creador de FastAPI) → aún más simple. |
 | **Base de Datos** | **PostgreSQL 16/17 (Docker)**                 | ← igual                                    | Mejor relación rendimiento / features / ecosistema. Excelente con Docker. |
@@ -214,9 +226,15 @@ Una historia de usuario está **terminada** cuando cumple **todos** estos criter
 ### Por qué elegimos este stack
 
 - **Alta empleabilidad**: React y PostgreSQL son de las tecnologías más solicitadas en 2026.
-- **Simplicidad y velocidad de desarrollo**: FastAPI + SQLModel permite crear APIs completas con muy poco código.
+- **Simplicidad y velocidad de desarrollo**: Expo + React Native acelera el wizard, y FastAPI + SQLModel permite crear APIs completas con muy poco código.
 - **Moderno pero maduro**: Evitamos tecnologías demasiado experimentales.
 - **Full Docker**: Todo el entorno se levanta con un solo comando (`docker compose up`).
+
+### Alcance del frontend actual
+
+- **Pantallas a desarrollar:** wizard de Ingresantes en 4 pasos.
+- **Pantallas fuera de alcance:** login, portal autenticado y web principal.
+- **Referencia visual:** [`docs/Mockup_Figma/`](docs/Mockup_Figma/) — stepper de 4 pasos, cards de formulario y dropzones de documentos.
 
 **¿Quieres cambiar algo?**  
 El stack es flexible. Si prefieres **full TypeScript** (React + NestJS + Prisma), también es una excelente opción (más demandada en algunas empresas, pero más verbose).

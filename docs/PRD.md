@@ -29,6 +29,8 @@ Presentamos el  **Product Requirements Document (PRD)** completo para el proyect
 
 **Alcance MVP:** Gestión completa de una cohorte (2026), incluyendo inscripción, seguimiento de asistencia/Notas para 3 seminarios, y reportes básicos de estado académico.
 
+**Alcance de este frente frontend:** solo el wizard de Ingresantes / inscripción pública. El login y la web principal autenticada quedan fuera de este entregable.
+
 ---
 
 ## 3. Contexto y Motivación (Business Case)
@@ -76,6 +78,8 @@ Presentamos el  **Product Requirements Document (PRD)** completo para el proyect
 - Upload y gestión de documentos PDF (DNI, Título, etc.) con validación de integridad.
 - Buscador por DNI/Apellido y listados filtrables por cohorte.
 
+**Referencia visual del wizard de Ingresantes:** [`docs/Mockup_Figma/`](docs/Mockup_Figma/). El flujo modela 4 pasos: Datos Personales, Contacto y Residencia, Antecedentes y Motivaciones, Documentación y Archivos.
+
 **Módulos de Especialización (Uno por equipo):**
 
 | ID | Módulo | Funcionalidades Incluidas |
@@ -88,8 +92,9 @@ Presentamos el  **Product Requirements Document (PRD)** completo para el proyect
 - **Integración:** No se conectará con sistemas institucionales legacy en esta versión (carga manual de actas).
 - **Firma Digital Certificada:** Se usa upload de PDF firmado en forma analógica escaneado.
 - **Pasarela de Pagos:** La gestión de pagos de matrícula permanece en sistema financiero externo.
-- **App Móvil Nativa:** Solo web responsive (mobile-first).
+- **App separada para este frente:** no se construye el login ni el portal autenticado; el wizard se implementa en Expo como base mobile-ready del primer prototipo.
 - **Multi-idioma:** Solo español.
+- **Front autenticado para este frente:** login y portal principal quedan a cargo de otro integrante/equipo.
 
 ---
 
@@ -438,7 +443,7 @@ Para considerar una funcionalidad como "completa" (Done), debe cumplir:
 - Estándar IEEE 830-1998 para especificación de requisitos.
 
 ### Anexo C: Mockups de Referencia
-*Nota: Los wireframes de interfaz se deberan encuentrar en el repositorio `/docs/mockups/` en formato Figma/PDF.*
+*Nota: Los wireframes de interfaz se encuentran en el repositorio `/docs/Mockup_Figma/` y sirven como referencia para el wizard de Ingresantes (web/escritorio primero, mobile-ready después).*
 
 ---
 
