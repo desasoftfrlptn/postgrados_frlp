@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+/* Tailwind v4: por defecto `dark:` sigue prefers-color-scheme. Esta línea
+   lo cambia a "basado en clase", que es lo que necesita el botón toggle
+   del Sidebar (agrega/saca `dark` de <html>). */
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------
+   Design tokens — FENIX POSGRADO
+   Todo lo que está acá adentro genera utilidades automáticamente:
+   --color-brand-500  ->  bg-brand-500 / text-brand-500 / border-brand-500 ...
+------------------------------------------------------------------- */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Azul institucional */
+  --color-brand-50: #eef3fe;
+  --color-brand-100: #dce7fd;
+  --color-brand-200: #b4cbfa;
+  --color-brand-300: #82a8f5;
+  --color-brand-400: #4f7fee;
+  --color-brand-500: #2f62e0;
+  --color-brand-600: #244fbd;
+  --color-brand-700: #1b3b8f;
+  --color-brand-800: #142c6b;
+  --color-brand-900: #0e1b33;
+
+  /* Navy fijo del Sidebar (no cambia con el tema) */
+  --color-sidebar: #0e1b33;
+  --color-sidebar-box: #1b2c4c;
+  --color-sidebar-active: #16233f;
+  --color-sidebar-hover: #131f38;
+
+  /* Estados semánticos */
+  --color-semaforo-rojo: #dc2626;
+  --color-semaforo-rojo-soft: #fee2e2;
+  --color-semaforo-rojo-soft-dark: #3f1d1d;
+  --color-semaforo-amarillo: #d97706;
+  --color-semaforo-amarillo-soft: #fef3c7;
+  --color-semaforo-amarillo-soft-dark: #3f2f0f;
+  --color-semaforo-verde: #16a34a;
+  --color-semaforo-verde-soft: #dcfce7;
+  --color-semaforo-verde-soft-dark: #123421;
+
+  /* Neutros */
+  --color-neutral-50: #f8fafc;
+  --color-neutral-100: #f1f5f9;
+  --color-neutral-200: #e2e8f0;
+  --color-neutral-300: #cbd5e1;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #64748b;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1e293b;
+  --color-neutral-900: #0f172a;
+
+  /* Tokens semánticos: cambian solos según haya o no `.dark` en <html>,
+     porque apuntan a las variables definidas en :root / .dark más abajo. */
+  --color-paper: var(--bg);
+  --color-paper-surface: var(--surface);
+  --color-paper-elevated: var(--surface-alt);
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-line: var(--border);
+
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+}
+
+/*
+   Valores concretos de los tokens semánticos por tema 
+*/
+@layer base {
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-alt: #f1f5f9;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+  }
+
+  .dark {
+    --bg: #0b1424;
+    --surface: #131f38;
+    --surface-alt: #16233f;
+    --border: #1b2c4c;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-paper text-ink antialiased;
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+
+  /* Sobrescribe el #root { max-width: 1280px; margin: 0 auto; padding: 2rem }
+     del template default de Vite — causa típica de que la app no ocupe
+     todo el ancho de la pantalla. Podés borrar esta regla si ya sacaste
+     ese CSS del proyecto. */
+  #root {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  h1 {
+    @apply text-xl font-bold tracking-tight text-ink;
+  }
+
+  h2 {
+    @apply text-base font-semibold text-ink;
+  }
+
+  label {
+    @apply text-sm font-medium text-ink-secondary;
+  }
+
+  code {
+    font-size: 15px;
+    line-height: 135%;
+    padding: 4px 8px;
+    background: var(--code-bg);
+  }
+
+  input,
+  select,
+  textarea {
+    @apply rounded-lg border border-line bg-paper-surface px-3 py-2 text-sm text-ink
+      placeholder:text-ink-muted
+      focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 focus:ring-offset-paper;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+}
+
+@layer utilities {
+  /*
+  Scrollbar que aparece/desaparece con una transición suave en vez de
+  "saltar" cuando cambia el tamaño del contenido filtrado.
+   */
+  .scroll-fade {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.25s ease;
+  }
+
+  .scroll-fade:hover,
+  .scroll-fade:focus-within {
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .scroll-fade::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scroll-fade::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-fade::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    transition: background-color 0.25s ease;
+  }
+
+  .scroll-fade:hover::-webkit-scrollbar-thumb,
+  .scroll-fade:focus-within::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+  }
+}
+
+/* ------------------------------------------------------------------
+   NUEVO: layout responsive del login (mobile -> desktop)
+   Centraliza acá el breakpoint "modo compu" / "modo celu" en vez de
+   repetir clases md: sueltas en el componente.
+------------------------------------------------------------------- */
+@layer components {
+  .screen-shell {
+    @apply flex min-h-screen w-full items-center justify-center bg-paper;
+  }
+
+  .screen-card {
+    @apply flex w-full max-w-lg flex-col bg-paper;
+  }
+
+  @media (min-width: 768px) {
+    .screen-shell {
+      @apply bg-paper-elevated p-6;
+    }
+
+    .screen-card {
+      @apply rounded-2xl border border-line shadow-card;
+    }
+  }
+}
