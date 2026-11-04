@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    .container { background: #fff; max-width: 600px; margin: auto; border-radius: 8px; overflow: hidden; }
+    .header { background: #003366; padding: 20px; text-align: center; }
+    .header img { height: 50px; }
+    .content { padding: 24px; color: #333; line-height: 1.5; }
+    .footer { font-size: 12px; color: #888; text-align: center; padding: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logo_url}}" alt="UTN FRLP">
+    </div>
+    <div class="content">
+      <h2>¡Recibimos tu inscripción!</h2>
+      <p>Hola {{nombre_aspirante}},</p>
+      <p>Tu formulario de inscripción a <strong>{{carrera}}</strong> quedó registrado con éxito.
+      Tu legajo se encientra en estado <strong>Pendiente</strong> de revisión.</p>
+      <p>Podés hacer seguimiento desde el sistema con tu email.</p>
+    </div>
+    <div class="footer">
+      Secretaría de Posgrado · UTN FRLP · {{fecha_envio}}
+    </div>
+  </div>
+</body>
+</html>
