@@ -53,7 +53,7 @@ def upgrade() -> None:
     sa.Column('rol', sa.String(length=20), nullable=False),
     sa.Column('activo', sa.Boolean(), server_default=sa.text('true'), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.CheckConstraint("rol IN ('aspirante', 'docente', 'admin', 'coordinador', 'cpr', 'estudiante')", name='rol_valido'),
+    sa.CheckConstraint("rol IN ('docente', 'admin', 'coordinador', 'cpr', 'estudiante')", name='rol_valido'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email'),
     schema='postgrados'

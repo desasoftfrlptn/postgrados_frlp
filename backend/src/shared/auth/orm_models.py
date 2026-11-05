@@ -9,7 +9,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from src.shared.database.connection import Base
 
 # Los mismos roles que el tipo Rol de frontend/src/shared/types/types.ts
-ROLES = ("aspirante", "docente", "admin", "coordinador", "cpr", "estudiante")
+# El aspirante no tiene usuario: entra por links con sus datos, sin iniciar sesión.
+ROLES = ("docente", "admin", "coordinador", "cpr", "estudiante")
 
 
 class Usuario(Base):
