@@ -135,6 +135,7 @@ export interface Documento {
   nombre_original: string;
   tamanio_bytes: number;
   fecha_subida: string;
+  url?: string; // URL o data:base64 del PDF, para la vista previa
 }
 
 export type EstadoDocumento = "PENDIENTE_REVISION" | "APROBADO" | "OBSERVADO" | "FALTANTE";
@@ -344,8 +345,9 @@ export function calcularPorcentaje(
 ): number {
   if (totalClases === 0) return 0;
   return Math.round((clasesPresente / totalClases) * 100);
+}
 export type TipoTrabajoFinal = "TFI" | "Maestria" | "Doctorado";
- 
+
 export interface TrabajoFinal {
   id: string;
   legajo_id: string;

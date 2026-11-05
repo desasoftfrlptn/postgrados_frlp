@@ -277,6 +277,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                   </div>
 
                   {doc && (
+                    <>
                     <Button
                       variant="outline"
                       icon={Eye}
@@ -289,10 +290,11 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                       type="button"
                       icon={Eye}
                       variant="outline"
-                      onClick={() => handlePreviewPDF(doc.url || doc.fileUrl)}
+                      onClick={() => handlePreviewPDF(doc.url ?? "")}
                     >
                       Vista previa
                     </Button>
+                    </>
                   )}
                 </div>
               );
@@ -369,13 +371,15 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
         {/* Workflow */}
         {legajo && <Workflow legajo={legajo} />}
       </div>
-      
-      <AltaTrabajoFinalModal
+
+     {currentUser && (
+           <AltaTrabajoFinalModal
         isOpen={legajoParaTrabajoFinal !== null}
         legajoId={legajoParaTrabajoFinal ?? ""}
         usuarioRol={currentUser.rol}
         onClose={() => setLegajoParaTrabajoFinal(null)}
-      />
-    </>
+       />
+     )}
+     </>
   );
 }

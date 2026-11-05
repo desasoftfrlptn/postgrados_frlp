@@ -3,7 +3,6 @@ import LoginScreen from "./Login/pages/Login";
 import WelcomeScreen from "./Login/pages/WelcomeScreen";
 import { ConsultarEstado } from "./inscripcion-aspirante/pages/ConsultarEstado";
 import NotFound from "./shared/pages/NotFound";
-import InscripcionWizard from './inscripcion-aspirante/pages/InscripcionWizard';
 import RegistroAsistencia from './modulo-docente/pages/RegistroAsistencia';
 import InscripcionWizard from "./inscripcion-aspirante/pages/InscripcionWizard";
 import { UserContext } from "./shared/context/UserContext";
@@ -21,25 +20,12 @@ export default function App() {
   };
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/">
-          <Route index element={<Dashboard />}/>
-          <Route path="login" element={<LoginScreen />}/>
-          <Route path="welcome" element={<WelcomeScreen />}/>
-          <Route path="inscripcion" element={<InscripcionWizard />}/>
-          <Route path="*" element={<NotFound />}/>
-          <Route path="asistencia" element={<RegistroAsistencia />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  )
-}
     <UserContext.Provider value={currentUser}>
       <BrowserRouter>
         <Routes>
           <Route path="/">
             <Route index element={<LoginScreen />} />
+            <Route path="login" element={<LoginScreen />} />
 
             <Route
               path="panel"
@@ -96,6 +82,7 @@ export default function App() {
               element={<InscripcionWizard />}
             />
 
+            <Route path="asistencia" element={<RegistroAsistencia />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

@@ -62,7 +62,7 @@ async function exportarExcel(
   nombreArchivo: string,
   usuarioExportador: string
 ) {
-  const XLSX = await import("xlsx");
+  const XLSX = await import("xlsx-js-style");
 
   const filas = estudiantes.map((estudiante) => ({
     Nombre: estudiante.nombre,
@@ -175,7 +175,7 @@ export default function EstudiantesEnRiesgo({
     } catch (error) {
       console.error("Error al exportar Excel:", error);
       setErrorExportacion(
-        "No se pudo generar el archivo Excel. Verificá que la dependencia 'xlsx' esté instalada."
+        "No se pudo generar el archivo Excel. Verificá que la dependencia 'xlsx-js-style' esté instalada."
       );
     } finally {
       setExportando(false);
