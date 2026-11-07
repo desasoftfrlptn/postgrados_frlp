@@ -1,8 +1,8 @@
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
-from app.acceso.models import EnlaceAcceso, SesionAcceso
-from app.acceso.repositories.repository import AccesoRepository
-from app.shared.security.tokens import generar_token, hash_token
+from src.acceso.models import EnlaceAcceso, SesionAcceso
+from src.acceso.repositories.repository import AccesoRepository
+from src.shared.security.tokens import generar_token, hash_token
 
 class AccesoError(Exception): pass
 

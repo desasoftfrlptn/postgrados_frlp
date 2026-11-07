@@ -8,8 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 
-from app.inscripcion.application.service import LegajoService
-from app.inscripcion.domain.exceptions import (
+from src.inscripcion.application.service import LegajoService
+from src.inscripcion.domain.exceptions import (
     AccesoDenegado,
     CohorteNoEncontrada,
     ConflictoLegajo,
@@ -18,17 +18,17 @@ from app.inscripcion.domain.exceptions import (
     ReglaNegocioInvalida,
     TransicionNoPermitida,
 )
-from app.inscripcion.presentation.dependencies import get_legajo_service
-from app.inscripcion.presentation.schemas import (
+from src.inscripcion.presentation.dependencies import get_legajo_service
+from src.inscripcion.presentation.schemas import (
     CambioEstadoRequest,
     CrearLegajoRequest,
     LegajoPagina,
     LegajoResponse,
 )
-from app.shared.auth.dependencies import UsuarioActual, get_usuario_actual, require_role
-from app.acceso.controllers.dependencies import require_tipo_enlace
-from app.acceso.controllers.dependencies import get_acceso_service
-from app.acceso.services.service import AccesoService, AccesoError
+from src.shared.auth.dependencies import UsuarioActual, get_usuario_actual, require_role
+from src.acceso.controllers.dependencies import require_tipo_enlace
+from src.acceso.controllers.dependencies import get_acceso_service
+from src.acceso.services.service import AccesoService, AccesoError
 
 router = APIRouter(prefix="/legajos", tags=["Legajos"])
 

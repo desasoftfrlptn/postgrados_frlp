@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.shared.database.connection import SessionLocal
+from src.shared.database.connection import SessionLocal
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

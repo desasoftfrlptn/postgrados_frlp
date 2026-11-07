@@ -3,8 +3,8 @@ from uuid import UUID
 from sqlalchemy import case, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.acceso.models import EnlaceAcceso, SesionAcceso, LimiteSolicitud
-from app.inscripcion.infrastructure.orm_models import Cohorte, PeriodoInscripcion
+from src.acceso.models import EnlaceAcceso, SesionAcceso, LimiteSolicitud
+from src.inscripcion.infrastructure.orm_models import Cohorte, PeriodoInscripcion
 
 class AccesoRepository:
     def __init__(self, db: AsyncSession): self.db = db
@@ -29,7 +29,7 @@ class AccesoRepository:
     async def obtener_periodo(self, periodo_id: UUID): return await self.db.get(PeriodoInscripcion, periodo_id)
 
     async def obtener_legajo(self, legajo_id: UUID):
-        from app.inscripcion.infrastructure.orm_models import Legajo
+        from src.inscripcion.infrastructure.orm_models import Legajo
         return await self.db.get(Legajo, legajo_id)
 
     async def obtener_enlace_hash(self, token_hash: str):

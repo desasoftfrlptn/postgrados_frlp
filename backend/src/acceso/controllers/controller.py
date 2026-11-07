@@ -1,10 +1,10 @@
 import os
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from app.acceso.services.service import AccesoError, AccesoService
-from app.acceso.schemas.schemas import CrearEnlaceRequest, TokenRequest
-from app.acceso.controllers.dependencies import get_acceso_service
-from app.shared.auth.dependencies import UsuarioActual, require_role
+from src.acceso.services.service import AccesoError, AccesoService
+from src.acceso.schemas.schemas import CrearEnlaceRequest, TokenRequest
+from src.acceso.controllers.dependencies import get_acceso_service
+from src.shared.auth.dependencies import UsuarioActual, require_role
 
 router = APIRouter(prefix="/accesos", tags=["Accesos temporales"])
 COOKIE = "acceso_aspirante"
@@ -57,7 +57,7 @@ async def revocar(enlace_id: UUID, usuario: UsuarioActual = Depends(require_role
 
 @router.get("/legajo")
 async def consultar_legajo(request: Request, service: AccesoService = Depends(get_acceso_service)):
-    from app.inscripcion.presentation.schemas import LegajoResponse
+    from src.inscripcion.presentation.schemas import LegajoResponse
     try:
         legajo = await service.obtener_legajo_seguimiento(request.cookies.get(COOKIE, ""))
         return LegajoResponse.model_validate(legajo)

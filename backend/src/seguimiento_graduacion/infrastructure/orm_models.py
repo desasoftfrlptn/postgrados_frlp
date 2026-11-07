@@ -6,7 +6,7 @@ from datetime import date, datetime
 from sqlalchemy import CheckConstraint, ForeignKey, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.database.connection import Base
+from src.shared.database.connection import Base
 
 TIPOS_TRABAJO_FINAL = ("TFI", "Maestria", "Doctorado")
 

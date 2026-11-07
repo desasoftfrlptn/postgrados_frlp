@@ -7,7 +7,7 @@ from decimal import Decimal
 from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.database.connection import Base
+from src.shared.database.connection import Base
 
 
 class Seminario(Base):

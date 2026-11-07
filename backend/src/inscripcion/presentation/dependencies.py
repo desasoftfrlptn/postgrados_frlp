@@ -3,9 +3,9 @@
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.inscripcion.application.service import LegajoService
-from app.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
-from app.shared.database.session import get_db
+from src.inscripcion.application.service import LegajoService
+from src.inscripcion.infrastructure.pg_repository import PostgresLegajoRepository
+from src.shared.database.session import get_db
 
 
 async def get_legajo_service(

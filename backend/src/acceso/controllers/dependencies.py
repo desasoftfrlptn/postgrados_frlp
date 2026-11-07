@@ -1,8 +1,8 @@
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.acceso.repositories.repository import AccesoRepository
-from app.acceso.services.service import AccesoService
-from app.shared.database.session import get_db
+from src.acceso.repositories.repository import AccesoRepository
+from src.acceso.services.service import AccesoService
+from src.shared.database.session import get_db
 
 def get_acceso_service(db: AsyncSession = Depends(get_db)):
     return AccesoService(AccesoRepository(db))

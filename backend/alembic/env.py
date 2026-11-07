@@ -8,13 +8,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 # Nuestra conexión y TODAS las tablas: cada orm_models se importa para que Alembic las vea
-import app.carga_academica.infrastructure.orm_models  # noqa: F401
-import app.gestion_documental.infrastructure.orm_models  # noqa: F401
-import app.inscripcion.infrastructure.orm_models  # noqa: F401
-import app.seguimiento_graduacion.infrastructure.orm_models  # noqa: F401
-import app.usuarios.models  # noqa: F401
-import app.acceso.models
-from app.shared.database.connection import DATABASE_URL, DB_SCHEMA, Base
+import src.carga_academica.infrastructure.orm_models  # noqa: F401
+import src.gestion_documental.infrastructure.orm_models  # noqa: F401
+import src.inscripcion.infrastructure.orm_models  # noqa: F401
+import src.seguimiento_graduacion.infrastructure.orm_models  # noqa: F401
+import src.acceso.models
+from src.shared.database.connection import DATABASE_URL, DB_SCHEMA, Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -30,7 +29,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
+# from mysrc import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 

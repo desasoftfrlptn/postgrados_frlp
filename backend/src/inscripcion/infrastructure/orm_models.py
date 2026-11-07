@@ -6,7 +6,7 @@ from datetime import date, datetime
 from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.database.connection import Base
+from src.shared.database.connection import Base
 
 # Valores permitidos (los mismos que los tipos de frontend/src/shared/types/types.ts)
 ESTADOS_LEGAJO = (

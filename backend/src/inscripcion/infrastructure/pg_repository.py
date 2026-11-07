@@ -7,10 +7,10 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.inscripcion.domain.exceptions import ConflictoLegajo
-from app.inscripcion.infrastructure.orm_models import AuditoriaLegajo, Cohorte, Legajo
-from app.usuarios.models import Usuario, InvitacionCuenta
-from app.shared.security.tokens import generar_token, hash_token
+from src.inscripcion.domain.exceptions import ConflictoLegajo
+from src.inscripcion.infrastructure.orm_models import AuditoriaLegajo, Cohorte, Legajo
+from src.usuarios.models import Usuario, InvitacionCuenta
+from src.shared.security.tokens import generar_token, hash_token
 from datetime import datetime, timedelta, timezone
 
 
@@ -23,7 +23,7 @@ class PostgresLegajoRepository:
 
     async def existe_dni_en_cohorte(self, cohorte_id: UUID, dni: str) -> bool:
         result = await self._db.scalar(
-            select(Legajo.id).where(Legajo.cohorte_id == cohorte_id, Legajo.dni == dni).limit(1)
+            select(Legajo.id).where(Legajo.cohorte_id == cohorte_id, Legajo.dni == dni).limit(2) # dni puede aparecer hasta 2 veces en una cohorte
         )
         return result is not None
 

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
-from app.shared.database.connection import Base
+from src.shared.database.connection import Base
 
 class EnlaceAcceso(Base):
     __tablename__ = "enlaces_acceso"

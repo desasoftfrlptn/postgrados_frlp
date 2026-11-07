@@ -6,8 +6,8 @@ import re
 from typing import Any
 from uuid import UUID
 
-from app.inscripcion.domain.estados import transicion_permitida
-from app.inscripcion.domain.exceptions import (
+from src.inscripcion.domain.estados import transicion_permitida
+from src.inscripcion.domain.exceptions import (
     AccesoDenegado,
     CohorteNoEncontrada,
     ConflictoLegajo,
@@ -16,7 +16,7 @@ from app.inscripcion.domain.exceptions import (
     ReglaNegocioInvalida,
     TransicionNoPermitida,
 )
-from app.inscripcion.domain.repository import LegajoRepository
+from src.inscripcion.domain.repository import LegajoRepository
 
 
 class LegajoService:
@@ -35,7 +35,7 @@ class LegajoService:
         dni = datos["dni"].strip()
         if await self._repository.existe_dni_en_cohorte(datos["cohorte_id"], dni):
             raise ConflictoLegajo(
-                "El DNI ingresado ya existe en la cohorte actual", "dni"
+                "El DNI ingresado ya existe dos veces en la cohorte actual", "dni"
             )
 
         datos = dict(datos)

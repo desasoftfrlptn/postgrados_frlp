@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy import CheckConstraint, ForeignKey, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.shared.database.connection import Base
+from src.shared.database.connection import Base
 
 TIPOS_DOCUMENTO = (
     "DNI", "TITULO_GRADO", "PARTIDA", "CUIT_CUIL",
