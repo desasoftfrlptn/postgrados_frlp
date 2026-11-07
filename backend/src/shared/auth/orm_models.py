@@ -8,6 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.database.connection import Base
 
+from sqlalchemy import DateTime, ForeignKey
+
 # Los mismos roles que el tipo Rol de frontend/src/shared/types/types.ts
 # El aspirante no tiene usuario: entra por links con sus datos, sin iniciar sesión.
 ROLES = ("docente", "admin", "coordinador", "cpr", "estudiante")
@@ -27,3 +29,26 @@ class Usuario(Base):
     rol: Mapped[str] = mapped_column(String(20))
     activo: Mapped[bool] = mapped_column(server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+class SesionRefresh(Base):
+    __tablename__ = "sesiones_refresh"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    usuario_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="CASCADE"),
+        index=True,
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    fecha_expiracion: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+    )
+    revocada_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=None,
+    )
+    creada_en: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
