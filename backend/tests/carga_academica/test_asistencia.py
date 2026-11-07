@@ -81,3 +81,22 @@ def test_docente_no_puede_ver_seminario_ajeno():
     assert resultado is False
 
 
+
+
+def test_docente_con_mayusculas_en_el_email_igual_puede():
+    # Arrange
+    rol, email_usuario, email_docente = "docente", "Juan@UTN.edu.ar", "juan@utn.edu.ar"
+    # Act
+    resultado = puede_ver_planilla(rol, email_usuario, email_docente)
+    # Assert
+    assert resultado is True
+
+
+@pytest.mark.parametrize("rol, esperado", [
+    ("coordinador", True),
+    ("admin", True),
+    ("estudiante", False),
+    ("cpr", False),
+])
+def test_otros_roles_ver_planilla_ajena(rol, esperado):
+    assert puede_ver_planilla(rol, "otro@utn.edu.ar", "ana@utn.edu.ar") == esperado
