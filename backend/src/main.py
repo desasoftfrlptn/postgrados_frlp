@@ -3,9 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from contextlib import asynccontextmanager
 
-from app.inscripcion.presentation.controller import router as inscripcion_router
-from app.acceso.controllers.controller import router as acceso_router
-from app.usuarios.controllers.controller import router as usuarios_router
+from src.inscripcion.presentation.controller import router as inscripcion_router
+from src.acceso.controllers.controller import router as acceso_router
+from src.usuarios.controllers.controller import router as usuarios_router
+from src.shared.auth.router import router as auth_router
 
 from app.config import CORS_ORIGINS
 
@@ -28,13 +29,13 @@ def health() -> dict[str, str]:
     return {"status": "ok"} 
 
 PREFIX="/api/v1"
-for r in (usuarios_router, acceso_router, inscripcion_router):
+for r in (auth_router, acceso_router, inscripcion_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run("src.main:app", host="127.0.0.1", port=8000, reload=False)
 
 
 if __name__ == "__main__":
