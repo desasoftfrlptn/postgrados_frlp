@@ -8,8 +8,11 @@ import pytest
 from src.carga_academica.domain.asistencia import (
     calcular_porcentaje_asistencia,
     marca_asistencia,
+    puede_ver_planilla,
 )
 
+
+# ---------- % de asistencia ----------
 
 def test_porcentaje_con_todas_las_clases_da_100():
     # Arrange
@@ -47,6 +50,8 @@ def test_porcentaje_se_redondea_a_un_decimal():
     assert resultado == 66.7
 
 
+# ---------- Marca P / A ----------
+
 @pytest.mark.parametrize("presente, esperado", [
     (True, "P"),
     (False, "A"),
@@ -54,3 +59,25 @@ def test_porcentaje_se_redondea_a_un_decimal():
 ])
 def test_marca_asistencia(presente, esperado):
     assert marca_asistencia(presente) == esperado
+
+
+# ---------- Quién puede ver la planilla (BR-007) ----------
+
+def test_docente_puede_ver_su_seminario():
+    # Arrange
+    rol, email_usuario, email_docente = "docente", "juan@utn.edu.ar", "juan@utn.edu.ar"
+    # Act
+    resultado = puede_ver_planilla(rol, email_usuario, email_docente)
+    # Assert
+    assert resultado is True
+
+
+def test_docente_no_puede_ver_seminario_ajeno():
+    # Arrange
+    rol, email_usuario, email_docente = "docente", "juan@utn.edu.ar", "ana@utn.edu.ar"
+    # Act
+    resultado = puede_ver_planilla(rol, email_usuario, email_docente)
+    # Assert
+    assert resultado is False
+
+
