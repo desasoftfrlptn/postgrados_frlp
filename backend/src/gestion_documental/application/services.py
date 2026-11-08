@@ -19,6 +19,28 @@ from src.gestion_documental.infrastructure.storage import (
 from src.inscripcion.infrastructure.orm_models import Legajo
 
 
+async def obtener_documento_para_descarga(
+    db: AsyncSession,
+    documento_id: uuid.UUID,
+) -> tuple[Documento, Path]:
+    """Busca un documento y obtiene la ruta segura de su PDF."""
+
+    documento = await db.get(Documento, documento_id)
+
+    if documento is None:
+        raise HTTPException(404, "No se encontró el documento")
+
+    ruta_archivo = (STORAGE_ROOT / documento.path_storage).resolve()
+    raiz_storage = STORAGE_ROOT.resolve()
+
+    if not ruta_archivo.is_relative_to(raiz_storage):
+        raise HTTPException(404, "No se encontró el documento")
+
+    if not ruta_archivo.is_file():
+        raise HTTPException(404, "El archivo no está disponible")
+
+    return documento, ruta_archivo
+
 async def guardar_documento(
     db: AsyncSession,
     legajo_id: uuid.UUID,
