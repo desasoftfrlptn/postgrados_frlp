@@ -12,7 +12,7 @@ load_dotenv()  # busca el .env subiendo de carpeta: encuentra el de la raíz del
 # El .env usa postgresql:// porque lo comparte con docker compose.
 # SQLAlchemy async necesita el driver explícito: postgresql+asyncpg://
 DATABASE_URL = os.environ["DATABASE_URL"].replace("postgresql://", "postgresql+asyncpg://", 1)
-DB_SCHEMA = os.getenv("DB_SCHEMA", "fenix_postgrado")  # esquema de todas las tablas
+DB_SCHEMA = os.getenv("DB_SCHEMA", "postgrados")  # esquema de todas las tablas
 
 engine = create_async_engine(DATABASE_URL)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)

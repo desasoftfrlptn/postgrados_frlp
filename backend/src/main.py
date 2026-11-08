@@ -5,10 +5,9 @@ from contextlib import asynccontextmanager
 
 from src.inscripcion.presentation.controller import router as inscripcion_router
 from src.acceso.controllers.controller import router as acceso_router
-from src.usuarios.controllers.controller import router as usuarios_router
 from src.shared.auth.router import router as auth_router
 
-from app.config import CORS_ORIGINS
+from src.config import CORS_ORIGINS
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

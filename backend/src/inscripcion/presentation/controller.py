@@ -25,7 +25,8 @@ from src.inscripcion.presentation.schemas import (
     LegajoPagina,
     LegajoResponse,
 )
-from src.shared.auth.dependencies import UsuarioActual, get_usuario_actual, require_role
+from src.shared.auth.orm_models import Usuario
+from src.shared.auth.dependencies import get_current_user, require_role
 from src.acceso.controllers.dependencies import require_tipo_enlace
 from src.acceso.controllers.dependencies import get_acceso_service
 from src.acceso.services.service import AccesoService, AccesoError
@@ -79,7 +80,7 @@ async def exportar(
     dni: str | None = None,
     apellido: str | None = None,
     service: LegajoService = Depends(get_legajo_service),
-    _: UsuarioActual = Depends(require_role("COORDINADOR")),
+    _: Usuario = Depends(require_role("coordinador")),
 ):
     filtros = {
         "estado": estado, "cohorte_id": cohorte_id,
@@ -125,7 +126,7 @@ async def listar(
     dni: str | None = None,
     apellido: str | None = Query(None, min_length=3),
     service: LegajoService = Depends(get_legajo_service),
-    _: UsuarioActual = Depends(require_role("COORDINADOR")),
+    _: Usuario = Depends(require_role("coordinador")),
 ):
     filtros = {
         "estado": estado, "cohorte_id": cohorte_id,
@@ -139,11 +140,11 @@ async def listar(
 async def detalle(
     legajo_id: UUID,
     service: LegajoService = Depends(get_legajo_service),
-    usuario: UsuarioActual = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(get_current_user),
 ):
     try:
         return await service.obtener_legajo(
-            legajo_id, usuario_email=usuario.email, usuario_rol=usuario.rol, usuario_id=usuario.usuario_id
+            legajo_id, usuario_email=usuario.email, usuario_rol=usuario.rol, usuario_id=usuario.id
         )
     except (LegajoNoEncontrado, AccesoDenegado) as error:
         raise _http_error(error) from error
@@ -154,7 +155,7 @@ async def actualizar_estado(
     legajo_id: UUID,
     datos: CambioEstadoRequest,
     service: LegajoService = Depends(get_legajo_service),
-    usuario: UsuarioActual = Depends(get_usuario_actual),
+    usuario: Usuario = Depends(get_current_user),
 ):
     try:
         legajo, token_activacion = await service.cambiar_estado(
@@ -166,6 +167,7 @@ async def actualizar_estado(
         )
         resultado = LegajoResponse.model_validate(legajo).model_dump(mode="json")
         """IMPORTANTE: falta implementar en el frontend la activación de una cuenta"""
+        """Falta también en un futuro enviar un correo con la url para activar la cuenta"""
         if token_activacion:
             resultado["url_activacion"] = f"{os.getenv('FRONTEND_URL', 'http://localhost:5173').rstrip('/')}/activar-cuenta?token={token_activacion}"
         return resultado

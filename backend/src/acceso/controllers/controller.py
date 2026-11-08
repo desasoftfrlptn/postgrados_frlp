@@ -4,14 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from src.acceso.services.service import AccesoError, AccesoService
 from src.acceso.schemas.schemas import CrearEnlaceRequest, TokenRequest
 from src.acceso.controllers.dependencies import get_acceso_service
-from src.shared.auth.dependencies import UsuarioActual, require_role
+from src.shared.auth.orm_models import Usuario
+from src.shared.auth.dependencies import require_role
 
 router = APIRouter(prefix="/accesos", tags=["Accesos temporales"])
 COOKIE = "acceso_aspirante"
 
 
 @router.post("", status_code=201)
-async def crear_enlace(datos: CrearEnlaceRequest, usuario: UsuarioActual = Depends(require_role("COORDINADOR")),
+async def crear_enlace(datos: CrearEnlaceRequest, usuario: Usuario = Depends(require_role("coordinador")),
                        service: AccesoService = Depends(get_acceso_service)):
     try:
         return await service.crear_enlace(**datos.model_dump(), creado_por=usuario.email,
@@ -36,6 +37,7 @@ async def intercambiar(datos: TokenRequest, response: Response, request: Request
                         samesite="lax", max_age=7200, path="/")
     return {"tipo": enlace.tipo, "requiere_autenticacion": False}
 
+# Como tiene el prefijo /accesos no se pisa con /auth/sesion
 @router.get("/sesion")
 async def consultar_sesion(request: Request, service: AccesoService = Depends(get_acceso_service)):
     contexto = await service.obtener_contexto(request.cookies.get(COOKIE, ""))
@@ -48,7 +50,7 @@ async def cerrar_sesion(request: Request, response: Response, service: AccesoSer
     response.delete_cookie(COOKIE, path="/")
 
 @router.post("/{enlace_id}/revocar")
-async def revocar(enlace_id: UUID, usuario: UsuarioActual = Depends(require_role("COORDINADOR")),
+async def revocar(enlace_id: UUID, usuario: Usuario = Depends(require_role("coordinador")),
                   service: AccesoService = Depends(get_acceso_service)):
     try:
         enlace = await service.revocar(enlace_id)

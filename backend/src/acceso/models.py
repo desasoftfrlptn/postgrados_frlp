@@ -1,6 +1,6 @@
 """Enlaces temporales y sesiones restringidas de aspirantes."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 from src.shared.database.connection import Base
@@ -19,7 +19,10 @@ class EnlaceAcceso(Base):
     usos_maximos: Mapped[int | None] = mapped_column(Integer)
     usos_realizados: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     creado_por: Mapped[str] = mapped_column(String(255))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
+        default=datetime.now(timezone.utc),
+    )
 
 class SesionAcceso(Base):
     __tablename__ = "sesiones_acceso"
@@ -28,7 +31,10 @@ class SesionAcceso(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     expira_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revocada: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
+        default=datetime.now(timezone.utc),
+    )
 
 
 class LimiteSolicitud(Base):

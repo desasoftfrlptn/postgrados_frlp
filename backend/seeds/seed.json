@@ -32,43 +32,43 @@
   "usuarios": [
     {
       "id": "30000000-0000-4000-8000-000000000001",
+      "nombre": "Juan López",
       "email": "estudiante.demo@ejemplo.com",
       "password": "EstudianteDemo2026!",
       "rol": "ESTUDIANTE",
-      "activo": true,
-      "email_verificado": true
+      "activo": true
     },
     {
       "id": "30000000-0000-4000-8000-000000000002",
+      "nombre": "Coordinador Demo",
       "email": "coordinador.demo@ejemplo.com",
       "password": "CoordinadorDemo2026!",
       "rol": "COORDINADOR",
-      "activo": true,
-      "email_verificado": true
+      "activo": true
     },
     {
       "id": "30000000-0000-4000-8000-000000000003",
+      "nombre": "CPR Demo",
       "email": "cpr.demo@ejemplo.com",
       "password": "CprDemo2026!",
       "rol": "CPR",
-      "activo": true,
-      "email_verificado": true
+      "activo": true
     },
     {
       "id": "30000000-0000-4000-8000-000000000004",
+      "nombre": "Docente Demo",
       "email": "docente.demo@ejemplo.com",
       "password": "DocenteDemo2026!",
       "rol": "DOCENTE",
-      "activo": true,
-      "email_verificado": true
+      "activo": true
     },
     {
       "id": "30000000-0000-4000-8000-000000000005",
+      "nombre": "Admin Demo",
       "email": "admin.demo@ejemplo.com",
       "password": "AdminDemo2026!",
       "rol": "ADMIN",
-      "activo": true,
-      "email_verificado": true
+      "activo": true
     }
   ],
   "legajos": [

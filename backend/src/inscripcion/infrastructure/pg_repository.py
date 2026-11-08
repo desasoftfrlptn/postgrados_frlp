@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.inscripcion.domain.exceptions import ConflictoLegajo
 from src.inscripcion.infrastructure.orm_models import AuditoriaLegajo, Cohorte, Legajo
-from src.usuarios.models import Usuario, InvitacionCuenta
+from src.shared.auth.orm_models import Usuario, InvitacionCuenta
 from src.shared.security.tokens import generar_token, hash_token
+from src.shared.auth.passwords import hash_contrasena
 from datetime import datetime, timedelta, timezone
 
 
@@ -83,15 +84,15 @@ class PostgresLegajoRepository:
     async def preparar_cuenta_estudiante(self, legajo: Legajo) -> str | None:
         """Vincula una cuenta al activar el legajo y genera invitación de primer acceso."""
         usuario = await self._db.scalar(select(Usuario).where(Usuario.email == legajo.email.lower()))
-        if usuario is not None and (usuario.rol != "ESTUDIANTE" or not usuario.activo):
+        if usuario is not None and (usuario.rol != "estudiante" or not usuario.activo):
             raise ConflictoLegajo("El email ya pertenece a una cuenta que no es de estudiante", "email")
         if usuario is None:
-            usuario = Usuario(email=legajo.email.lower(), rol="ESTUDIANTE", activo=True)
+            nom = legajo.nombre
+            ap = legajo.apellido
+            usuario = Usuario(email=legajo.email.lower(), rol="estudiante", activo=True, nombre=f"{nom} {ap}", password_hash=hash_contrasena("Cambiame2026!"))
             self._db.add(usuario)
             await self._db.flush()
         legajo.usuario_id = usuario.id
-        if usuario.password_hash:
-            return None
         ahora = datetime.now(timezone.utc)
         await self._db.execute(update(InvitacionCuenta).where(
             InvitacionCuenta.usuario_id == usuario.id, InvitacionCuenta.usada_at.is_(None)
