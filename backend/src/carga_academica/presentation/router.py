@@ -34,8 +34,8 @@ def get_planilla_service(db: AsyncSession = Depends(get_db)) -> PlanillaService:
     return PlanillaService(PlanillaRepository(db))
 
 
-@router.get("/{seminario_id}/planilla", response_model=PlanillaResponse)
-async def obtener_planilla(
+@router.get("/{seminario_id}/estudiantes", response_model=PlanillaResponse)
+async def listar_estudiantes(
     seminario_id: UUID,
     # 401 si no está logueado, 403 si su rol no es ninguno de estos
     usuario: Usuario = Depends(require_role("docente", "coordinador", "admin")),
