@@ -12,6 +12,8 @@ dependencies = [
     "pydantic-settings>=2.16.2",
     "pyjwt>=2.15.1",
     "python-dotenv>=1.2.4",
+    "python-magic>=0.4.27 ; sys_platform != 'win32'",
+    "python-magic-bin>=0.4.14 ; sys_platform == 'win32'",
     "sqlalchemy[asyncio]>=2.1.6",
     "uvicorn[standard]>=0.54.0",
 ]
