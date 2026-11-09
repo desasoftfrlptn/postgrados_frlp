@@ -3,7 +3,7 @@
 from uuid import UUID
 from dataclasses import asdict
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -23,6 +23,30 @@ class TrabajoFinalRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def listar_en_riesgo(
+        self, *, offset: int, limit: int, cohorte_id: UUID | None = None,
+        tipo_carrera: str | None = None,
+    ) -> tuple[list[Legajo], int]:
+        """Consulta solo ROJO, sin recalcular colores ni escribir datos.
+
+        El orden alfabético con id como desempate estabiliza la paginación;
+        no representa un orden por criticidad.
+        """
+        condiciones = [Legajo.semaforo == "ROJO"]
+        if cohorte_id is not None:
+            condiciones.append(Legajo.cohorte_id == cohorte_id)
+        if tipo_carrera is not None:
+            condiciones.append(Legajo.tipo_carrera == tipo_carrera)
+        total = await self.session.scalar(
+            select(func.count()).select_from(Legajo).where(*condiciones)
+        )
+        resultado = await self.session.scalars(
+            select(Legajo).where(*condiciones)
+            .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
+            .offset(offset).limit(limit)
+        )
+        return list(resultado), int(total or 0)
 
     async def obtener_por_id(self, trabajo_id: UUID) -> TrabajoFinal | None:
         """Busca el trabajo por su propia clave primaria."""

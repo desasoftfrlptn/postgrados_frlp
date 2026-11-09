@@ -14,6 +14,32 @@ class SemaforoResponse(BaseModel):
     semaforo_manual: bool
 
 
+class EstudianteEnRiesgoResponse(BaseModel):
+    """Datos disponibles del legajo, sin métricas de avance inferidas."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    numero_legajo: str | None
+    nombre: str
+    apellido: str
+    carrera_elegida: str
+    tipo_carrera: Literal["Especializacion", "Maestria", "Doctorado"] | None
+    cohorte_id: UUID
+    fecha_inscripcion: datetime | None
+    semaforo: Literal["ROJO"]
+
+
+class EstudiantesEnRiesgoPagina(BaseModel):
+    """Paginación compatible con los listados existentes del backend."""
+
+    data: list[EstudianteEnRiesgoResponse]
+    page: int
+    limit: int
+    total: int
+    pages: int
+
+
 class CrearTrabajoFinalRequest(BaseModel):
     """El legajo se indica en la URL y el autor se obtiene de la sesión."""
 

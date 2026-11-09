@@ -1,13 +1,15 @@
 """Entrada HTTP para registrar y consultar trabajos finales (US-C-001)."""
 
 from uuid import UUID
+from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.seguimiento_graduacion.application.registrar_trabajo_final import RegistrarTrabajoFinal
 from src.seguimiento_graduacion.application.consultar_trabajo_final import ConsultarTrabajoFinal
 from src.seguimiento_graduacion.application.consultar_semaforo import ConsultarSemaforo
+from src.seguimiento_graduacion.application.listar_estudiantes_en_riesgo import ListarEstudiantesEnRiesgo
 from src.seguimiento_graduacion.application.modificar_trabajo_final import ModificarTrabajoFinal
 from src.seguimiento_graduacion.domain.exceptions import (
     AccesoDenegado, IntegridadTrabajoFinal, LegajoNoEncontrado, TrabajoFinalDuplicado,
@@ -18,11 +20,41 @@ from src.seguimiento_graduacion.domain.repository import DatosTrabajoFinal
 from src.seguimiento_graduacion.infrastructure.pg_repository import TrabajoFinalRepository
 from src.seguimiento_graduacion.presentation.schemas import CrearTrabajoFinalRequest, TrabajoFinalResponse, ActualizarTrabajoFinalRequest
 from src.seguimiento_graduacion.presentation.schemas import SemaforoResponse
+from src.seguimiento_graduacion.presentation.schemas import EstudiantesEnRiesgoPagina
 from src.shared.auth.dependencies import require_role, get_current_user
 from src.shared.auth.orm_models import Usuario
 from src.shared.database.session import get_db
 
 router = APIRouter(tags=["Seguimiento de graduación"])
+
+
+async def obtener_listar_en_riesgo(
+    db: AsyncSession = Depends(get_db),
+) -> ListarEstudiantesEnRiesgo:
+    """Conecta el listado con la sesión compartida y el repositorio existente."""
+    return ListarEstudiantesEnRiesgo(TrabajoFinalRepository(db))
+
+
+@router.get(
+    "/graduacion/en-riesgo", response_model=EstudiantesEnRiesgoPagina,
+    responses={401: {"description": "Sesión inválida o vencida"},
+               403: {"description": "Se requiere rol coordinador"}},
+)
+async def listar_en_riesgo(
+    page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=100),
+    cohorte_id: UUID | None = None,
+    tipo_carrera: Literal["Especializacion", "Maestria", "Doctorado"] | None = None,
+    usuario: Usuario = Depends(require_role("coordinador")),
+    caso_de_uso: ListarEstudiantesEnRiesgo = Depends(obtener_listar_en_riesgo),
+):
+    """Lista exclusivamente semáforos ROJO almacenados; no evalúa criticidad."""
+    try:
+        return await caso_de_uso.ejecutar(
+            usuario_rol=usuario.rol, page=page, limit=limit,
+            cohorte_id=cohorte_id, tipo_carrera=tipo_carrera,
+        )
+    except AccesoDenegado as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
 
 
 async def obtener_consultar_semaforo(

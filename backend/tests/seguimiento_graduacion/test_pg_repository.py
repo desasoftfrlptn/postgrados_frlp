@@ -207,3 +207,43 @@ def test_actualizar_preserva_otros_campos(componentes):
     assert trabajo.creado_por == "autor@example.com"
     session.flush.assert_awaited_once()
     session.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("filtrado", [True, False])
+def test_listado_rojo_aplica_filtros_a_conteo_y_pagina(componentes, filtrado):
+    """El WHERE exige ROJO en ambas consultas y excluye los otros colores."""
+    from sqlalchemy import and_
+
+    repo, session, Legajo, _ = componentes
+    cohorte = uuid4() if filtrado else None
+    tipo = "Maestria" if filtrado else None
+    condiciones = [Legajo.semaforo == "ROJO"]
+    if filtrado:
+        condiciones += [Legajo.cohorte_id == cohorte, Legajo.tipo_carrera == tipo]
+    session.scalar.return_value = 5
+    fila = Legajo(id=uuid4(), semaforo="ROJO")
+    session.scalars.return_value = [fila]
+    assert asyncio.run(repo.listar_en_riesgo(offset=2, limit=2, cohorte_id=cohorte,
+                                          tipo_carrera=tipo)) == ([fila], 5)
+    conteo = session.scalar.call_args.args[0]
+    listado = session.scalars.call_args.args[0]
+    assert conteo.whereclause.compare(and_(*condiciones))
+    assert listado.whereclause.compare(and_(*condiciones))
+    for consulta in (conteo, listado):
+        sql = str(consulta.compile(compile_kwargs={"literal_binds": True}))
+        assert "semaforo = 'ROJO'" in sql
+        assert "VERDE" not in sql and "AMARILLO" not in sql
+    sql = str(listado.compile(compile_kwargs={"literal_binds": True}))
+    assert "LIMIT 2 OFFSET 2" in sql
+    assert "ORDER BY postgrados.legajos.apellido, postgrados.legajos.nombre, postgrados.legajos.id" in sql
+    session.add.assert_not_called()
+    session.flush.assert_not_awaited()
+    session.commit.assert_not_awaited()
+
+
+def test_listado_rojo_vacio(componentes):
+    """Una consulta sin coincidencias devuelve lista vacía y total cero."""
+    repo, session, _, _ = componentes
+    session.scalar.return_value = 0
+    session.scalars.return_value = []
+    assert asyncio.run(repo.listar_en_riesgo(offset=0, limit=20)) == ([], 0)

@@ -53,7 +53,7 @@ def escenario(monkeypatch):
     app.dependency_overrides.update(anteriores)
 
 
-def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="POST", ruta=None):
+def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="POST", ruta=None, query=""):
     """Envía una solicitud HTTP a la interfaz ASGI sin cliente externo."""
     app, _, _, legajo_id, credencial, cuerpo = escenario
 
@@ -68,7 +68,7 @@ def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="
                      method=metodo, scheme="http",
                      path=ruta or (f"/api/v1/trabajos-finales/{identificador or legajo_id}" if metodo == "PATCH"
                            else f"/api/v1/legajos/{identificador or legajo_id}/trabajo-final"),
-                     query_string=b"", root_path="", headers=headers,
+                     query_string=query.encode(), root_path="", headers=headers,
                      client=("127.0.0.1", 1234), server=("pruebas", 80))
 
         async def recibir():
@@ -409,4 +409,81 @@ def test_semaforo_openapi(escenario):
     operacion = escenario[0].openapi()["paths"]["/api/v1/legajos/{id}/semaforo"]["get"]
     assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/SemaforoResponse")
     assert {"401", "403", "404", "422"} <= operacion["responses"].keys()
+    assert operacion["security"] == [{"HTTPBearer": []}]
+
+
+@pytest.mark.parametrize("vacio", [False, True])
+def test_riesgo_http_formato_y_solo_lectura(escenario, vacio):
+    """Devuelve una página con datos reales del modelo y sin métricas inventadas."""
+    from src.inscripcion.infrastructure.orm_models import Legajo
+
+    _, session, usuario, legajo_id, _, _ = escenario
+    usuario.rol = "coordinador"
+    cohorte = uuid4()
+    fila = Legajo(id=legajo_id, nombre="Ana", apellido="Pérez", numero_legajo=None,
+                  carrera_elegida="Maestría", tipo_carrera="Maestria", cohorte_id=cohorte,
+                  fecha_inscripcion=None, semaforo="ROJO")
+    session.scalar.return_value = 0 if vacio else 1
+    session.scalars.return_value = [] if vacio else [fila]
+    estado, respuesta = solicitar(escenario, metodo="GET", ruta="/api/v1/graduacion/en-riesgo")
+    assert estado == 200
+    esperado = dict(id=str(legajo_id), nombre="Ana", apellido="Pérez", numero_legajo=None,
+                    carrera_elegida="Maestría", tipo_carrera="Maestria", cohorte_id=str(cohorte),
+                    fecha_inscripcion=None, semaforo="ROJO")
+    assert respuesta == dict(data=[] if vacio else [esperado], page=1, limit=20,
+                            total=0 if vacio else 1, pages=0 if vacio else 1)
+    session.add.assert_not_called()
+    session.flush.assert_not_awaited()
+    session.commit.assert_not_awaited()
+    session.rollback.assert_not_awaited()
+
+
+@pytest.mark.parametrize("rol", ["cpr", "admin", "docente", "estudiante"])
+def test_riesgo_solo_coordinador(escenario, rol):
+    """Rechaza otros roles sin consultar el listado."""
+    escenario[2].rol = rol
+    assert solicitar(escenario, metodo="GET", ruta="/api/v1/graduacion/en-riesgo")[0] == 403
+    escenario[1].scalars.assert_not_awaited()
+
+
+@pytest.mark.parametrize("token", [False, "invalido"])
+def test_riesgo_requiere_autenticacion(escenario, token):
+    """El listado no permite acceso anónimo ni tokens inválidos."""
+    assert solicitar(escenario, metodo="GET", token=token, ruta="/api/v1/graduacion/en-riesgo")[0] == 401
+
+
+@pytest.mark.parametrize("nombre,valor", [("page", "0"), ("limit", "101"),
+                                         ("cohorte_id", "invalido"), ("tipo_carrera", "Otra")])
+def test_riesgo_valida_query(escenario, nombre, valor):
+    """FastAPI valida filtros y paginación antes de consultar."""
+    from urllib.parse import urlencode
+    escenario[2].rol = "coordinador"
+    assert solicitar(escenario, metodo="GET", ruta="/api/v1/graduacion/en-riesgo",
+                     query=urlencode({nombre: valor}))[0] == 422
+    escenario[1].scalars.assert_not_awaited()
+
+
+def test_riesgo_filtros_y_pagina_http(escenario):
+    """Los filtros válidos llegan al SQL y el total representa todas las páginas."""
+    escenario[2].rol = "coordinador"
+    session = escenario[1]
+    session.scalar.return_value = 5
+    session.scalars.return_value = []
+    cohorte = uuid4()
+    estado, respuesta = solicitar(
+        escenario, metodo="GET", ruta="/api/v1/graduacion/en-riesgo",
+        query=f"page=2&limit=2&cohorte_id={cohorte}&tipo_carrera=Doctorado")
+    assert estado == 200
+    assert respuesta == dict(data=[], page=2, limit=2, total=5, pages=3)
+    consulta = session.scalars.call_args.args[0]
+    sql = str(consulta.compile(compile_kwargs={"literal_binds": True}))
+    assert cohorte in consulta.compile().params.values()
+    assert "Doctorado" in sql and "LIMIT 2 OFFSET 2" in sql
+
+
+def test_riesgo_openapi(escenario):
+    """Publica la página, parámetros y autenticación del listado."""
+    operacion = escenario[0].openapi()["paths"]["/api/v1/graduacion/en-riesgo"]["get"]
+    assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/EstudiantesEnRiesgoPagina")
+    assert {p["name"] for p in operacion["parameters"]} == {"page", "limit", "cohorte_id", "tipo_carrera"}
     assert operacion["security"] == [{"HTTPBearer": []}]
