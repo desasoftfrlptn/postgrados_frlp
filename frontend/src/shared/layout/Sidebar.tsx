@@ -1,0 +1,150 @@
+/* ═══════════════════════════════════════════════════════════════
+   Sidebar.tsx — MENÚ LATERAL (navegación de toda la app)
+   ───────────────────────────────────────────────────────────────
+   PARA EXPONER:
+   Es el menú fijo de la izquierda. Lo importante NO es que sea un
+   menú, sino cómo está organizado: las opciones están agrupadas
+   POR PERFIL DE USUARIO, que son los tres actores del sistema:
+
+     · ASPIRANTE  → Inscripción
+     · CONDUCCIÓN → Dashboard, Legajo académico, Estadísticas
+     · DOCENTES   → Planilla
+
+   Esa agrupación es la que definimos en el análisis de requisitos:
+   cada perfil ve las funciones que le corresponden. Las pantallas
+   que todavía usan datos de prueba (módulos B, C y D) dicen
+   "(demo)" para que nadie las confunda con datos reales.
+
+   TÉCNICAMENTE: el menú no está escrito a mano en el HTML. Está
+   definido como una lista de datos (la constante `groups` de acá
+   abajo) y se dibuja recorriéndola con .map(). Agregar una
+   pantalla nueva = agregar un renglón a esa lista.
+
+   CONCEPTO CLAVE — <NavLink>:
+   Es un link de React Router que sabe si su dirección es la URL
+   actual (`isActive`) y con eso se pinta resaltado. Antes App le
+   pasaba al Sidebar la pantalla activa por props; ahora la URL es
+   la única fuente de verdad y el Sidebar no recibe nada.
+   ═══════════════════════════════════════════════════════════════ */
+
+import { NavLink } from 'react-router'
+import {
+  IconClipboardList,
+  IconLayoutDashboard,
+  IconUserCircle,
+  IconChartBar,
+  IconTable,
+  IconLogout,
+} from '@tabler/icons-react'
+import type { ElementType } from 'react'
+import { useAuth } from '../auth/useAuth'
+import { useCohortes } from '../hooks/useCatalogos'
+
+type NavItem = { to: string; label: string; icon: ElementType; demo?: boolean }
+type NavGroup = { label: string; items: NavItem[] }
+
+// El menú COMO DATO: los tres perfiles y sus pantallas.
+// Cambiar el menú es cambiar esta lista, no tocar el diseño.
+const groups: NavGroup[] = [
+  {
+    label: 'Aspirante',
+    items: [{ to: '/inscripcion', label: 'Inscripción', icon: IconClipboardList }],
+  },
+  {
+    label: 'Conducción',
+    items: [
+      { to: '/coordinador', label: 'Dashboard', icon: IconLayoutDashboard },
+      { to: '/coordinador/legajo-academico', label: 'Legajo académico', icon: IconUserCircle, demo: true },
+      { to: '/coordinador/estadisticas', label: 'Estadísticas', icon: IconChartBar, demo: true },
+    ],
+  },
+  {
+    label: 'Docentes',
+    items: [{ to: '/coordinador/planilla', label: 'Planilla', icon: IconTable, demo: true }],
+  },
+]
+
+type Props = {
+  /** En el celular, el layout cierra el menú cuando se elige una pantalla. */
+  onNavegar?: () => void
+}
+
+export default function Sidebar({ onNavegar }: Props) {
+  const { usuario, cerrarSesion } = useAuth()
+  // Mismo dato que el interruptor del Dashboard (['cohortes'] en la
+  // caché): al abrir o cerrar el período, este indicador cambia solo.
+  const cohortes = useCohortes()
+  const inscripcionAbierta = cohortes.data?.some((c) => c.inscripcionAbierta)
+
+  return (
+    <aside className="w-60 flex-shrink-0 bg-sidebar flex flex-col py-3 overflow-y-auto">
+      {/* Logo y quién inició sesión */}
+      <div className="px-4 pb-4 mb-2 border-b border-white/10">
+        <div className="text-[11px] uppercase tracking-wide text-faint">UTN · FRLP</div>
+        <div className="text-[13px] font-medium text-on-dark">Sistema Posgrado</div>
+        {usuario && (
+          <div className="mt-3 min-w-0">
+            <div className="text-[12.5px] text-on-dark truncate">{usuario.nombre}</div>
+            <div className="text-[11px] text-faint truncate">{usuario.email}</div>
+          </div>
+        )}
+        {cohortes.data && (
+          <div className="mt-2 flex items-center gap-1.5 text-[11px] text-faint">
+            <span
+              aria-hidden="true"
+              className={'w-1.5 h-1.5 rounded-full ' + (inscripcionAbierta ? 'bg-ok' : 'bg-line-strong')}
+            />
+            Inscripción {inscripcionAbierta ? 'abierta' : 'cerrada'}
+          </div>
+        )}
+      </div>
+
+      {/* Grupos de navegación */}
+      {groups.map((group) => (
+        <div key={group.label} className="px-2 mb-0.5">
+          <div className="text-[11px] uppercase tracking-wide text-faint px-2 py-1">
+            {group.label}
+          </div>
+
+          {group.items.map((item) => {
+            const Icon = item.icon
+            return (
+              // `end`: solo está activo si la URL es exactamente esa.
+              // Sin él, "Dashboard" (/coordinador) quedaría resaltado
+              // también en /coordinador/estadisticas.
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end
+                onClick={onNavegar}
+                className={({ isActive }) =>
+                  'w-full flex items-center gap-2 px-2 py-[7px] rounded-input text-[12.5px] transition-colors ' +
+                  (isActive
+                    ? 'bg-sidebar-active text-on-dark font-medium'
+                    : 'text-faint hover:bg-sidebar-active hover:text-on-dark')
+                }
+              >
+                <Icon size={15} stroke={1.5} className="flex-shrink-0" />
+                {item.label}
+                {item.demo && ' (demo)'}
+              </NavLink>
+            )
+          })}
+        </div>
+      ))}
+
+      {/* Pie del menú: cerrar sesión. Borra el token y los datos en
+          caché; como /coordinador está protegida, RutaProtegida ve
+          que ya no hay usuario y manda al login. */}
+      <div className="mt-auto px-2 pt-2 border-t border-white/10">
+        <button
+          onClick={cerrarSesion}
+          className="w-full flex items-center gap-2 px-2 py-[7px] rounded-input text-[12.5px] text-faint hover:bg-sidebar-active hover:text-on-dark transition-colors"
+        >
+          <IconLogout size={15} stroke={1.5} className="flex-shrink-0" />
+          Cerrar sesión
+        </button>
+      </div>
+    </aside>
+  )
+}

@@ -16,15 +16,167 @@
 **Este repositorio es el punto de entrada único** para todos los equipos del curso. Cada equipo implementa el **Módulo Core (obligatorio para todos)** más **un módulo especializado** asignado por sorteo.
 
 ---
+
+## Cómo levantar el proyecto
+
+### Qué necesitás instalado
+
+| Herramienta | Versión | Para qué |
+|---|---|---|
+| Git | cualquiera | Clonar el repo |
+| Docker Desktop (con Compose v2) | actual | Levanta todo con un solo comando |
+| Node.js | **22.22 o más nuevo** | Solo si corrés el front fuera de Docker |
+| uv | actual | Solo si corrés el back o los tests fuera de Docker. Instala Python 3.12 si no lo tenés |
+
+- **Node en Windows:** `winget install OpenJS.NodeJS.22`. React Router 8 exige Node 22.22 o más nuevo: con una 22 más vieja, `npm` avisa `EBADENGINE`.
+- **uv:** en Linux o macOS `curl -LsSf https://astral.sh/uv/install.sh | sh`; en Windows `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`.
+
+### Levantar todo con un comando
+
+```bash
+git clone https://github.com/EnzoMascena/postgrados_frlpGRUPO.git
+cd postgrados_frlpGRUPO
+cp .env.example .env        # en PowerShell: Copy-Item .env.example .env
+docker compose up --build
+```
+
+La primera vez tarda unos minutos, porque construye las imágenes. Levanta cuatro servicios: la base (PostgreSQL 16), MailHog, el back y el front. Al arrancar, el back **migra la base y carga los datos de prueba** (3 carreras, 3 cohortes, el coordinador y 11 legajos), así que no hay que correr nada más.
+
+El `.env` **nunca se commitea**. El de `.env.example` ya sirve para desarrollo, pero cambiá `JWT_SECRET` por uno propio si lo vas a usar fuera de tu máquina.
+
+### Dónde está cada cosa
+
+| Qué | URL |
+|---|---|
+| Front | http://localhost:3000 |
+| API, con Swagger | http://localhost:8000/api/docs |
+| Estado de la API y de la base | http://localhost:8000/api/v1/health |
+| MailHog (los emails que manda el sistema) | http://localhost:8025 |
+| PostgreSQL | `localhost:5432` (usuario, clave y nombre en tu `.env`) |
+
+### Usuario de prueba
+
+Entrá a http://localhost:3000/login con el coordinador que crea el seed:
+
+| Email | Clave | Rol |
+|---|---|---|
+| `admin@fenix.test` | `Admin1234!` | Coordinador |
+
+Son datos de prueba de la cátedra, no una clave real. El aspirante no tiene usuario: entra al formulario público y después sigue su trámite con un link que le llega por email, que se ve en MailHog (esta parte está en construcción).
+
+---
+
+## Trabajar en el día a día
+
+### Comandos de Docker
+
+| Comando | Qué hace |
+|---|---|
+| `docker compose up -d` | Levanta todo en segundo plano |
+| `docker compose logs -f backend` | Muestra los logs del back (también `frontend`, `db`, `mailhog`) |
+| `docker compose down` | Frena todo y conserva la base |
+| `docker compose down -v` | Frena todo y **borra la base**: el próximo `up --build` la recrea con el seed |
+| `docker compose up -d --build backend` | Reconstruye el back después de cambiar su código o sus dependencias (el back **no** monta el código en el contenedor) |
+
+El front monta `./frontend` en el contenedor: cuando cambiás el código, Vite recarga el navegador sin reconstruir. Si cambia `package.json`, usá `docker compose up -d --build -V frontend`.
+
+### Tests, lint y migraciones del back
+
+Los tests necesitan la base. Con Docker, adentro del contenedor:
+
+```bash
+docker compose exec backend uv run pytest
+```
+
+O desde tu máquina (levantá antes la base con `docker compose up -d db`):
+
+```bash
+cd backend
+uv sync                                   # instala las dependencias fijadas en uv.lock
+uv run pytest                             # tests y cobertura (mínimo 70 %)
+uv run ruff check . && uv run ruff format --check .
+uv run alembic upgrade head               # aplica las migraciones
+uv run python -m scripts.seed             # carga los datos de prueba (se puede correr varias veces)
+```
+
+Las migraciones nuevas: `uv run alembic revision --autogenerate -m "descripcion"`. Ojo: Alembic **no detecta los cambios en los `CHECK`**; esos hay que escribirlos a mano en la migración.
+
+### Correr el back o el front fuera de Docker
+
+**Back** (si el back de Docker está corriendo, frenalo antes con `docker compose stop backend`: usa el mismo puerto 8000):
+```bash
+docker compose up -d db mailhog
+cd backend
+uv sync
+uv run alembic upgrade head
+uv run python -m scripts.seed
+uv run uvicorn main:app --reload          # http://localhost:8000
+```
+
+**Front:**
+```bash
+docker compose stop frontend              # libera el puerto 3000
+cd frontend
+npm install
+npm run dev                               # http://localhost:3000
+npm run lint && npm run build             # lo mismo que corre el CI
+```
+
+Con `npm run dev` el proxy de Vite manda `/api` a `http://localhost:8000`, es decir, al back de Docker (o al que tengas corriendo en tu máquina). La variable `VITE_PROXY_TARGET` del `.env` **no** tiene efecto: Vite la lee del entorno del proceso, no de ese archivo. Para apuntar a otro back: `VITE_PROXY_TARGET=http://localhost:9000 npm run dev` (en PowerShell: `$env:VITE_PROXY_TARGET="http://localhost:9000"; npm run dev`).
+
+---
+
+## Si algo falla
+
+| Síntoma | Causa y solución |
+|---|---|
+| `npm` avisa `EBADENGINE` o el front no arranca | Tenés una Node más vieja que 22.22. En Windows: `winget install OpenJS.NodeJS.22`. |
+| `npm run build` falla con `TS2307: Cannot find module 'react-router'` (y un `TS7031` en `isActive`) | Tu `node_modules` está desactualizado: `git pull` trae el código nuevo pero no las dependencias. Cada vez que cambie `package.json` o `package-lock.json`, corré `cd frontend && npm ci` (instala exactamente lo del `package-lock.json`). En el back pasa lo mismo con `uv sync` cuando cambian `pyproject.toml` o `uv.lock`. |
+| El back dice «la autentificación password falló para el usuario postgrado_user» | Hay **otro PostgreSQL ocupando el puerto 5432** y el back se conecta a ese en vez de al contenedor. Es común en Windows, donde el instalador de PostgreSQL deja un servicio (`postgresql-x64-NN`). Dos salidas: **a)** frenarlo, en PowerShell como administrador: `Stop-Service postgresql-x64-NN`; **b)** mover la base del TP a otro puerto: en el `.env` poné `DB_PORT=5433` y cambiá el `5432` por `5433` en `DATABASE_URL` y `TEST_DATABASE_URL`. El compose ya usa `${DB_PORT}`. |
+| `port is already allocated` o `address already in use` | Otro programa o un contenedor de otra materia usa el 3000, 8000, 5432, 1025 u 8025. Con `docker ps` ves qué contenedores están corriendo; frenalos con `docker stop <nombre>`. |
+| `failed to connect to the docker API` | Docker Desktop no está abierto. Abrilo y esperá a que diga que el motor está corriendo. |
+| Al correr el back fuera de Docker falla con `ValidationError ... jwt_secret` | Falta el `.env` en la raíz del repo o su `JWT_SECRET` tiene menos de 32 caracteres. Copiá `.env.example` otra vez. (Con Docker no pasa: el compose trae un valor de desarrollo.) |
+| Querés empezar de cero | `docker compose down -v` y después `docker compose up --build`. |
+
+---
+
+## Estructura del repositorio
+
+```
+backend/                 API en FastAPI
+  main.py                crea la app y registra los routers
+  src/<modulo>/          autenticacion, cohortes, inscripcion, gestion_documental, legajos y shared
+    domain/              reglas del negocio, en Python puro
+    application/         casos de uso
+    infrastructure/      tablas (SQLModel) y repositorios
+    presentation/        endpoints y schemas de la API
+  alembic/               migraciones de la base
+  scripts/               seed y vista previa de los emails
+  tests/                 un directorio por módulo
+frontend/src/<modulo>/   React: pantallas por módulo y lo compartido en shared/
+adr/                     decisiones de arquitectura (por qué elegimos lo que elegimos)
+docs/                    plan del Core, SRS, arquitectura y wireframes
+```
+
+### Documentación
+
+- [`docs/PLAN_CORE.md`](docs/PLAN_CORE.md): alcance, reparto de tareas y contrato de la API del Core.
+- [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) y [`adr/`](adr/): cómo está armado y por qué.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): ramas, commits, Pull Requests y revisión de código.
+- [`docs/DEFINITION_OF_DONE.md`](docs/DEFINITION_OF_DONE.md): cuándo una tarea está terminada.
+- [`CHANGELOG.md`](CHANGELOG.md): qué cambió en cada versión.
+
+---
+
 ## Equipo
-**Esta seccion es un template para el equipo, debe completarse en le primer commit**
 
 | Nombre              | Rol                          | GitHub                          | Email                          |
 |---------------------|------------------------------|---------------------------------|--------------------------------|
-| Tu Nombre           | Líder / Desarrollador Principal | [@tuusuario](https://github.com/tuusuario) | tuemail@ejemplo.com           |
-| Nombre Compañero 1  | Desarrollador Backend        | [@usuario2](https://github.com/usuario2)   | email2@ejemplo.com            |
-| Nombre Compañero 2  | Diseñador / Frontend         | [@usuario3](https://github.com/usuario3)   | email3@ejemplo.com            |
-
+| Mascena Enzo Mario           | Líder / Desarrollador Principal | [@EnzoMascena](https://github.com/EnzoMascena) | enzo.mascena.dev@gmail.com         |
+| Garrote Geronino    | Diseñador UI/UX / Frontend         | [@GeronimoGarrote](https://github.com/GeronimoGarrote)   | garrote.gero@gmail.com            |
+| Buscaglia Francisco Nicolas  | Desarrollador Backend        | [@FranBusqui](https://github.com/FranBusqui)   | franbuscag@gmail.com            |
+| Goñi Dolores  | Diseñador / Frontend         | [@lologoni](https://github.com/lologoni)   | lolagoni2004@gmail.com            |
+| De Paola Luca | Desarrollador / Backend        | [@LucaDP16](https://github.com/LucaDP16)   | ludepa3110@gmail.com            |
 ### Reglas básicas del equipo
 
 - **Commits**: Usa mensajes claros y en presente (ej: "Agrega login con GitHub"). Sigue la convención [Conventional Commits](https://www.conventionalcommits.org) si es posible.
@@ -43,199 +195,26 @@
 - **Horario de pair programming**: Reuniones de trabajo virtual programadas
 - **Reuniones**: [Breve weekly los miércoles a las XX hs] o según necesidad.
 
-**Cualquier duda** → Pregunta primero en el canal de #general o abre un Issue.
-
-**Completa luego** [`docs\onboarding\TEAM_CHARTER.md`] (TEAM_CHARTER.md) 
-
----
-
-## Documentación: Por Dónde Empezar
-
-Lee en este orden antes de escribir código:
-
-0. **Lee este docmento README completamente. **
-1. 📋 [`docs/SRS.md`](docs/SRS.md) — Qué debe hacer el sistema (fuente de verdad de requisitos)
-2. 🗺️ [`docs/BFD.md`](docs/BFD.md) — Cómo funciona el negocio hoy y cómo debe ser
-3. 📦 [`docs/PRD.md`](docs/PRD.md) — Detalle funcional con criterios de aceptación (Gherkin)
-4. 🏗️ [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) — Cómo estructurar el código
-5. 🗓️ [`docs/CRONOGRAMA.md`](docs/CRONOGRAMA.md) — Tu roadmap personal de las próximas 30 semanas
-6. 🚀 [`onboarding/Guia_KickOff.md`](docs/onboarding/GUIA_KICKOFF.md) — Qué entregar en la semana 3
----
-
-## Estructura de Módulos
-
-| Módulo | Descripción | Estado |
-|--------|-------------|--------|
-| **CORE** *(todos los equipos)* | Inscripción, legajo digital, workflow de estados, gestión documental | 🟡 En kickoff |
-| **MOD-B** | Gestión Docente: asistencia digital, calificaciones, recordatorios automáticos | 🔴 Pendiente |
-| **MOD-C** | Seguimiento de Graduación: TFI/Tesis, semáforo de riesgo académico | 🔴 Pendiente |
-| **MOD-D** | Analytics & Reporting: dashboards, estadísticas por cohorte, exportación | 🔴 Pendiente |
-
----
-
-## Quickstart — Levantá el entorno en 5 minutos
-
-> **Requisitos previos:** Git · Docker Desktop · Node.js 20+ (o Python 3.11+)
-
-```bash
-# 1. Cloná tu repositorio (URL provisto por GitHub)
-git clone https://github.com/desasoftfrlptn/postgrados_frlp.git
-cd postgrado-[NOMBRE-EQUIPO]
-
-# 2. Configurá variables de entorno
-cp .env.example .env
-
-# 3. Levantá los servicios (base de datos + backend + frontend)
-docker-compose up -d
-
-# 4. Instalá dependencias
-npm install        # Si usás Node/NestJS
-# -- ó --
-pip install -r requirements.txt  # Si usás Python/FastAPI
-
-# 5. Ejecutá las migraciones de base de datos
-npm run db:migrate   # Prisma
-# -- ó --
-alembic upgrade head  # SQLAlchemy
-
-# 6. Iniciá el servidor de desarrollo
-npm run dev
-```
-
-✅ **Criterio de éxito:** La app corre en `http://localhost:3000` sin errores en consola.
-
----
-
-## Estructura del Repositorio
-
-```
-postgrado-[equipo]/
-├── README.md                     ← Empezá acá
-├── CONTRIBUTING.md               ← Cómo trabajar: ramas, commits, PRs
-├── CHANGELOG.md                  ← Historial de cambios por versión
-├── docker-compose.yml            ← Ambiente local unificado
-├── .env.example                  ← Variables de entorno de referencia
-│
-├── docs/
-│   ├── SRS.md                    ← Especificación de Requisitos (fuente de verdad)
-│   ├── PRD.md                    ← Product Requirements Document
-│   ├── BFD.md                    ← Business Flow Diagram
-│   ├── ARQUITECTURA.md           ← Decisiones técnicas + diagramas C4
-│   ├── CRONOGRAMA.md             ← Roadmap con fechas reales (abr–nov 2026)
-│   ├── BACKLOG_MODELO.md         ← Historias de usuario base + plantillas
-│   ├── DEFINITION_OF_DONE.md    ← Criterios de completitud del equipo
-│   ├── ASR.md                    ← Requisitos arquitectónicamente significativos
-│   │
-│   ├── onboarding/
-│   │   ├── GUIA_KICKOFF.md       ← Qué hacer en las primeras 3 semanas
-│   │   ├── SETUP_LOCAL.md        ← Setup paso a paso con troubleshooting
-│   │   └── TEAM_CHARTER.md       ← Contrato social del equipo (completar)
-│   │
-│   └── adr/                      ← Registro de decisiones de arquitectura
-│       ├── ADR-000-template.md
-│       └── ADR-001-stack.md      ← Primera decisión: elección de stack
-│
-├── src/
-│   ├── core/                     ← Módulo Core (TODOS los equipos)
-│   └── mod-[b|c|d]/              ← Módulo especializado asignado
-│
-└── .github/
-    └── workflows/
-        └── ci.yml                ← Pipeline: lint + test + build en cada PR
-```
-
----
-
-## Calendario de Entregas 2026
-
-| Hito | Semana | Fecha | Entregable obligatorio |
-|------|--------|-------|------------------------|
-| **Kickoff completo** | 3 | 01/05 | Repo + Team Charter + ASR + RFC-001 |
-| **Sprint 0** | 5 | 15/05 | Auth + DB + `docker-compose up` funcionando |
-| **Review 1** | 10 | 19/06 | Demo: inscripción de aspirante end-to-end |
-| **Entrega Parcial** | 16 | 31/07 | `git tag v0.5` — Core completo y funcional |
-| **Review 2** | 22 | 11/09 | Demo: módulo especializado funcional |
-| **Code Freeze** | 27 | 16/10 | Rama `main` congelada, solo bugfixes |
-| **Entrega Final** | 28 | 23/10 | `git tag v1.0` — Sistema completo |
-| **Exposición** | 30-31 | 06–13/11 | Demo Day con stakeholders reales |
-
----
-
-## Roles del Equipo (rotan cada 4 semanas)
-
-| Rol | Responsabilidades | Entregables específicos |
-|-----|-------------------|------------------------|
-| **Product Owner** | Prioriza el backlog, gestiona historias, interfaz con el docente-cliente | PRD actualizado, minutas de sprint planning |
-| **Tech Lead** | Decisiones de arquitectura, code reviews obligatorios, ADRs | Diagramas C4, ADRs, configuración CI/CD |
-| **Dev Lead** | GitFlow, integración, calidad de código (linting), pair programming | Historial de commits limpio, documentación técnica |
-| **QA/UX Lead** | Testing exploratorio, wireframes, criterios de aceptación, reporte de bugs | Casos de prueba, reporte de bugs, análisis UX |
-
----
-
-## Definition of Done (DoD)
-
-Una historia de usuario está **terminada** cuando cumple **todos** estos criterios:
-
-- [ ] Código mergeado a `main` via **Pull Request** con al menos 1 code review aprobado
-- [ ] **Tests unitarios pasando** con ≥70% de cobertura en la lógica nueva
-- [ ] **Linter sin errores** (ESLint + Prettier para JS/TS · PEP8 para Python)
-- [ ] **Documentación de API actualizada** (Swagger/OpenAPI en `/api/docs`)
-- [ ] **Probado en el entorno local de otro integrante** del equipo
-- [ ] **`CHANGELOG.md` actualizado** con descripción del cambio
 
 ---
 
 ## Reglas No Negociables
 
-> Estas reglas aplican a todos los equipos desde el día 1.
-
-1. **Nunca pushees directamente a `main`**. Siempre via Pull Request.
-2. **Los commits referencian el requisito**: `feat: REQ-CORE-002 valida tamaño de PDF`
-3. **Si el pipeline de CI falla, es prioridad máxima** antes de continuar desarrollo.
-4. **Las variables de entorno nunca van al repo** (`.env` está en `.gitignore`).
-5. **Los bloqueos se comunican en ≤2 horas**: si estás trabado, avisá en el canal del equipo.
-
----
-
-## Stack Tecnológico 
-** Template a completar por el equipo** 
-
 ## Stack Tecnológico
 
-| Capa              | Recomendado (Prioridad: Simplicidad + Demanda) | Alternativa (Mayor estructura / Enterprise) | Justificación |
-|-------------------|------------------------------------------------|---------------------------------------------|-------------|
-| **Frontend**     | **React 19 + TypeScript + Vite + TailwindCSS + TanStack Query** | Next.js 15+ (App Router) | React sigue siendo la tecnología frontend **más demandada** del mercado. Vite es muy rápido y simple. TanStack Query simplifica mucho la gestión de datos. |
-| **Backend**      | **FastAPI (Python 3.12+)**                    | NestJS (TypeScript)                        | FastAPI es **mucho más simple**, rápido de desarrollar, tiene documentación automática (Swagger) y excelente rendimiento. Ideal para proyectos académicos y APIs modernas. NestJS ofrece más estructura pero aumenta la complejidad. |
-| **ORM / DB Layer** | **SQLAlchemy 2.0 + Alembic** (con async support) | Tortoise ORM o Prisma (si vas full TypeScript) | SQLAlchemy es el estándar más maduro y potente para Python. Alembic maneja migraciones muy bien. Para proyectos simples también puedes usar **SQLModel** (de tiangolo, creador de FastAPI) → aún más simple. |
-| **Base de Datos** | **PostgreSQL 16/17 (Docker)**                 | ← igual                                    | Mejor relación rendimiento / features / ecosistema. Excelente con Docker. |
-| **Testing**       | **Pytest + HTTPX** (unitarias + integración) + **Playwright** (E2E opcional) | Vitest + Supertest (si usas NestJS)       | Pytest es muy simple y potente. Enfocarte solo en **unitarias** como dijiste es una buena decisión para no complicar el proyecto. |
-| **DevOps / Infra**| **Docker + Docker Compose + GitHub Actions** | ← igual                                    | Estándar actual. Muy simple de configurar con `docker-compose.yml`. |
+| Capa | Tecnología | Por qué |
+|------|------------|---------|
+| **Frontend** | React 19 + TypeScript + Vite + Tailwind CSS 4 + TanStack Query + React Router | Es lo que ya tenía la entrega del front |
+| **Backend** | FastAPI (Python 3.12) | Swagger automático, validación con Pydantic y lógica de negocio en Python puro |
+| **Base de datos** | PostgreSQL 16 con SQLModel (SQLAlchemy 2) y Alembic | La base hace cumplir las reglas (restricciones `UNIQUE` y `CHECK`) y migra con Alembic |
+| **Testing** | pytest + httpx, con cobertura mínima del 70 % | Los tests corren contra el mismo PostgreSQL que el sistema real |
+| **Dependencias** | uv (back) y npm (front), con `uv.lock` y `package-lock.json` | Todos instalamos exactamente las mismas versiones |
+| **DevOps** | Docker Compose y GitHub Actions | `docker compose up --build` levanta todo; el CI corre ruff, Alembic, pytest, lint y build |
 
-### Por qué elegimos este stack
+El detalle de por qué elegimos este stack y qué trade-offs aceptamos está en [`adr/ADR-001-stack.md`](adr/ADR-001-stack.md).
 
-- **Alta empleabilidad**: React y PostgreSQL son de las tecnologías más solicitadas en 2026.
-- **Simplicidad y velocidad de desarrollo**: FastAPI + SQLModel permite crear APIs completas con muy poco código.
-- **Moderno pero maduro**: Evitamos tecnologías demasiado experimentales.
-- **Full Docker**: Todo el entorno se levanta con un solo comando (`docker compose up`).
-
-**¿Quieres cambiar algo?**  
-El stack es flexible. Si prefieres **full TypeScript** (React + NestJS + Prisma), también es una excelente opción (más demandada en algunas empresas, pero más verbose).
-> El stack es sugerido. Si el equipo quiere otra tecnología, debe presentar un **RFC aprobado antes de la semana 4**.
+> El stack lo sugiere la cátedra. Si el equipo quiere otra tecnología, debe presentar un **RFC aprobado antes de la semana 4**.
 
 
 ---
-
-## Canales de Ayuda
-
-| Canal | Para qué usarlo |
-|-------|----------------|
-| Correo `#postgrado-general` | Dudas generales, anuncios del docente |
-| Correo `#[nombre-equipo]` | Comunicación interna del equipo |
-| Github Discussion `#[nombre-equipo]` | Comunicación interna del equipo |
-| **Issues de GitHub** | Bugs, tareas técnicas, dudas de implementación |
-| **Clínica de Código** (martes semanas 20hs, aula) | Traé código roto o decisiones difíciles |
-
-
----
-
 *Proyecto académico · Cátedra Desarrollo de Software · UTN FRLP · 2026*

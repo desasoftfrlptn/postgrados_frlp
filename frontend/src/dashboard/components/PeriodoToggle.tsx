@@ -1,0 +1,58 @@
+/* ═══════════════════════════════════════════════════════════════
+   PeriodoToggle.tsx — INTERRUPTOR DE PERÍODO DE INSCRIPCIÓN
+   ───────────────────────────────────────────────────────────────
+   PARA EXPONER:
+   Permite a Conducción abrir o cerrar la inscripción con un
+   click. Hoy eso se avisa por mail o se saca la publicación del
+   sitio; acá es un estado del sistema.
+
+   Detalle de ACCESIBILIDAD que suma puntos: usamos role="switch"
+   y aria-checked para que un lector de pantalla lo anuncie como
+   un interruptor y diga si está encendido o apagado.
+   ═══════════════════════════════════════════════════════════════ */
+
+type Props = {
+  abierto: boolean
+  onToggle: () => void
+  deshabilitado?: boolean // mientras se guarda el cambio
+}
+
+// Interruptor del período de inscripción.
+// El color y el texto salen del estado: no se tocan clases a mano.
+export default function PeriodoToggle({ abierto, onToggle, deshabilitado = false }: Props) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] text-muted whitespace-nowrap">
+        Período de inscripción
+      </span>
+
+      <button
+        onClick={onToggle}
+        disabled={deshabilitado}
+        role="switch"
+        aria-checked={abierto}
+        aria-label="Alternar período de inscripción"
+        className={
+          'relative w-8 h-[18px] rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ' +
+          (abierto ? 'bg-ok' : 'bg-line-strong')
+        }
+      >
+        <span
+          className={
+            'absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-all ' +
+            (abierto ? 'left-[16px]' : 'left-[2px]')
+          }
+        />
+      </button>
+
+      <span
+        className={
+          'text-[11px] font-medium whitespace-nowrap ' +
+          (abierto ? 'text-ok' : 'text-muted')
+        }
+      >
+        {abierto ? 'Abierto' : 'Cerrado'}
+      </span>
+    </div>
+  )
+}
