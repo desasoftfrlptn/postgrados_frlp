@@ -13,6 +13,10 @@ class LegajoNoEncontrado(GraduacionError):
     """El legajo solicitado no existe."""
 
 
+class TrabajoFinalNoEncontrado(GraduacionError):
+    """El legajo no tiene un trabajo final registrado."""
+
+
 class TrabajoFinalDuplicado(GraduacionError):
     """El legajo ya tiene un trabajo final registrado."""
 

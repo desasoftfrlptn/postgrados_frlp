@@ -53,7 +53,7 @@ def escenario(monkeypatch):
     app.dependency_overrides.update(anteriores)
 
 
-def solicitar(escenario, *, token=True, datos=None, identificador=None):
+def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="POST"):
     """Envía una solicitud HTTP a la interfaz ASGI sin cliente externo."""
     app, _, _, legajo_id, credencial, cuerpo = escenario
 
@@ -65,7 +65,7 @@ def solicitar(escenario, *, token=True, datos=None, identificador=None):
             valor = credencial if token is True else token
             headers.append((b"authorization", f"Bearer {valor}".encode()))
         scope = dict(type="http", asgi={"version": "3.0"}, http_version="1.1",
-                     method="POST", scheme="http", path=f"/api/v1/legajos/{identificador or legajo_id}/trabajo-final",
+                     method=metodo, scheme="http", path=f"/api/v1/legajos/{identificador or legajo_id}/trabajo-final",
                      query_string=b"", root_path="", headers=headers,
                      client=("127.0.0.1", 1234), server=("pruebas", 80))
 
@@ -178,4 +178,69 @@ def test_openapi(escenario):
     assert operacion["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/CrearTrabajoFinalRequest")
     assert operacion["responses"]["201"]["content"]["application/json"]["schema"]["$ref"].endswith("/TrabajoFinalResponse")
     assert {"401", "403", "404", "409", "422"} <= operacion["responses"].keys()
+    assert operacion["security"] == [{"HTTPBearer": []}]
+
+
+@pytest.mark.parametrize("rol", ["cpr", "coordinador"])
+def test_consulta_exitosa(escenario, rol):
+    """Devuelve 200 y el formato completo sin ejecutar escrituras."""
+    from src.seguimiento_graduacion.infrastructure.orm_models import TrabajoFinal
+
+    _, session, usuario, legajo_id, _, datos = escenario
+    usuario.rol = rol
+    trabajo_id = uuid4()
+    fecha = datetime(2026, 11, 9, 12, tzinfo=timezone.utc)
+    trabajo = TrabajoFinal(**datos, id=trabajo_id, legajo_id=legajo_id,
+                           creado_por="autor@example.com", created_at=fecha)
+    session.execute.return_value.scalar_one_or_none.return_value = trabajo
+    estado, respuesta = solicitar(escenario, metodo="GET")
+    assert estado == 200
+    assert respuesta == datos | dict(id=str(trabajo_id), legajo_id=str(legajo_id),
+                                    creado_por="autor@example.com", created_at="2026-11-09T12:00:00Z",
+                                    codirector=None)
+    session.add.assert_not_called()
+    session.flush.assert_not_awaited()
+    session.commit.assert_not_awaited()
+
+
+def test_consulta_legajo_inexistente(escenario):
+    """Distingue un legajo inexistente y no consulta su trabajo."""
+    session = escenario[1]
+    session.get.side_effect = [escenario[2], None]
+    assert solicitar(escenario, metodo="GET") == (404, {"detail": "El legajo indicado no existe"})
+    session.execute.assert_not_awaited()
+
+
+def test_consulta_trabajo_inexistente(escenario):
+    """Devuelve 404, en lugar del null que utiliza el simulador del frontend."""
+    assert solicitar(escenario, metodo="GET") == (
+        404, {"detail": "El legajo no tiene un trabajo final registrado"}
+    )
+
+
+@pytest.mark.parametrize("token", [False, "token-invalido"])
+def test_consulta_requiere_autenticacion(escenario, token):
+    """La consulta también exige un token válido."""
+    assert solicitar(escenario, metodo="GET", token=token)[0] == 401
+    escenario[1].execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("rol", ["admin", "docente", "estudiante"])
+def test_consulta_denegada_a_otros_roles(escenario, rol):
+    """Impide consultar a roles sin permiso antes de buscar el trabajo."""
+    escenario[2].rol = rol
+    assert solicitar(escenario, metodo="GET")[0] == 403
+    escenario[1].execute.assert_not_awaited()
+
+
+def test_consulta_uuid_invalido(escenario):
+    """Valida el identificador de la ruta antes de consultar."""
+    assert solicitar(escenario, metodo="GET", identificador="invalido")[0] == 422
+
+
+def test_consulta_openapi(escenario):
+    """Documenta respuesta, errores y autenticación del GET en la aplicación."""
+    operacion = escenario[0].openapi()["paths"]["/api/v1/legajos/{id}/trabajo-final"]["get"]
+    assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/TrabajoFinalResponse")
+    assert {"401", "403", "404", "422"} <= operacion["responses"].keys()
     assert operacion["security"] == [{"HTTPBearer": []}]
