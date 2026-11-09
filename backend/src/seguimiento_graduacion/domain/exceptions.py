@@ -5,6 +5,10 @@ class GraduacionError(Exception):
     """Error base del módulo."""
 
 
+class ActualizacionInvalida(GraduacionError):
+    """Se intentó modificar un campo protegido o borrar un dato obligatorio."""
+
+
 class AccesoDenegado(GraduacionError):
     """El responsable no tiene permiso para registrar el trabajo."""
 

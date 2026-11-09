@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CrearTrabajoFinalRequest(BaseModel):
@@ -29,3 +29,24 @@ class TrabajoFinalResponse(CrearTrabajoFinalRequest):
     legajo_id: UUID
     creado_por: str
     created_at: datetime
+
+
+class ActualizarTrabajoFinalRequest(BaseModel):
+    """Omitir conserva el valor; solo codirector admite null explícito."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    tipo: Literal["TFI", "Maestria", "Doctorado"] | None = None
+    titulo: str | None = Field(default=None, min_length=1, max_length=300)
+    director: str | None = Field(default=None, min_length=1, max_length=150)
+    codirector: str | None = Field(default=None, min_length=1, max_length=150)
+    fecha_cpr: date | None = None
+    numero_resolucion: str | None = Field(default=None, min_length=1, max_length=50)
+
+    @field_validator("tipo", "titulo", "director", "fecha_cpr", "numero_resolucion")
+    @classmethod
+    def rechazar_null(cls, valor):
+        """Se ejecuta para valores enviados, sin validar los omitidos por defecto."""
+        if valor is None:
+            raise ValueError("El campo no admite null")
+        return valor

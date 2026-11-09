@@ -7,18 +7,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.seguimiento_graduacion.application.registrar_trabajo_final import RegistrarTrabajoFinal
 from src.seguimiento_graduacion.application.consultar_trabajo_final import ConsultarTrabajoFinal
+from src.seguimiento_graduacion.application.modificar_trabajo_final import ModificarTrabajoFinal
 from src.seguimiento_graduacion.domain.exceptions import (
     AccesoDenegado, IntegridadTrabajoFinal, LegajoNoEncontrado, TrabajoFinalDuplicado,
     TrabajoFinalNoEncontrado,
+    ActualizacionInvalida,
 )
 from src.seguimiento_graduacion.domain.repository import DatosTrabajoFinal
 from src.seguimiento_graduacion.infrastructure.pg_repository import TrabajoFinalRepository
-from src.seguimiento_graduacion.presentation.schemas import CrearTrabajoFinalRequest, TrabajoFinalResponse
-from src.shared.auth.dependencies import require_role
+from src.seguimiento_graduacion.presentation.schemas import CrearTrabajoFinalRequest, TrabajoFinalResponse, ActualizarTrabajoFinalRequest
+from src.shared.auth.dependencies import require_role, get_current_user
 from src.shared.auth.orm_models import Usuario
 from src.shared.database.session import get_db
 
-router = APIRouter(prefix="/legajos", tags=["Seguimiento de graduación"])
+router = APIRouter(tags=["Seguimiento de graduación"])
 
 
 async def obtener_consultar_trabajo_final(
@@ -29,7 +31,7 @@ async def obtener_consultar_trabajo_final(
 
 
 @router.get(
-    "/{id}/trabajo-final",
+    "/legajos/{id}/trabajo-final",
     response_model=TrabajoFinalResponse,
     responses={
         401: {"description": "Sesión inválida o vencida"},
@@ -59,7 +61,7 @@ async def obtener_registrar_trabajo_final(
 
 
 @router.post(
-    "/{id}/trabajo-final",
+    "/legajos/{id}/trabajo-final",
     response_model=TrabajoFinalResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
@@ -92,3 +94,38 @@ async def registrar_trabajo_final(
             if isinstance(error, TrabajoFinalDuplicado)
             else "No se pudo registrar el trabajo final por un conflicto de integridad",
         ) from error
+
+
+async def obtener_modificar_trabajo_final(
+    db: AsyncSession = Depends(get_db),
+) -> ModificarTrabajoFinal:
+    """Reutiliza la sesión compartida para la operación completa."""
+    return ModificarTrabajoFinal(TrabajoFinalRepository(db))
+
+
+@router.patch(
+    "/trabajos-finales/{id}", response_model=TrabajoFinalResponse,
+    responses={401: {"description": "Sesión inválida o vencida"},
+               403: {"description": "Se requiere rol CPR"},
+               404: {"description": "Trabajo final inexistente"},
+               409: {"description": "Conflicto de integridad"}},
+)
+async def modificar_trabajo_final(
+    id: UUID, datos: ActualizarTrabajoFinalRequest,
+    usuario: Usuario = Depends(get_current_user),
+    caso_de_uso: ModificarTrabajoFinal = Depends(obtener_modificar_trabajo_final),
+):
+    """La autorización de CPR se realiza en el caso de uso y registra el rechazo."""
+    try:
+        return await caso_de_uso.ejecutar(
+            id, datos.model_dump(exclude_unset=True),
+            usuario_id=usuario.id, usuario_rol=usuario.rol,
+        )
+    except AccesoDenegado as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except TrabajoFinalNoEncontrado as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ActualizacionInvalida as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except (IntegridadTrabajoFinal, TrabajoFinalDuplicado) as error:
+        raise HTTPException(status_code=409, detail="No se pudo modificar el trabajo final por un conflicto de integridad") from error

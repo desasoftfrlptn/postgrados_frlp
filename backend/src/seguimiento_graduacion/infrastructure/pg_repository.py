@@ -24,6 +24,19 @@ class TrabajoFinalRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
+    async def obtener_por_id(self, trabajo_id: UUID) -> TrabajoFinal | None:
+        """Busca el trabajo por su propia clave primaria."""
+        return await self.session.get(TrabajoFinal, trabajo_id)
+
+    async def actualizar(self, trabajo: TrabajoFinal, cambios: dict) -> TrabajoFinal:
+        """Aplica los cambios autorizados y envía el UPDATE sin confirmar."""
+        for campo, valor in cambios.items():
+            setattr(trabajo, campo, valor)
+        try:
+            return await self.guardar(trabajo)
+        except IntegrityError as exc:
+            raise self._traducir_integridad(exc) from exc
+
     async def obtener_legajo(self, legajo_id: UUID) -> Legajo | None:
         """Busca un legajo por su clave primaria; devuelve None si no existe."""
         return await self.session.get(Legajo, legajo_id)

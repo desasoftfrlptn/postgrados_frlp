@@ -183,3 +183,27 @@ def test_confirmar_y_revertir_delegan_en_sesion(componentes):
     session.commit.assert_awaited_once()
     asyncio.run(repo.revertir())
     session.rollback.assert_awaited_once()
+
+
+@pytest.mark.parametrize("existe", [True, False])
+def test_obtener_trabajo_por_id(componentes, existe):
+    """Busca por el id del trabajo, no por el del legajo."""
+    repo, session, _, TrabajoFinal = componentes
+    trabajo_id = uuid4()
+    esperado = TrabajoFinal(id=trabajo_id) if existe else None
+    session.get.return_value = esperado
+    assert asyncio.run(repo.obtener_por_id(trabajo_id)) is esperado
+    session.get.assert_awaited_once_with(TrabajoFinal, trabajo_id)
+
+
+def test_actualizar_preserva_otros_campos(componentes):
+    """Aplica un cambio parcial al objeto existente sin confirmar por su cuenta."""
+    repo, session, _, TrabajoFinal = componentes
+    trabajo = TrabajoFinal(id=uuid4(), titulo="Anterior", director="Ana", creado_por="autor@example.com")
+    assert asyncio.run(repo.actualizar(trabajo, {"titulo": "Nuevo", "codirector": None})) is trabajo
+    assert trabajo.titulo == "Nuevo"
+    assert trabajo.codirector is None
+    assert trabajo.director == "Ana"
+    assert trabajo.creado_por == "autor@example.com"
+    session.flush.assert_awaited_once()
+    session.commit.assert_not_awaited()

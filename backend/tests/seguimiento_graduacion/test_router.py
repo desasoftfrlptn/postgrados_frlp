@@ -65,7 +65,9 @@ def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="
             valor = credencial if token is True else token
             headers.append((b"authorization", f"Bearer {valor}".encode()))
         scope = dict(type="http", asgi={"version": "3.0"}, http_version="1.1",
-                     method=metodo, scheme="http", path=f"/api/v1/legajos/{identificador or legajo_id}/trabajo-final",
+                     method=metodo, scheme="http",
+                     path=(f"/api/v1/trabajos-finales/{identificador or legajo_id}" if metodo == "PATCH"
+                           else f"/api/v1/legajos/{identificador or legajo_id}/trabajo-final"),
                      query_string=b"", root_path="", headers=headers,
                      client=("127.0.0.1", 1234), server=("pruebas", 80))
 
@@ -243,4 +245,101 @@ def test_consulta_openapi(escenario):
     operacion = escenario[0].openapi()["paths"]["/api/v1/legajos/{id}/trabajo-final"]["get"]
     assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/TrabajoFinalResponse")
     assert {"401", "403", "404", "422"} <= operacion["responses"].keys()
+    assert operacion["security"] == [{"HTTPBearer": []}]
+
+
+@pytest.fixture
+def trabajo_para_patch(escenario):
+    """Entrega un modelo existente y conserva el usuario de autenticación."""
+    from src.seguimiento_graduacion.infrastructure.orm_models import TrabajoFinal
+    from src.shared.auth.orm_models import Usuario
+
+    trabajo = TrabajoFinal(**escenario[5], id=uuid4(), legajo_id=escenario[3],
+                           codirector="Juan", creado_por="autor@example.com",
+                           created_at=datetime(2026, 11, 9, tzinfo=timezone.utc))
+
+    async def obtener(modelo, identificador):
+        return escenario[2] if modelo is Usuario else trabajo
+
+    escenario[1].get.side_effect = obtener
+    # Un UPDATE conserva los valores generados durante el INSERT original.
+    escenario[1].flush.side_effect = None
+    return trabajo
+
+
+@pytest.mark.parametrize("cambios", [{"titulo": "Nuevo título"}, {"codirector": None},
+                                   {"director": "María", "numero_resolucion": "456/26"}, {}])
+def test_patch_exitoso(escenario, trabajo_para_patch, cambios):
+    """Actualiza solo lo enviado y conserva identidad, creador y fecha original."""
+    trabajo = trabajo_para_patch
+    estado, respuesta = solicitar(escenario, metodo="PATCH", identificador=str(trabajo.id), datos=cambios)
+    assert estado == 200
+    assert respuesta["id"] == str(trabajo.id)
+    assert respuesta["legajo_id"] == str(escenario[3])
+    assert respuesta["creado_por"] == "autor@example.com"
+    assert respuesta["created_at"] == "2026-11-09T00:00:00Z"
+    for campo, valor in cambios.items():
+        assert respuesta[campo] == valor
+    assert respuesta["codirector"] == cambios.get("codirector", "Juan")
+    if cambios:
+        escenario[1].commit.assert_awaited_once()
+    else:
+        escenario[1].commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("datos", [{"titulo": None}, {"director": None}, {"tipo": None},
+                                  {"fecha_cpr": None}, {"numero_resolucion": None},
+                                  {"titulo": " "}, {"titulo": "a" * 301}, {"tipo": "Otro"},
+                                  {"fecha_cpr": "imposible"}, {"id": "otro"},
+                                  {"creado_por": "otro"}, {"created_at": "2026-01-01"},
+                                  {"legajo_id": "otro"}, {"codirector": ""}])
+def test_patch_datos_invalidos(escenario, datos):
+    """Rechaza null obligatorio, formatos inválidos y campos protegidos."""
+    assert solicitar(escenario, metodo="PATCH", datos=datos)[0] == 422
+    escenario[1].add.assert_not_called()
+    escenario[1].commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("token", [False, "invalido"])
+def test_patch_autenticacion(escenario, token):
+    """Exige autenticación válida para modificar."""
+    assert solicitar(escenario, metodo="PATCH", datos={}, token=token)[0] == 401
+
+
+@pytest.mark.parametrize("rol", ["coordinador", "admin", "docente", "estudiante"])
+def test_patch_permiso_y_evento(escenario, rol, caplog):
+    """Registra el rechazo autenticado sin exponer el nuevo título."""
+    escenario[2].rol = rol
+    with caplog.at_level("INFO", logger="seguimiento_graduacion.auditoria"):
+        assert solicitar(escenario, metodo="PATCH", datos={"titulo": "VALOR_PRIVADO"})[0] == 403
+    evento = caplog.records[-1]
+    assert evento.resultado == "denegado"
+    assert evento.usuario_id == str(escenario[2].id)
+    assert "VALOR_PRIVADO" not in str(evento.__dict__)
+    escenario[1].add.assert_not_called()
+
+
+def test_patch_inexistente(escenario):
+    """No guarda cuando no existe el trabajo solicitado."""
+    escenario[1].get.side_effect = [escenario[2], None]
+    assert solicitar(escenario, metodo="PATCH", datos={"titulo": "Nuevo"})[0] == 404
+    escenario[1].rollback.assert_awaited_once()
+
+
+def test_patch_integridad_y_rollback(escenario, trabajo_para_patch):
+    """Devuelve conflicto y revierte sin mostrar detalles SQL."""
+    escenario[1].flush.side_effect = IntegrityError("SQL_PRIVADO", {}, Exception("ERROR_PRIVADO"))
+    estado, respuesta = solicitar(escenario, metodo="PATCH", datos={"titulo": "Nuevo"})
+    assert estado == 409
+    assert "PRIVADO" not in str(respuesta)
+    escenario[1].rollback.assert_awaited_once()
+    escenario[1].commit.assert_not_awaited()
+
+
+def test_patch_openapi(escenario):
+    """La ruta PATCH publica sus modelos y autenticación."""
+    operacion = escenario[0].openapi()["paths"]["/api/v1/trabajos-finales/{id}"]["patch"]
+    assert operacion["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/ActualizarTrabajoFinalRequest")
+    assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/TrabajoFinalResponse")
+    assert {"401", "403", "404", "409", "422"} <= operacion["responses"].keys()
     assert operacion["security"] == [{"HTTPBearer": []}]
