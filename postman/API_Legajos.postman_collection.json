@@ -1,0 +1,1437 @@
+{
+  "info": {
+    "name": "API Legajos — colección completa de pruebas",
+    "description": "Colección generada a partir de los controladores y schemas del backend entregado.\n\nIncluye las operaciones de los 16 endpoints definidos (la creación de enlace tiene dos ejemplos de uso), scripts de aserción, captura de IDs/tokens desde respuestas y una carpeta de pruebas negativas/autorización.\n\nCONFIGURACIÓN:\n- base_url: URL del backend (por defecto http://localhost:8000)\n- api_prefix: /api/v1\n- cohorte_id: UUID de cohorte existente y con inscripción abierta\n- coordinator_token: variable informativa para integrar el mecanismo institucional. El backend mostrado NO valida Bearer por sí mismo: requiere que el middleware preexistente establezca request.state.usuario.\n- Para seguimiento: usar un legajo existente.\n\nPostman mantiene las cookies HttpOnly automáticamente por host: acceso_aspirante y sesion_estudiante.\nLos tests negativos están separados para ejecutarlos intencionalmente; varios esperan 401/403/404/409/422.\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Accesos temporales",
+      "description": "Enlaces INSCRIPCION y SEGUIMIENTO; cookie temporal acceso_aspirante.",
+      "item": [
+        {
+          "name": "Crear enlace de inscripción",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinator_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere rol COORDINADOR. Crea un enlace general para una cohorte. La respuesta incluye url; el script extrae el token y guarda enlace_id, url_inscripcion y token_acceso.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"INSCRIPCION\",\n  \"cohorte_id\": \"{{cohorte_id}}\",\n  \"periodo_id\": null,\n  \"legajo_id\": null,\n  \"duracion_dias\": 7,\n  \"usos_maximos\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201: enlace creado\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Respuesta contiene id, tipo, expiración y URL\", () => {",
+                  "  pm.expect(d).to.have.property(\"id\"); pm.expect(d.tipo).to.eql(\"INSCRIPCION\");",
+                  "  pm.expect(d).to.have.property(\"expira_at\"); pm.expect(d.url).to.be.a(\"string\");",
+                  "});",
+                  "pm.collectionVariables.set(\"enlace_inscripcion_id\", d.id);",
+                  "pm.collectionVariables.set(\"enlace_id\", d.id);",
+                  "pm.collectionVariables.set(\"url_inscripcion\", d.url);",
+                  "const t = new URL(d.url).searchParams.get(\"token\"); if (t) pm.collectionVariables.set(\"token_inscripcion\", t).set(\"token_acceso\", t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear enlace de seguimiento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinator_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere rol COORDINADOR. Crea un enlace individual de seguimiento para un legajo existente. La respuesta incluye url; el script extrae token_acceso y enlace_id. Intercambiar este token y luego ejecutar GET /accesos/legajo.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"SEGUIMIENTO\",\n  \"cohorte_id\": null,\n  \"periodo_id\": null,\n  \"legajo_id\": \"{{legajo_id}}\",\n  \"duracion_dias\": 7,\n  \"usos_maximos\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201: enlace creado\", () => pm.response.to.have.status(201));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Respuesta de seguimiento\", () => { pm.expect(d.tipo).to.eql(\"SEGUIMIENTO\"); pm.expect(d.id).to.be.ok; });",
+                  "pm.collectionVariables.set(\"enlace_seguimiento_id\", d.id);",
+                  "pm.collectionVariables.set(\"enlace_id\", d.id);",
+                  "pm.collectionVariables.set(\"url_seguimiento\", d.url);",
+                  "const t = new URL(d.url).searchParams.get(\"token\"); if (t) pm.collectionVariables.set(\"token_seguimiento\", t).set(\"token_acceso\", t);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validar enlace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Público. Comprueba si el token existe, no venció, no fue revocado y conserva usos disponibles. No consume un uso.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/validar"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{token_acceso}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: validación procesada\", () => pm.response.to.have.status(200));",
+                  "const d=pm.response.json(); pm.test(\"Incluye valido y tipo\",()=>{pm.expect(d).to.have.property(\"valido\");pm.expect(d).to.have.property(\"tipo\");});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Intercambiar enlace por sesión temporal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Público. Intercambia el token por la cookie HttpOnly acceso_aspirante. Postman debe conservar automáticamente la cookie para las siguientes solicitudes del mismo host.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/intercambiar"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{token_acceso}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: token intercambiado\",()=>pm.response.to.have.status(200));",
+                  "const d=pm.response.json(); pm.test(\"Tipo de acceso esperado\",()=>pm.expect(d.tipo).to.be.oneOf([\"INSCRIPCION\",\"SEGUIMIENTO\"]));",
+                  "pm.collectionVariables.set(\"tipo_acceso_actual\",d.tipo);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar sesión de acceso",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Requiere la cookie acceso_aspirante obtenida al intercambiar el enlace. Devuelve el tipo de enlace vigente.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/sesion"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: sesión temporal vigente\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"Tipo de sesión\",()=>pm.expect(pm.response.json().tipo).to.be.oneOf([\"INSCRIPCION\",\"SEGUIMIENTO\"]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar legajo mediante enlace de seguimiento",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Requiere una cookie acceso_aspirante originada en un enlace SEGUIMIENTO. Devuelve exclusivamente el legajo asociado. Para probarlo, crear primero un enlace SEGUIMIENTO y volver a ejecutar Validar/Intercambiar.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/legajo"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: seguimiento autorizado\",()=>pm.response.to.have.status(200));",
+                  "const d=pm.response.json(); pm.test(\"El recurso contiene identificador\",()=>pm.expect(d.id).to.be.ok);",
+                  "pm.collectionVariables.set(\"legajo_id\",d.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cerrar sesión temporal",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "description": "Revoca la sesión temporal actual y elimina la cookie acceso_aspirante.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/sesion"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204: sesión cerrada\",()=>pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revocar enlace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinator_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere rol COORDINADOR. Revoca el enlace y las sesiones temporales derivadas de él.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/{{enlace_seguimiento_id}}/revocar"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: enlace revocado\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"Confirma revocación\",()=>pm.expect(pm.response.json().revocado).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Inscripción y legajos",
+      "description": "Alta mediante enlace de inscripción, gestión coordinador, detalle y exportación.",
+      "item": [
+        {
+          "name": "Crear legajo (con enlace INSCRIPCION)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere cookie acceso_aspirante válida de tipo INSCRIPCION. cohorte_id del body debe coincidir con la cohorte autorizada por el enlace. Estado inicial gestionado por backend. El script guarda legajo_id.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cohorte_id\": \"{{cohorte_id}}\",\n  \"dni\": \"30123456\",\n  \"apellido\": \"Pérez\",\n  \"nombre\": \"María\",\n  \"email\": \"maria.perez@example.com\",\n  \"email_alternativo\": null,\n  \"telefono_movil\": \"+5492215551234\",\n  \"domicilio_direccion\": \"Calle 123 456\",\n  \"domicilio_ciudad\": \"La Plata\",\n  \"domicilio_provincia\": \"Buenos Aires\",\n  \"domicilio_pais\": \"Argentina\",\n  \"titulo_grado\": \"Ingeniería en Sistemas de Información\",\n  \"titulo_posgrado\": null,\n  \"tipo_carrera\": \"Maestria\",\n  \"carrera_elegida\": \"Maestría en Sistemas de Información\",\n  \"motivacion\": \"Deseo profundizar mis conocimientos profesionales y académicos para desarrollar investigación aplicada en sistemas de información.\",\n  \"solicita_beca\": false,\n  \"tipo_beca\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201: legajo creado\",()=>pm.response.to.have.status(201));",
+                  "const d=pm.response.json(); pm.test(\"Respuesta compatible con LegajoResponse\",()=>{pm.expect(d.id).to.be.ok;pm.expect(d.estado).to.be.a(\"string\");pm.expect(d.cohorte_id).to.be.ok;});",
+                  "pm.collectionVariables.set(\"legajo_id\",d.id); pm.collectionVariables.set(\"email_estudiante\",d.email);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar legajos (paginado y filtrado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinator_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere rol COORDINADOR. Parámetros opcionales: page, limit, estado, cohorte_id, tipo_carrera, solicita_beca, dni, apellido.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos",
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página, mínimo 1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Registros por página, máximo 100"
+                },
+                {
+                  "key": "estado",
+                  "value": "",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "cohorte_id",
+                  "value": "{{cohorte_id}}",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "tipo_carrera",
+                  "value": "",
+                  "description": "Especializacion, Maestria o Doctorado"
+                },
+                {
+                  "key": "solicita_beca",
+                  "value": "",
+                  "description": "true o false"
+                },
+                {
+                  "key": "dni",
+                  "value": "",
+                  "description": "Coincidencia por DNI"
+                },
+                {
+                  "key": "apellido",
+                  "value": "",
+                  "description": "Mínimo 3 caracteres"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: listado\",()=>pm.response.to.have.status(200));",
+                  "const d=pm.response.json(); pm.test(\"Paginación completa\",()=>{[\"data\",\"page\",\"limit\",\"total\",\"pages\"].forEach(k=>pm.expect(d).to.have.property(k));pm.expect(d.data).to.be.an(\"array\");});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener detalle de legajo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Requiere autenticación: COORDINADOR o estudiante titular. Un enlace SEGUIMIENTO se consulta mediante GET /accesos/legajo.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/{{legajo_id}}"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: detalle\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"ID del detalle coincide\",()=>pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"legajo_id\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado de legajo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinator_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere rol COORDINADOR. Respetar las transiciones permitidas por el workflow. Al alcanzar ACTIVO se crea/reutiliza la cuenta ESTUDIANTE; si necesita definir contraseña, la respuesta incluye url_activacion. El script extrae el token de esa URL.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/{{legajo_id}}/estado"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"EN_REVISION\",\n  \"comentario\": \"Inicio de revisión documental.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cambio de estado aceptado\",()=>pm.response.to.have.status(200));",
+                  "const d=pm.response.json(); if(d.url_activacion){pm.collectionVariables.set(\"url_activacion\",d.url_activacion);const t=new URL(d.url_activacion).searchParams.get(\"token\");if(t)pm.collectionVariables.set(\"token_activacion\",t);}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exportar legajos a XLSX",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{coordinator_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Requiere rol COORDINADOR. Devuelve un archivo Excel. Admite filtros: estado, cohorte_id, tipo_carrera, solicita_beca, dni y apellido.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/exportar",
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "cohorte_id",
+                  "value": "{{cohorte_id}}",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "tipo_carrera",
+                  "value": "",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "solicita_beca",
+                  "value": "",
+                  "description": "true o false"
+                },
+                {
+                  "key": "dni",
+                  "value": "",
+                  "description": "Opcional"
+                },
+                {
+                  "key": "apellido",
+                  "value": "",
+                  "description": "Opcional"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: exportación\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type XLSX\",()=>pm.expect(pm.response.headers.get(\"Content-Type\")||\"\").to.include(\"spreadsheetml.sheet\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Autenticación de estudiantes",
+      "description": "Activación de cuenta, login, consulta de identidad y logout.",
+      "item": [
+        {
+          "name": "Activar cuenta de estudiante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Público con invitación válida de un solo uso. La contraseña debe tener entre 12 y 128 caracteres. La invitación vence a los 30 minutos. El token se obtiene de url_activacion al pasar el legajo a ACTIVO.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/activar-cuenta"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{token_activacion}}\",\n  \"password\": \"{{password_estudiante}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: cuenta activada\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"Mensaje de confirmación\",()=>pm.expect(pm.response.json().mensaje).to.include(\"activada\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login de estudiante",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "description": "Público. Inicia sesión y establece cookie HttpOnly sesion_estudiante. Postman debe conservarla para /auth/me y endpoints protegidos.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/login"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email_estudiante}}\",\n  \"password\": \"{{password_estudiante}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: login\",()=>pm.response.to.have.status(200));",
+                  "const d=pm.response.json();pm.test(\"Datos de usuario\",()=>{pm.expect(d.id).to.be.ok;pm.expect(d.email).to.be.ok;pm.expect(d.rol).to.eql(\"ESTUDIANTE\");});pm.collectionVariables.set(\"usuario_id\",d.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar usuario autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Requiere cookie sesion_estudiante válida.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/me"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: sesión autenticada\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"Rol estudiante\",()=>pm.expect(pm.response.json().rol).to.eql(\"ESTUDIANTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout de estudiante",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "Revoca la sesión de estudiante y elimina la cookie sesion_estudiante.",
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/logout"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204: logout\",()=>pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Pruebas negativas y autorización",
+      "description": "Ejecutar individualmente o como suite separada. Algunos resultados admiten varios códigos porque la autenticación del personal se resuelve en middleware externo y puede ejecutarse antes que la validación del body.",
+      "item": [
+        {
+          "name": "Validar token inválido (no debe ser válido)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/validar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos",
+                "validar"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-invalido-de-prueba-1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200: validación negativa\",()=>pm.response.to.have.status(200));",
+                  "pm.test(\"Token inválido\",()=>{pm.expect(pm.response.json().valido).to.eql(false);pm.expect(pm.response.json().tipo).to.eql(null);});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Intercambiar token inválido",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/intercambiar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos",
+                "intercambiar"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-invalido-de-prueba-1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401 para token inválido\",()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar sesión temporal sin cookie",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/sesion",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos",
+                "sesion"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401 sin sesión\",()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar seguimiento sin sesión válida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/legajo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos",
+                "legajo"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403 sin enlace de seguimiento\",()=>pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear enlace sin rol coordinador",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"INSCRIPCION\",\n  \"cohorte_id\": \"{{cohorte_id}}\",\n  \"periodo_id\": null,\n  \"legajo_id\": null,\n  \"duracion_dias\": 7,\n  \"usos_maximos\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401/403 sin identidad coordinador\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear enlace inscripción sin cohorte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"INSCRIPCION\",\n  \"cohorte_id\": null,\n  \"periodo_id\": null,\n  \"legajo_id\": null,\n  \"duracion_dias\": 7,\n  \"usos_maximos\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"401/403 por autenticación o 422 por regla\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear legajo sin enlace de inscripción",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cohorte_id\": \"{{cohorte_id}}\",\n  \"dni\": \"30123456\",\n  \"apellido\": \"Prueba\",\n  \"nombre\": \"Sin enlace\",\n  \"email\": \"sin.enlace@example.com\",\n  \"telefono_movil\": \"+5492215550000\",\n  \"domicilio_direccion\": \"Calle 1\",\n  \"domicilio_ciudad\": \"La Plata\",\n  \"domicilio_provincia\": \"Buenos Aires\",\n  \"domicilio_pais\": \"Argentina\",\n  \"titulo_grado\": \"Ingeniería\",\n  \"tipo_carrera\": \"Maestria\",\n  \"carrera_elegida\": \"Maestría\",\n  \"motivacion\": \"Motivación de prueba suficientemente extensa para superar el mínimo requerido por el esquema.\",\n  \"solicita_beca\": false,\n  \"tipo_beca\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401/403 sin enlace\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear legajo con DNI inválido",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cohorte_id\": \"{{cohorte_id}}\",\n  \"dni\": \"ABC\",\n  \"apellido\": \"Prueba\",\n  \"nombre\": \"DNI inválido\",\n  \"email\": \"dni.invalido@example.com\",\n  \"telefono_movil\": \"123\",\n  \"domicilio_direccion\": \"Calle 1\",\n  \"domicilio_ciudad\": \"La Plata\",\n  \"domicilio_provincia\": \"Buenos Aires\",\n  \"domicilio_pais\": \"Argentina\",\n  \"titulo_grado\": \"Ingeniería\",\n  \"tipo_carrera\": \"Maestria\",\n  \"carrera_elegida\": \"Maestría\",\n  \"motivacion\": \"Motivación de prueba suficientemente extensa para superar el mínimo requerido por el esquema.\",\n  \"solicita_beca\": false,\n  \"tipo_beca\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401/403 por falta de enlace o 422 por validación\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar legajos sin rol coordinador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos?page=1&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos?page=1&limit=20"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401/403 sin coordinación\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar legajos con page inválida",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos?page=0&limit=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos?page=0&limit=20"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401/403 o 422 según orden de dependencias\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener legajo con UUID inválido",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/no-es-un-uuid",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos",
+                "no-es-un-uuid"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401/403/422\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado sin autenticación",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/{{legajo_id}}/estado",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos",
+                "estado"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ACTIVO\",\n  \"comentario\": \"Prueba sin autenticación\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401 sin autenticación\",()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado con valor inexistente",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/{{legajo_id}}/estado",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos",
+                "estado"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ESTADO_INVENTADO\",\n  \"comentario\": \"Prueba de validación\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401/403/422\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,422]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activar cuenta con token inválido",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/activar-cuenta",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "activar-cuenta"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-activacion-invalido-1234567890\",\n  \"password\": \"ClaveSeguraDePrueba2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400 para invitación inválida\",()=>pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Activar cuenta con contraseña corta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/activar-cuenta",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "activar-cuenta"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"token-activacion-invalido-1234567890\",\n  \"password\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422 por longitud mínima\",()=>pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con credenciales incorrectas",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"no.existe@example.com\",\n  \"password\": \"ClaveIncorrecta2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401 con credenciales incorrectas\",()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar /auth/me sin sesión",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/auth/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401 sin cookie\",()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle de legajo inexistente",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/legajos/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "legajos",
+                "00000000-0000-4000-8000-000000000000"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 si la identidad llega autenticada; 401 si no\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,404]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revocar enlace inexistente (requiere coordinador)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/accesos/00000000-0000-4000-8000-000000000000/revocar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "accesos",
+                "00000000-0000-4000-8000-000000000000",
+                "revocar"
+              ],
+              "variable": []
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 si autorizado; 401/403 si no\",()=>pm.expect(pm.response.code).to.be.oneOf([401,403,404]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "legajo_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "enlace_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "enlace_inscripcion_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "enlace_seguimiento_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_acceso",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_inscripcion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_seguimiento",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_activacion",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "email_estudiante",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password_estudiante",
+      "value": "EstudianteDemo2026!",
+      "type": "string"
+    },
+    {
+      "key": "usuario_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "url_activacion",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
