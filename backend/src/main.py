@@ -1,12 +1,4 @@
 from fastapi import FastAPI
-
-from src.carga_academica.presentation.router import router as carga_academica_router
-from src.shared.auth.router import router as auth_router
-
-app = FastAPI(title="Posgrados FRLP")
-app.include_router(auth_router, prefix="/api/v1")
-app.include_router(carga_academica_router, prefix="/api/v1")
-from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from contextlib import asynccontextmanager
@@ -14,6 +6,7 @@ from contextlib import asynccontextmanager
 from src.inscripcion.presentation.controller import router as inscripcion_router
 from src.acceso.controllers.controller import router as acceso_router
 from src.shared.auth.router import router as auth_router
+from src.carga_academica.presentation.router import router as carga_academica_router
 
 from src.config import CORS_ORIGINS
 
@@ -36,7 +29,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"} 
 
 PREFIX="/api/v1"
-for r in (auth_router, acceso_router, inscripcion_router):
+for r in (auth_router, acceso_router, inscripcion_router, carga_academica_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:
