@@ -124,3 +124,62 @@ def test_consulta_propaga_error_de_sesion(componentes):
 
     with pytest.raises(RuntimeError, match="Fallo simulado de consulta"):
         asyncio.run(repositorio.existe_para_legajo(uuid4()))
+
+
+def test_crear_construye_modelo_con_responsable(componentes):
+    """Conserva todos los datos recibidos y la identidad del responsable."""
+    from dataclasses import asdict
+    from src.seguimiento_graduacion.domain.repository import DatosTrabajoFinal
+
+    repo, session, _, TrabajoFinal = componentes
+    datos = DatosTrabajoFinal("TFI", "Trabajo", "Ana", date(2026, 11, 9), "123", "Juan")
+    legajo_id = uuid4()
+    trabajo = asyncio.run(repo.crear(legajo_id, datos, "cpr@example.com"))
+    assert isinstance(trabajo, TrabajoFinal)
+    assert trabajo.legajo_id == legajo_id
+    assert trabajo.creado_por == "cpr@example.com"
+    for campo, valor in asdict(datos).items():
+        assert getattr(trabajo, campo) == valor
+    session.add.assert_called_once_with(trabajo)
+    session.flush.assert_awaited_once()
+    session.commit.assert_not_awaited()
+
+
+@pytest.mark.parametrize("operacion", ["crear", "confirmar"])
+@pytest.mark.parametrize(
+    "codigo,restriccion,duplicado",
+    [("23505", "trabajos_finales_legajo_id_key", True),
+     ("23505", "otra_restriccion", False),
+     ("23503", "trabajos_finales_legajo_id_fkey", False)],
+)
+def test_traduce_integridad_sin_confundir_restricciones(componentes, operacion, codigo, restriccion, duplicado):
+    """Solo el conflicto UNIQUE del legajo se informa como trabajo duplicado."""
+    from src.seguimiento_graduacion.domain.exceptions import IntegridadTrabajoFinal, TrabajoFinalDuplicado
+    from src.seguimiento_graduacion.domain.repository import DatosTrabajoFinal
+
+    repo, session, _, _ = componentes
+    detalle = Exception("Error simulado de PostgreSQL")
+    detalle.sqlstate = codigo
+    detalle.constraint_name = restriccion
+    original = Exception("Error simulado del adaptador")
+    original.__cause__ = detalle
+    error = IntegrityError("INSERT", {}, original)
+    getattr(session, "flush" if operacion == "crear" else "commit").side_effect = error
+    esperado = TrabajoFinalDuplicado if duplicado else IntegridadTrabajoFinal
+    with pytest.raises(esperado) as capturado:
+        if operacion == "crear":
+            datos = DatosTrabajoFinal("TFI", "Trabajo", "Ana", date(2026, 11, 9), "123")
+            asyncio.run(repo.crear(uuid4(), datos, "cpr@example.com"))
+        else:
+            asyncio.run(repo.confirmar())
+    assert capturado.value.__cause__ is error
+    session.rollback.assert_not_awaited()
+
+
+def test_confirmar_y_revertir_delegan_en_sesion(componentes):
+    """El caso de uso puede controlar explícitamente la transacción."""
+    repo, session, _, _ = componentes
+    asyncio.run(repo.confirmar())
+    session.commit.assert_awaited_once()
+    asyncio.run(repo.revertir())
+    session.rollback.assert_awaited_once()
