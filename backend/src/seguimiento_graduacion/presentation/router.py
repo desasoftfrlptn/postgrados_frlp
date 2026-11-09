@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.seguimiento_graduacion.application.registrar_trabajo_final import RegistrarTrabajoFinal
 from src.seguimiento_graduacion.application.consultar_trabajo_final import ConsultarTrabajoFinal
+from src.seguimiento_graduacion.application.consultar_semaforo import ConsultarSemaforo
 from src.seguimiento_graduacion.application.modificar_trabajo_final import ModificarTrabajoFinal
 from src.seguimiento_graduacion.domain.exceptions import (
     AccesoDenegado, IntegridadTrabajoFinal, LegajoNoEncontrado, TrabajoFinalDuplicado,
@@ -16,11 +17,39 @@ from src.seguimiento_graduacion.domain.exceptions import (
 from src.seguimiento_graduacion.domain.repository import DatosTrabajoFinal
 from src.seguimiento_graduacion.infrastructure.pg_repository import TrabajoFinalRepository
 from src.seguimiento_graduacion.presentation.schemas import CrearTrabajoFinalRequest, TrabajoFinalResponse, ActualizarTrabajoFinalRequest
+from src.seguimiento_graduacion.presentation.schemas import SemaforoResponse
 from src.shared.auth.dependencies import require_role, get_current_user
 from src.shared.auth.orm_models import Usuario
 from src.shared.database.session import get_db
 
 router = APIRouter(tags=["Seguimiento de graduación"])
+
+
+async def obtener_consultar_semaforo(
+    db: AsyncSession = Depends(get_db),
+) -> ConsultarSemaforo:
+    """Conecta la lectura con el repositorio existente y la sesión compartida."""
+    return ConsultarSemaforo(TrabajoFinalRepository(db))
+
+
+@router.get(
+    "/legajos/{id}/semaforo", response_model=SemaforoResponse,
+    responses={401: {"description": "Sesión inválida o vencida"},
+               403: {"description": "Se requiere rol coordinador"},
+               404: {"description": "Legajo inexistente"}},
+)
+async def consultar_semaforo(
+    id: UUID,
+    usuario: Usuario = Depends(require_role("coordinador")),
+    caso_de_uso: ConsultarSemaforo = Depends(obtener_consultar_semaforo),
+):
+    """Consulta el valor persistido sin calcularlo ni modificar el legajo."""
+    try:
+        return await caso_de_uso.ejecutar(id, usuario_rol=usuario.rol)
+    except AccesoDenegado as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except LegajoNoEncontrado as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
 
 
 async def obtener_consultar_trabajo_final(

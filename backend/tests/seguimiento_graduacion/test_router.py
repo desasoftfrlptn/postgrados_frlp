@@ -53,7 +53,7 @@ def escenario(monkeypatch):
     app.dependency_overrides.update(anteriores)
 
 
-def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="POST"):
+def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="POST", ruta=None):
     """Envía una solicitud HTTP a la interfaz ASGI sin cliente externo."""
     app, _, _, legajo_id, credencial, cuerpo = escenario
 
@@ -66,7 +66,7 @@ def solicitar(escenario, *, token=True, datos=None, identificador=None, metodo="
             headers.append((b"authorization", f"Bearer {valor}".encode()))
         scope = dict(type="http", asgi={"version": "3.0"}, http_version="1.1",
                      method=metodo, scheme="http",
-                     path=(f"/api/v1/trabajos-finales/{identificador or legajo_id}" if metodo == "PATCH"
+                     path=ruta or (f"/api/v1/trabajos-finales/{identificador or legajo_id}" if metodo == "PATCH"
                            else f"/api/v1/legajos/{identificador or legajo_id}/trabajo-final"),
                      query_string=b"", root_path="", headers=headers,
                      client=("127.0.0.1", 1234), server=("pruebas", 80))
@@ -342,4 +342,71 @@ def test_patch_openapi(escenario):
     assert operacion["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith("/ActualizarTrabajoFinalRequest")
     assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/TrabajoFinalResponse")
     assert {"401", "403", "404", "409", "422"} <= operacion["responses"].keys()
+    assert operacion["security"] == [{"HTTPBearer": []}]
+
+
+@pytest.mark.parametrize("color", ["VERDE", "AMARILLO", "ROJO"])
+@pytest.mark.parametrize("manual", [True, False])
+def test_semaforo_http_sin_escrituras(escenario, color, manual):
+    """Devuelve exactamente el dato guardado y solo consulta usuario y legajo."""
+    from src.shared.auth.orm_models import Usuario
+    from src.inscripcion.infrastructure.orm_models import Legajo
+
+    _, session, usuario, legajo_id, _, _ = escenario
+    usuario.rol = "coordinador"
+    legajo = Legajo(id=legajo_id, semaforo=color, semaforo_manual=manual)
+    anteriores = (legajo.semaforo, legajo.semaforo_manual)
+
+    async def obtener(modelo, identificador):
+        return usuario if modelo is Usuario else legajo
+
+    session.get.side_effect = obtener
+    assert solicitar(escenario, metodo="GET", ruta=f"/api/v1/legajos/{legajo_id}/semaforo") == (
+        200, {"semaforo": color, "semaforo_manual": manual}
+    )
+    session.get.assert_any_await(Legajo, legajo_id)
+    assert (legajo.semaforo, legajo.semaforo_manual) == anteriores
+    session.add.assert_not_called()
+    session.flush.assert_not_awaited()
+    session.commit.assert_not_awaited()
+    session.rollback.assert_not_awaited()
+    session.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("token", [False, "invalido"])
+def test_semaforo_requiere_autenticacion(escenario, token):
+    """La lectura requiere un token válido."""
+    assert solicitar(escenario, metodo="GET", token=token,
+                     ruta=f"/api/v1/legajos/{escenario[3]}/semaforo")[0] == 401
+
+
+@pytest.mark.parametrize("rol", ["cpr", "admin", "docente", "estudiante"])
+def test_semaforo_rechaza_otros_roles(escenario, rol):
+    """Respeta el permiso de coordinador documentado para esta ruta."""
+    escenario[2].rol = rol
+    assert solicitar(escenario, metodo="GET",
+                     ruta=f"/api/v1/legajos/{escenario[3]}/semaforo")[0] == 403
+    assert escenario[1].get.await_count == 1
+
+
+def test_semaforo_legajo_inexistente(escenario):
+    """Responde 404 en lugar de devolver un color predeterminado."""
+    escenario[2].rol = "coordinador"
+    escenario[1].get.side_effect = [escenario[2], None]
+    assert solicitar(escenario, metodo="GET", ruta=f"/api/v1/legajos/{escenario[3]}/semaforo") == (
+        404, {"detail": "El legajo indicado no existe"}
+    )
+
+
+def test_semaforo_uuid_invalido(escenario):
+    """Valida el identificador antes de consultar el legajo."""
+    escenario[2].rol = "coordinador"
+    assert solicitar(escenario, metodo="GET", ruta="/api/v1/legajos/invalido/semaforo")[0] == 422
+
+
+def test_semaforo_openapi(escenario):
+    """Documenta la respuesta persistida y la autenticación Bearer."""
+    operacion = escenario[0].openapi()["paths"]["/api/v1/legajos/{id}/semaforo"]["get"]
+    assert operacion["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/SemaforoResponse")
+    assert {"401", "403", "404", "422"} <= operacion["responses"].keys()
     assert operacion["security"] == [{"HTTPBearer": []}]

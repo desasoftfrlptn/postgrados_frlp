@@ -7,6 +7,13 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class SemaforoResponse(BaseModel):
+    """Valor almacenado del semáforo; no expresa un recálculo en tiempo real."""
+
+    semaforo: Literal["VERDE", "AMARILLO", "ROJO"]
+    semaforo_manual: bool
+
+
 class CrearTrabajoFinalRequest(BaseModel):
     """El legajo se indica en la URL y el autor se obtiene de la sesión."""
 
