@@ -35,9 +35,10 @@ export default function WelcomeScreen() {
           <Button
             icon={PenLine}
             onClick={() => console.log('Nueva inscripción')}
+          
           >
-            <Link to="/inscripcion">
-            Nueva inscripción
+            <Link to="/inscripcion" className="text-center">
+              Nueva inscripción
             </Link>
           </Button>
 

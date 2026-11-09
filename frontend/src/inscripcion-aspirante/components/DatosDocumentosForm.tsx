@@ -13,11 +13,13 @@ interface DatosDocumentosFormProps {
   onSaveDraft?: (data: DatosDocumentos) => void;
 }
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 function EstadoBadge({
   archivo,
   opcional,
 }: {
-  archivo: File | null;
+  archivo: File | undefined;
   opcional?: boolean;
 }) {
   if (archivo) {
@@ -45,11 +47,13 @@ function DocumentoRow({
   documento,
   archivo,
   onSelectFile,
+  onError,
   disabled,
 }: {
   documento: DocumentoRequerido;
   archivo: File | null;
   onSelectFile: (file: File | null) => void;
+  onError: (msg: string | null) => void;
   disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -58,9 +62,48 @@ function DocumentoRow({
     if (!disabled) inputRef.current?.click();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
-    onSelectFile(file);
+
+    if (!file) {
+      onSelectFile(null);
+      onError(null);
+      return;
+    }
+
+    if (file.type !== "application/pdf") {
+      onError(`El archivo "${file.name}" no es un PDF válido. Solo se permiten archivos PDF.`);
+      onSelectFile(null);
+      if (e.target) e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      onError(`El archivo "${file.name}" supera el límite máximo de 5MB.`);
+      onSelectFile(null);
+      if (e.target) e.target.value = "";
+      return;
+    }
+
+    const extension = file.name.split(".").pop() || "pdf";
+    const uuidName = `${crypto.randomUUID()}.${extension}`;
+    const renamedFile = new File([file], uuidName, { type: file.type });
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const checksum = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+      (renamedFile as any).checksum = checksum;
+      
+      console.log(`Archivo: ${uuidName} | SHA-256: ${checksum}`);
+    } catch (err) {
+      console.error("Error al calcular el checksum SHA-256:", err);
+    }
+
+    onError(null);
+    onSelectFile(renamedFile);
   };
 
   return (
@@ -87,7 +130,7 @@ function DocumentoRow({
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
+        accept=".pdf"
         className="hidden"
         onChange={handleChange}
       />
@@ -102,17 +145,21 @@ export function DatosDocumentosForm({
   onSaveDraft,
 }: DatosDocumentosFormProps) {
   const [documentos, setDocumentos] = useState<DatosDocumentos>(initialData);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>(undefined);
 
-  const handleSelectFile = (id: string, file: File | null) => {
+  const handleSelectFile = (id: string, file: File | undefined) => {
     setDocumentos((prev) => ({ ...prev, [id]: file }));
-    setError(null);
+    // setError(null);
   };
 
   const faltantes = DOCUMENTOS_REQUERIDOS.filter(
     (doc) => !doc.opcional && !documentos[doc.id]
   );
-
+  if (faltantes.length > 0) {
+    console.log("Faltan documentos:", faltantes);
+    return;
+  }
+  
 const handleSubmit = () => {
   onNext(documentos);
 };
@@ -135,6 +182,7 @@ const handleSubmit = () => {
             archivo={documentos[documento.id]}
             disabled={isSubmitting}
             onSelectFile={(file) => handleSelectFile(documento.id, file)}
+            onError={setError}
           />
         ))}
 

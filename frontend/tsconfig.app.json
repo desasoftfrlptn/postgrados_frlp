@@ -8,13 +8,11 @@
     "allowArbitraryExtensions": true,
     "skipLibCheck": true,
 
-    /* Configurar ruta base */
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
 
-    /* Bundler mode */
+   /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -25,7 +23,7 @@
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
+    "erasableSyntaxOnly": true, 
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]

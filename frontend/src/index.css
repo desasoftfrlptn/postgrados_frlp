@@ -70,9 +70,9 @@
   --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
 }
 
-/* ------------------------------------------------------------------
-   Valores concretos de los tokens semánticos por tema
-------------------------------------------------------------------- */
+/*
+   Valores concretos de los tokens semánticos por tema 
+*/
 @layer base {
   :root {
     --bg: #f8fafc;
@@ -134,10 +134,6 @@
     @apply text-sm font-medium text-ink-secondary;
   }
 
-  /* FIX: este bloque estaba anidado adentro de `code { }`, por eso nunca
-     aplicaba a los inputs reales de la app (quedaba como `code input`).
-     Ahora es una regla propia, hermana de `code`, así que sí afecta a todos
-     los input/select/textarea del proyecto. */
   code {
     font-size: 15px;
     line-height: 135%;
@@ -159,9 +155,9 @@
 }
 
 @layer utilities {
-  /**
-   * Scrollbar que aparece/desaparece con una transición suave en vez de
-   * "saltar" cuando cambia el tamaño del contenido filtrado.
+  /*
+  Scrollbar que aparece/desaparece con una transición suave en vez de
+  "saltar" cuando cambia el tamaño del contenido filtrado.
    */
   .scroll-fade {
     scrollbar-width: thin;

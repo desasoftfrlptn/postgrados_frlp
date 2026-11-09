@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery} from "@tanstack/react-query";
 import { api } from "@/shared/api/client";
 import type { FiltrosLegajo, Legajo, LegajosPaginados } from "@/shared/types/types";
 
@@ -29,3 +29,4 @@ export function useLegajo(id: string) {
     enabled: Boolean(id),
   });
 }
+

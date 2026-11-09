@@ -16,7 +16,7 @@ interface DatosAcademicosFormProps {
 
 type Errors = Partial<Record<string, string>>;
 
-const MOTIVACION_MIN = 50;
+const MOTIVACION_MAX = 500;
 
 export function DatosAcademicosForm({
   initialData,
@@ -66,8 +66,8 @@ export function DatosAcademicosForm({
     }
     if (!form.motivaciones.trim()) {
       nextErrors.motivaciones = "Contanos brevemente tus motivaciones.";
-    } else if (form.motivaciones.trim().length < MOTIVACION_MIN) {
-      nextErrors.motivaciones = `Necesitás al menos ${MOTIVACION_MIN} caracteres (llevás ${form.motivaciones.trim().length}).`;
+    } else if (form.motivaciones.trim().length > MOTIVACION_MAX) {
+      nextErrors.motivaciones = `No puedes exceder los ${MOTIVACION_MAX} caracteres (llevás ${form.motivaciones.trim().length}).`;
     }
 
     setErrors(nextErrors);
@@ -213,7 +213,7 @@ export function DatosAcademicosForm({
           Motivaciones para realizar la carrera
         </label>
         <p className="text-xs text-ink-muted">
-          Describí brevemente tus expectativas y metas profesionales (mínimo {MOTIVACION_MIN} caracteres)
+          Describí brevemente tus expectativas y metas profesionales (máximo {MOTIVACION_MAX} caracteres)
         </p>
         <textarea
           id="motivaciones"
@@ -224,7 +224,7 @@ export function DatosAcademicosForm({
           placeholder="Contanos qué te motiva a realizar este posgrado..."
         />
         <p className="text-xs text-ink-muted">
-          {form.motivaciones.trim().length} / {MOTIVACION_MIN} caracteres mínimos
+          {form.motivaciones.trim().length} / {MOTIVACION_MAX} caracteres máximos
         </p>
         {errors.motivaciones && (
           <p className="text-xs font-medium text-semaforo-rojo">

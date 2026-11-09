@@ -6,10 +6,21 @@
  * - outline: botón "píldora" con borde e ícono — ej. "Exportar"
  */
 
-import { forwardRef, type ButtonHTMLAttributes, type ComponentType, type SVGProps } from "react";
+import {
+  forwardRef,
+  type ButtonHTMLAttributes,
+  type ComponentType,
+  type SVGProps,
+} from "react";
 import { Spinner } from "./Spinner";
 
-type Variant = "primary" | "danger" | "ghost" | "outline";
+type Variant =
+  | "primary"
+  | "danger"
+  | "danger-soft"
+  | "neutral"
+  | "ghost"
+  | "outline";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -22,6 +33,10 @@ const VARIANT_CLASSES: Record<Variant, string> = {
     "rounded-lg bg-brand-500 text-white shadow-sm hover:bg-brand-600 focus-visible:outline-brand-700 dark:hover:bg-brand-400",
   danger:
     "rounded-lg bg-semaforo-rojo text-white shadow-sm hover:opacity-90 focus-visible:outline-semaforo-rojo",
+  "danger-soft":
+    "rounded-xl bg-semaforo-rojo-soft text-semaforo-rojo hover:opacity-80 dark:bg-semaforo-rojo-soft-dark focus-visible:outline-semaforo-rojo",
+  neutral:
+    "rounded-xl bg-paper-elevated text-ink hover:opacity-80 focus-visible:outline-neutral-400",
   ghost:
     "rounded-lg bg-transparent text-brand-700 hover:bg-brand-50 focus-visible:outline-brand-500 dark:text-brand-200 dark:hover:bg-white/5",
   outline:
@@ -30,8 +45,16 @@ const VARIANT_CLASSES: Record<Variant, string> = {
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
-    { variant = "primary", isLoading = false, icon: Icon, disabled, children, className = "", ...rest },
-    ref
+    {
+      variant = "primary",
+      isLoading = false,
+      icon: Icon,
+      disabled,
+      children,
+      className = "",
+      ...rest
+    },
+    ref,
   ) => {
     return (
       <button
@@ -55,7 +78,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

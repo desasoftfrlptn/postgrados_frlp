@@ -3,7 +3,7 @@ import type { MenuItem, User } from "@/shared/types/types";
 import { Button } from "./Button";
 import { useTheme } from "@/shared/context/useTheme";
 import LogoFenix from "../../assets/LogoFenix.png";
-import UtnLogo from "../../assets/UtnLogo.png"; 
+import UtnLogo from "../../assets/UtnLogo.png";
 
 export interface SidebarProps {
   user: User;
