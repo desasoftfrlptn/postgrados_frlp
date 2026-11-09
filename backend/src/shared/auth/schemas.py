@@ -1,6 +1,6 @@
 ##El token ya se genera y devuelve el ID correcto.
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, SecretStr, Field
 from uuid import UUID
 from pydantic import ConfigDict
 
@@ -22,4 +22,6 @@ class UsuarioResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)  
 
 class RefreshRequest(BaseModel):
-    refresh_token: SecretStr  
+    refresh_token: SecretStr 
+
+class ActivarCuentaRequest(BaseModel): token: str = Field(min_length=20, max_length=200); password: str = Field(min_length=12, max_length=128) 
