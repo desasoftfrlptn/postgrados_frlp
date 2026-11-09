@@ -1,9 +1,9 @@
 """Tablas del módulo de inscripción (ARQUITECTURA.md §8.1 + tipos del front)."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, func, text
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, func, text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.database.connection import Base
@@ -31,7 +31,10 @@ class Cohorte(Base):
     nombre: Mapped[str] = mapped_column(String(50), unique=True)
     inscripcion_abierta: Mapped[bool] = mapped_column(server_default=text("false"))
     fecha_inicio: Mapped[date | None]
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
+        default=datetime.now(timezone.utc),
+    )
 
 
 class PeriodoInscripcion(Base):
@@ -41,7 +44,10 @@ class PeriodoInscripcion(Base):
     cohorte_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cohortes.id"), index=True)
     fecha_abre: Mapped[date]
     fecha_cierra: Mapped[date | None]
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
+        default=datetime.now(timezone.utc),
+    )
 
 
 class Legajo(Base):
@@ -63,7 +69,8 @@ class Legajo(Base):
     dni: Mapped[str] = mapped_column(String(20), index=True)
     apellido: Mapped[str] = mapped_column(String(100))
     nombre: Mapped[str] = mapped_column(String(100))
-    email: Mapped[str] = mapped_column(String(255), unique=True)
+    email: Mapped[str] = mapped_column(String(255), index=True)
+    usuario_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"), index=True)
     email_alternativo: Mapped[str | None] = mapped_column(String(255))
     telefono_movil: Mapped[str] = mapped_column(String(30))
 
@@ -96,11 +103,18 @@ class Legajo(Base):
     estado: Mapped[str] = mapped_column(String(30), server_default=text("'BORRADOR'"))
     semaforo: Mapped[str] = mapped_column(String(10), server_default=text("'VERDE'"))
     semaforo_manual: Mapped[bool] = mapped_column(server_default=text("false"))  # true = lo cambió el coordinador
-    fecha_inscripcion: Mapped[datetime | None]
-    fecha_activacion: Mapped[datetime | None]  # cuando pasa a ACTIVO
+    fecha_inscripcion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fecha_activacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True)) # cuando pasa a ACTIVO
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
+        default=datetime.now(timezone.utc),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
+        default=datetime.now(timezone.utc),
+        onupdate=datetime.now(timezone.utc)
+    )
 
 
 class AuditoriaLegajo(Base):
@@ -112,4 +126,7 @@ class AuditoriaLegajo(Base):
     estado_nuevo: Mapped[str] = mapped_column(String(30))
     comentario: Mapped[str | None] = mapped_column(Text)
     usuario_email: Mapped[str | None] = mapped_column(String(255))  # None si fue automático
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
+        default=datetime.now(timezone.utc),
+    )
