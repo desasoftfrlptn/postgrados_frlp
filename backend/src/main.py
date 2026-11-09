@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from src.inscripcion.presentation.controller import router as inscripcion_router
 from src.acceso.controllers.controller import router as acceso_router
 from src.shared.auth.router import router as auth_router
+from src.seguimiento_graduacion.presentation.router import router as graduacion_router
 
 from src.config import CORS_ORIGINS
 
@@ -28,7 +29,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"} 
 
 PREFIX="/api/v1"
-for r in (auth_router, acceso_router, inscripcion_router):
+for r in (auth_router, acceso_router, inscripcion_router, graduacion_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:
