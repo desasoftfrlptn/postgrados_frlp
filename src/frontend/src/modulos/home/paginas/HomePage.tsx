@@ -1,23 +1,10 @@
 // Página pública de inicio del Sistema de Posgrado UTN FRLP.
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
 import { Link } from "react-router-dom";
-
-import { api } from "../../../shared/api/client";
 
 import imagenHero from "../../../imagenes/hero-home.png";
 
 import "./HomePage.css";
-
-
-interface ConfiguracionPublicaRespuesta {
-  seccion: string;
-  valores: Record<string, string>;
-}
 
 
 const valoresIniciales = {
@@ -72,45 +59,7 @@ const valoresIniciales = {
 
 
 export default function HomePage() {
-  const [
-    configuracion,
-    setConfiguracion,
-  ] = useState<Record<string, string>>(
-    valoresIniciales
-  );
-
-  const [
-    cargando,
-    setCargando,
-  ] = useState(true);
-
-
-  useEffect(() => {
-    const cargarConfiguracion = async () => {
-      try {
-        const respuesta =
-          await api.get<ConfiguracionPublicaRespuesta>(
-            "/configuracion-publica/home"
-          );
-
-        setConfiguracion({
-          ...valoresIniciales,
-          ...respuesta.valores,
-        });
-      } catch {
-        /*
-         * Si el backend no estuviera disponible,
-         * se mantienen los valores iniciales para
-         * evitar que el Home quede vacío.
-         */
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    cargarConfiguracion();
-  }, []);
-
+  const configuracion = valoresIniciales;
 
   return (
     <>
@@ -178,7 +127,6 @@ export default function HomePage() {
       <section
         className="home-accesos"
         aria-labelledby="home-accesos-titulo"
-        aria-busy={cargando}
       >
         <h2
           id="home-accesos-titulo"
