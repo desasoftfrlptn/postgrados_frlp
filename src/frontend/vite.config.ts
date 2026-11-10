@@ -8,7 +8,10 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    // host: "0.0.0.0", // ESTO DEPENDE SI SE TRABAJA DENTRO DEL CONTAINER DE DOCKER
+    host: "0.0.0.0", // Requerido para escuchar peticiones externas al contenedor Docker
     port: 3000,
+    watch: {
+      usePolling: process.env.VITE_USE_POLLING === "true",
+    },
   },
 });
