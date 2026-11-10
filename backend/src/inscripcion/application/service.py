@@ -135,13 +135,13 @@ class CohorteService:
             abierta=False,
             fecha_inicio=fecha_inicio
         )
-        return await self.repository.create(nueva_cohorte)
+        return await self.repository.crear(nueva_cohorte)
     
     async def listar_cohortes(self) -> List[Cohorte]:
-        return await self.repository.get_all()
+        return await self.repository.obtener()
     
     async def gestionar_inscripcion(self, cohorte_id: UUID, abierta: bool) -> Cohorte:
-        cohorte = await self.repository.get_by_id(cohorte_id)
+        cohorte = await self.repository.obtener_por_id(cohorte_id)
         if not cohorte:
             raise ValueError("Cohorte no encontrada")
 
@@ -150,5 +150,5 @@ class CohorteService:
         else:
             cohorte.cerrar_inscripcion()
 
-        return await self.repository.update(cohorte)
+        return await self.repository.modificar(cohorte)
     
