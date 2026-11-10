@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from src.carga_academica.application.asistencia_service import (
-    AlumnosNoInscriptos,
+    AlumnoNoInscripto,
     AsistenciaService,
     ClaseDuplicada,
     ClaseNoEncontrada,
@@ -24,63 +24,100 @@ LUIS = uuid.uuid4()
 
 
 class RepositorioFalso:
-    """Imita al AsistenciaRepository con datos fijos y anota lo que se guardó."""
+    """Imita al AsistenciaRepository con datos en memoria."""
 
-    def __init__(self, fechas_existentes=(), clase=CLASE, inscriptos=(ANA, LUIS),
-                 presentes=None, total_clases=3):
-        self.fechas_existentes = set(fechas_existentes)
-        self.clase = clase
-        self.inscriptos = set(inscriptos)
-        self.presentes = presentes or {}
-        self.total_clases = total_clases
-        self.guardadas = None          # acá queda lo que el service mandó a guardar
+    def __init__(self, clases=(CLASE,), inscriptos=(ANA, LUIS), marcas=None):
+        self.clases = list(clases)
+        self.inscriptos = list(inscriptos)
+        self.marcas = dict(marcas or {})   # {(clase_id, legajo_id): presente}
 
     async def obtener_seminario(self, seminario_id):
         return SEMINARIO
 
+    async def listar_clases(self, seminario_id):
+        return self.clases
+
     async def existe_clase_en_fecha(self, seminario_id, fecha):
-        return fecha in self.fechas_existentes
+        return any(clase.fecha == fecha for clase in self.clases)
 
     async def crear_clase(self, seminario_id, fecha):
-        return SimpleNamespace(id=uuid.uuid4(), seminario_id=seminario_id, fecha=fecha)
+        clase = SimpleNamespace(id=uuid.uuid4(), seminario_id=seminario_id, fecha=fecha)
+        self.clases.append(clase)
+        return clase
 
     async def obtener_clase(self, clase_id):
-        return self.clase
+        return next((clase for clase in self.clases if clase.id == clase_id), None)
 
-    async def contar_clases(self, seminario_id):
-        return self.total_clases
+    async def inscriptos_del_seminario(self, seminario_id):
+        return self.inscriptos
 
     async def legajos_inscriptos(self, seminario_id, legajo_ids):
-        return self.inscriptos & set(legajo_ids)
+        return set(self.inscriptos) & set(legajo_ids)
+
+    async def asistencias_del_seminario(self, seminario_id):
+        return self.marcas
 
     async def guardar_asistencias(self, clase_id, celdas):
-        self.guardadas = celdas
-
-    async def contar_presentes(self, seminario_id, legajo_ids):
-        return {k: v for k, v in self.presentes.items() if k in legajo_ids}
+        for legajo_id, presente in celdas:
+            self.marcas[(clase_id, legajo_id)] = presente
 
 
 def usuario(rol="docente", email="juan@utn.edu.ar"):
     return SimpleNamespace(rol=rol, email=email)
 
 
+# ---------- Listar clases ----------
+
+def test_listar_clases_trae_la_asistencia_de_cada_inscripto():
+    # Arrange: Ana está presente; a Luis nunca lo tocaron
+    repo = RepositorioFalso(marcas={(CLASE.id, ANA): True})
+    service = AsistenciaService(repo)
+    # Act
+    clases = asyncio.run(service.listar_clases(SEMINARIO_ID, usuario()))
+    # Assert: la celda sin tocar va como ausente
+    assert clases == [
+        {
+            "id": CLASE.id,
+            "seminario_id": SEMINARIO_ID,
+            "fecha": date(2026, 3, 3),
+            "asistencias": [
+                {"legajo_id": ANA, "presente": True},
+                {"legajo_id": LUIS, "presente": False},
+            ],
+        }
+    ]
+
+
+def test_otro_docente_no_puede_ver_las_clases():
+    # Arrange
+    service = AsistenciaService(RepositorioFalso())
+    otro = usuario(email="ana.docente@utn.edu.ar")
+    # Act + Assert
+    with pytest.raises(SinPermisoPlanilla):
+        asyncio.run(service.listar_clases(SEMINARIO_ID, otro))
+
+
 # ---------- Crear clase ----------
 
-def test_docente_del_seminario_crea_una_clase():
+def test_nueva_clase_arranca_con_todos_ausentes():
     # Arrange
     service = AsistenciaService(RepositorioFalso())
     # Act
     clase = asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 24), usuario()))
     # Assert
-    assert clase.fecha == date(2026, 3, 24)
+    assert clase["fecha"] == date(2026, 3, 24)
+    assert clase["asistencias"] == [
+        {"legajo_id": ANA, "presente": False},
+        {"legajo_id": LUIS, "presente": False},
+    ]
 
 
 def test_no_se_puede_crear_dos_clases_en_la_misma_fecha():
-    # Arrange
-    service = AsistenciaService(RepositorioFalso(fechas_existentes=[date(2026, 3, 24)]))
+    # Arrange: ya existe CLASE el 3/3
+    service = AsistenciaService(RepositorioFalso())
     # Act + Assert
     with pytest.raises(ClaseDuplicada):
-        asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 24), usuario()))
+        asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 3), usuario()))
 
 
 def test_otro_docente_no_puede_crear_clases():
@@ -94,63 +131,52 @@ def test_otro_docente_no_puede_crear_clases():
 
 # ---------- Cargar asistencia ----------
 
-def test_cargar_asistencia_guarda_y_devuelve_el_porcentaje():
-    # Arrange: Ana estuvo en 2 de 3 clases
-    repo = RepositorioFalso(presentes={ANA: 2}, total_clases=3)
+def test_cargar_asistencia_guarda_y_devuelve_la_clase_actualizada():
+    # Arrange
+    repo = RepositorioFalso()
     service = AsistenciaService(repo)
     # Act
-    resultado = asyncio.run(
-        service.cargar_asistencias(SEMINARIO_ID, CLASE.id, [(ANA, True)], usuario())
+    clase = asyncio.run(
+        service.cargar_asistencia(SEMINARIO_ID, CLASE.id, ANA, True, usuario())
     )
-    # Assert
-    assert repo.guardadas == [(ANA, True)]
-    assert resultado == [{"legajo_id": ANA, "porcentaje": 66.7}]
+    # Assert: se guardó la celda y la respuesta ya la trae marcada
+    assert repo.marcas == {(CLASE.id, ANA): True}
+    assert {"legajo_id": ANA, "presente": True} in clase["asistencias"]
 
 
-def test_alumno_sin_presentes_tiene_cero_por_ciento():
-    # Arrange
-    service = AsistenciaService(RepositorioFalso(presentes={}, total_clases=3))
+def test_destildar_cambia_presente_a_ausente():
+    # Arrange: Ana estaba presente
+    repo = RepositorioFalso(marcas={(CLASE.id, ANA): True})
+    service = AsistenciaService(repo)
     # Act
-    resultado = asyncio.run(
-        service.cargar_asistencias(SEMINARIO_ID, CLASE.id, [(LUIS, False)], usuario())
+    clase = asyncio.run(
+        service.cargar_asistencia(SEMINARIO_ID, CLASE.id, ANA, False, usuario())
     )
     # Assert
-    assert resultado == [{"legajo_id": LUIS, "porcentaje": 0.0}]
+    assert {"legajo_id": ANA, "presente": False} in clase["asistencias"]
 
 
 def test_clase_de_otro_seminario_lanza_no_encontrada():
     # Arrange: la clase existe pero es de otro seminario (intento de IDOR)
-    clase_ajena = SimpleNamespace(id=uuid.uuid4(), seminario_id=OTRO_SEMINARIO_ID)
-    service = AsistenciaService(RepositorioFalso(clase=clase_ajena))
+    clase_ajena = SimpleNamespace(
+        id=uuid.uuid4(), seminario_id=OTRO_SEMINARIO_ID, fecha=date(2026, 3, 3)
+    )
+    service = AsistenciaService(RepositorioFalso(clases=[clase_ajena]))
     # Act + Assert
     with pytest.raises(ClaseNoEncontrada):
         asyncio.run(
-            service.cargar_asistencias(SEMINARIO_ID, clase_ajena.id, [(ANA, True)], usuario())
+            service.cargar_asistencia(SEMINARIO_ID, clase_ajena.id, ANA, True, usuario())
         )
 
 
-def test_alumno_no_inscripto_lanza_error_con_su_legajo():
+def test_alumno_no_inscripto_no_se_puede_cargar():
     # Arrange
     intruso = uuid.uuid4()
-    service = AsistenciaService(RepositorioFalso())
-    # Act + Assert
-    with pytest.raises(AlumnosNoInscriptos) as error:
-        asyncio.run(
-            service.cargar_asistencias(SEMINARIO_ID, CLASE.id, [(intruso, True)], usuario())
-        )
-    assert error.value.legajo_ids == {intruso}
-
-
-def test_si_un_alumno_viene_repetido_gana_el_ultimo_valor():
-    # Arrange: el autosave mandó a Ana dos veces (tildó y destildó)
     repo = RepositorioFalso()
     service = AsistenciaService(repo)
-    # Act
-    asyncio.run(
-        service.cargar_asistencias(
-            SEMINARIO_ID, CLASE.id, [(ANA, True), (ANA, False)], usuario()
+    # Act + Assert
+    with pytest.raises(AlumnoNoInscripto):
+        asyncio.run(
+            service.cargar_asistencia(SEMINARIO_ID, CLASE.id, intruso, True, usuario())
         )
-    )
-    # Assert: se guarda una sola vez, con el último valor
-    assert repo.guardadas == [(ANA, False)]
-    
+    assert repo.marcas == {}   # no se guardó nada

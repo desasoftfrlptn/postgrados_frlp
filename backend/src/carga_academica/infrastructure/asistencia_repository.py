@@ -1,4 +1,4 @@
-"""Consultas a la base para crear clases y cargar asistencia (US-B-002).
+"""Consultas a la base para clases y asistencia (US-B-002).
 
 Capa INFRASTRUCTURE: el único lugar de este caso de uso que habla con la base.
 """
@@ -6,7 +6,7 @@ Capa INFRASTRUCTURE: el único lugar de este caso de uso que habla con la base.
 import uuid
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +29,15 @@ class AsistenciaRepository:
         """El seminario, o None si no existe (el router lo convierte en 404)."""
         return await self.db.get(Seminario, seminario_id)
 
+    async def listar_clases(self, seminario_id: uuid.UUID) -> list[Clase]:
+        """Las clases del seminario, de la más vieja a la más nueva (orden de las columnas)."""
+        consulta = (
+            select(Clase)
+            .where(Clase.seminario_id == seminario_id)
+            .order_by(Clase.fecha)
+        )
+        return list(await self.db.scalars(consulta))
+
     async def existe_clase_en_fecha(self, seminario_id: uuid.UUID, fecha: date) -> bool:
         """¿Ya hay una clase de este seminario en esa fecha? Evita columnas duplicadas."""
         consulta = select(Clase.id).where(
@@ -49,12 +58,14 @@ class AsistenciaRepository:
     async def obtener_clase(self, clase_id: uuid.UUID) -> Clase | None:
         return await self.db.get(Clase, clase_id)
 
-    async def contar_clases(self, seminario_id: uuid.UUID) -> int:
-        """Total de clases dictadas: es el divisor de la fórmula BR-002."""
-        consulta = select(func.count()).where(Clase.seminario_id == seminario_id)
-        return await self.db.scalar(consulta)
-
     # ---------- Alumnos y asistencias ----------
+
+    async def inscriptos_del_seminario(self, seminario_id: uuid.UUID) -> list[uuid.UUID]:
+        """Los legajos inscriptos al seminario: son las filas de la planilla."""
+        consulta = select(InscripcionSeminario.legajo_id).where(
+            InscripcionSeminario.seminario_id == seminario_id
+        )
+        return list(await self.db.scalars(consulta))
 
     async def legajos_inscriptos(
         self, seminario_id: uuid.UUID, legajo_ids: list[uuid.UUID]
@@ -68,6 +79,22 @@ class AsistenciaRepository:
             InscripcionSeminario.legajo_id.in_(legajo_ids),
         )
         return set(await self.db.scalars(consulta))
+
+    async def asistencias_del_seminario(
+        self, seminario_id: uuid.UUID
+    ) -> dict[tuple[uuid.UUID, uuid.UUID], bool]:
+        """Todas las celdas cargadas del seminario en UNA consulta (evita N+1).
+
+        Devuelve {(clase_id, legajo_id): presente}. La celda que no está
+        es porque nunca se tocó: el service la toma como ausente.
+        """
+        consulta = (
+            select(Asistencia.clase_id, Asistencia.legajo_id, Asistencia.presente)
+            .join(Clase, Clase.id == Asistencia.clase_id)
+            .where(Clase.seminario_id == seminario_id)
+        )
+        filas = await self.db.execute(consulta)
+        return {(clase_id, legajo_id): presente for clase_id, legajo_id, presente in filas}
 
     async def guardar_asistencias(
         self, clase_id: uuid.UUID, celdas: list[tuple[uuid.UUID, bool]]
@@ -92,24 +119,3 @@ class AsistenciaRepository:
         )
         await self.db.execute(consulta)
         await self.db.commit()
-
-    async def contar_presentes(
-        self, seminario_id: uuid.UUID, legajo_ids: list[uuid.UUID]
-    ) -> dict[uuid.UUID, int]:
-        """Cuántas clases estuvo presente cada alumno pedido.
-
-        Devuelve {legajo_id: presentes}. El que no tiene ninguna, no aparece
-        (el service lo toma como 0).
-        """
-        consulta = (
-            select(Asistencia.legajo_id, func.count())
-            .join(Clase, Clase.id == Asistencia.clase_id)
-            .where(
-                Clase.seminario_id == seminario_id,
-                Asistencia.legajo_id.in_(legajo_ids),
-                Asistencia.presente.is_(True),
-            )
-            .group_by(Asistencia.legajo_id)
-        )
-        filas = await self.db.execute(consulta)
-        return {legajo_id: cantidad for legajo_id, cantidad in filas}

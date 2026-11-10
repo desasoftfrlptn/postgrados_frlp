@@ -2,6 +2,9 @@
 
 Es la única capa que sabe de HTTP: recibe el pedido, chequea el login y el rol,
 llama al service y traduce sus errores a códigos (403, 404, 409, 422).
+
+Los endpoints de US-B-002 siguen el contrato del front
+(frontend/src/modulo-docente/hooks/useAsistencia.ts): JSON en camelCase.
 """
 
 from uuid import UUID
@@ -10,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.carga_academica.application.asistencia_service import (
-    AlumnosNoInscriptos,
+    AlumnoNoInscripto,
     AsistenciaService,
     ClaseDuplicada,
     ClaseNoEncontrada,
@@ -23,8 +26,7 @@ from src.carga_academica.application.planilla_service import (
 from src.carga_academica.infrastructure.asistencia_repository import AsistenciaRepository
 from src.carga_academica.infrastructure.planilla_repository import PlanillaRepository
 from src.carga_academica.presentation.schemas import (
-    AsistenciasRequest,
-    AsistenciasResponse,
+    AsistenciaUpdate,
     ClaseCreate,
     ClaseResponse,
     PlanillaResponse,
@@ -78,7 +80,22 @@ async def listar_estudiantes(
         raise SIN_PERMISO
 
 
-# ---------- US-B-002: nueva clase ----------
+# ---------- US-B-002: clases ----------
+
+@router.get("/{seminario_id}/clases", response_model=list[ClaseResponse])
+async def listar_clases(
+    seminario_id: UUID,
+    usuario: Usuario = Depends(rol_permitido),
+    service: AsistenciaService = Depends(get_asistencia_service),
+):
+    """Las clases del seminario con la asistencia de cada alumno (US-B-002)."""
+    try:
+        return await service.listar_clases(seminario_id, usuario)
+    except SeminarioNoEncontrado:
+        raise NO_ENCONTRADO
+    except SinPermisoPlanilla:
+        raise SIN_PERMISO
+
 
 @router.post(
     "/{seminario_id}/clases",
@@ -106,19 +123,17 @@ async def crear_clase(
 
 # ---------- US-B-002: asistencia (autosave) ----------
 
-@router.patch("/{seminario_id}/asistencias", response_model=AsistenciasResponse)
-async def cargar_asistencias(
+@router.patch("/{seminario_id}/asistencias", response_model=ClaseResponse)
+async def cargar_asistencia(
     seminario_id: UUID,
-    datos: AsistenciasRequest,
+    datos: AsistenciaUpdate,
     usuario: Usuario = Depends(rol_permitido),
     service: AsistenciaService = Depends(get_asistencia_service),
 ):
-    """Guarda una o más celdas de la planilla y devuelve el % recalculado (BR-002)."""
-    # Del formato JSON a pares (legajo_id, presente), que es lo que espera el service
-    celdas = [(a.legajo_id, a.presente) for a in datos.asistencias]
+    """Guarda un checkbox (una celda) y devuelve la clase actualizada."""
     try:
-        porcentajes = await service.cargar_asistencias(
-            seminario_id, datos.clase_id, celdas, usuario
+        return await service.cargar_asistencia(
+            seminario_id, datos.clase_id, datos.legajo_id, datos.presente, usuario
         )
     except SeminarioNoEncontrado:
         raise NO_ENCONTRADO
@@ -126,12 +141,7 @@ async def cargar_asistencias(
         raise SIN_PERMISO
     except ClaseNoEncontrada:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "La clase no es de este seminario")
-    except AlumnosNoInscriptos as error:
+    except AlumnoNoInscripto:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-            {
-                "mensaje": "Hay alumnos que no están inscriptos al seminario",
-                "legajos": [str(legajo_id) for legajo_id in error.legajo_ids],
-            },
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "El alumno no está inscripto al seminario"
         )
-    return {"porcentajes": porcentajes}
