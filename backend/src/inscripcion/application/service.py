@@ -20,8 +20,9 @@ from src.inscripcion.domain.repository import LegajoRepository
 
 
 class LegajoService:
-    def __init__(self, repository: LegajoRepository):
+    def __init__(self, repository: LegajoRepository, notificador=None):
         self._repository = repository
+        self._notificador = notificador  # US-CORE-006: avisa por mail los cambios de estado
 
     async def crear_legajo(self, datos: dict[str, Any], *, cohorte_autorizada=None):
         cohorte = await self._repository.obtener_cohorte(datos["cohorte_id"])
@@ -111,6 +112,9 @@ class LegajoService:
             usuario_email=usuario_email,
         )
         legajo = await self._repository.guardar(legajo)
+        # US-CORE-006: después de guardar (nunca antes), avisar por mail al aspirante
+        if self._notificador is not None:
+            await self._notificador.cambio_de_estado(legajo, nuevo_estado, comentario)
         return legajo, token_activacion
 
     async def _generar_numero_legajo(self, legajo) -> str:
