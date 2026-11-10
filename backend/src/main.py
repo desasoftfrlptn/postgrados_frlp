@@ -8,10 +8,16 @@ from src.acceso.controllers.controller import router as acceso_router
 from src.shared.auth.router import router as auth_router
 
 from src.config import CORS_ORIGINS
+from src.shared.tareas.programador import crear_programador
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Tareas diarias (US-CORE-010, US-B-005): arrancan con la app y se apagan con ella
+    programador = crear_programador()
+    programador.start()
     yield
+    programador.shutdown()
 
 app = FastAPI(title="Fenix Postgrado", version="0.1.0", lifespan=lifespan)
 
@@ -25,7 +31,7 @@ app.add_middleware(
 
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
-    return {"status": "ok"} 
+    return {"status": "ok"}
 
 PREFIX="/api/v1"
 for r in (auth_router, acceso_router, inscripcion_router):
