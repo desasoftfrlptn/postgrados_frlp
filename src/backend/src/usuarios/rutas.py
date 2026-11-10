@@ -142,20 +142,23 @@ async def login(
     "/me",
     response_model=UsuarioRespuesta,
 )
-async def obtener_perfil_usuario(
-    db: AsyncSession = Depends(get_db
-    ),
-    administrador=Depends(administrador_actual),
-):
-    usuario = (
-        await obtener_usuario_actual(
-            administrador.id,
-            db
-        )
-    )
-
+async def obtener_perfil_usuario(usuario=Depends(usuario_actual),):
     return respuesta_usuario(usuario)
 
+@enrutador.get(
+    "/usuarios",
+    response_model=list[UsuarioRespuesta],
+)
+async def obtener_usuarios(
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(administrador_actual),
+):
+    usuarios = await listar_usuarios(db)
+
+    return [
+        respuesta_usuario(usuario)
+        for usuario in usuarios
+    ]
 
 @enrutador.post(
     "/usuarios",
