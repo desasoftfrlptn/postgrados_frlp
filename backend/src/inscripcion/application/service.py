@@ -18,8 +18,6 @@ from src.inscripcion.domain.exceptions import (
 )
 from src.inscripcion.domain.repository import LegajoRepository, CohorteRepository
 
-from src.inscripcion.domain.entities import Cohorte
-
 
 class LegajoService:
     def __init__(self, repository: LegajoRepository):
@@ -127,28 +125,24 @@ class CohorteService:
     def __init__(self, repository: CohorteRepository):
         self.repository = repository
 
-    async def crear_cohorte(self, anio: int, nombre: str, fecha_inicio=None) -> Cohorte:
-        nueva_cohorte = Cohorte(
-            id=None,
-            anio=anio,
-            nombre=nombre,
-            abierta=False,
-            fecha_inicio=fecha_inicio
-        )
-        return await self.repository.crear(nueva_cohorte)
+    async def crear_cohorte(self, anio: int, nombre: str, fecha_inicio=None) -> Any:
+        datos {
+            "anio": anio,
+            "nombre": nombre,
+            "inscripcion_abierta": False,
+            "fecha_inicio": fecha_inicio
+        }
+        return await self.repository.crear(datos)
     
-    async def listar_cohortes(self) -> List[Cohorte]:
+    async def listar_cohortes(self) -> List[Any]:
         return await self.repository.obtener()
     
-    async def gestionar_inscripcion(self, cohorte_id: UUID, abierta: bool) -> Cohorte:
+    async def gestionar_inscripcion(self, cohorte_id: UUID, abierta: bool) -> Any:
         cohorte = await self.repository.obtener_por_id(cohorte_id)
         if not cohorte:
             raise ValueError("Cohorte no encontrada")
 
-        if abierta:
-            cohorte.abrir_inscripcion()
-        else:
-            cohorte.cerrar_inscripcion()
+        cohorte.inscripcion_abierta = abierta
 
         return await self.repository.modificar(cohorte)
     
