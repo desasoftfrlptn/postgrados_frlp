@@ -3,9 +3,13 @@ import { Button } from '../../shared/components/Button';
 import Header from '../components/Header';
 import LogoFenix from '../../assets/LogoFenix.png';
 import UtnLogo from '../../assets/UtnLogo.png';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/shared/auth/authContext';
 
 export default function WelcomeScreen() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <div className="flex min-h-screen w-full bg-paper">
       <div className="hidden md:flex md:w-1/2 md:flex-col md:items-center md:bg-brand-700 md:p-12">
@@ -31,7 +35,7 @@ export default function WelcomeScreen() {
         <Header onBack={() => console.log('volver')} hideLogoOnDesktop />
 
         <div className="flex flex-1 flex-col justify-center gap-4 px-6 pb-8 pt-2">
-          <h1 className="text-center">Bienvenido Usuario</h1>
+          <h1 className="text-center">Bienvenido{user ? `, ${user.nombre}` : ''}</h1>
           <Button
             icon={PenLine}
             onClick={() => console.log('Nueva inscripción')}
@@ -44,9 +48,14 @@ export default function WelcomeScreen() {
 
           <Button
             icon={ClipboardList}
-            onClick={() => console.log('Consultar Estado')}
+            onClick={() => navigate('/mi-legajo')}
           >
             Consultar Estado
+          </Button>
+
+          {/* Al cerrar sesión, RequireAuth redirige solo a /login */}
+          <Button variant="ghost" onClick={() => void logout()}>
+            Cerrar sesión
           </Button>
         </div>
       </div>
