@@ -126,7 +126,7 @@ class CohorteService:
         self.repository = repository
 
     async def crear_cohorte(self, anio: int, nombre: str, fecha_inicio=None) -> Any:
-        datos {
+        datos = {
             "anio": anio,
             "nombre": nombre,
             "inscripcion_abierta": False,
