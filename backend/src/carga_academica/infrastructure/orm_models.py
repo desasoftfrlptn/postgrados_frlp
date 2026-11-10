@@ -22,7 +22,7 @@ class Seminario(Base):
     email_docente: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -38,7 +38,7 @@ class InscripcionSeminario(Base):
     nota_final: Mapped[Decimal | None] = mapped_column(Numeric(4, 2))  # la carga el docente al cerrar
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -50,7 +50,7 @@ class Clase(Base):
     fecha: Mapped[date]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 

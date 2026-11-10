@@ -21,7 +21,7 @@ class EnlaceAcceso(Base):
     creado_por: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 class SesionAcceso(Base):
@@ -33,7 +33,7 @@ class SesionAcceso(Base):
     revocada: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 

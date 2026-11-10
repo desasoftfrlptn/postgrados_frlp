@@ -33,7 +33,7 @@ class Cohorte(Base):
     fecha_inicio: Mapped[date | None]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -46,7 +46,7 @@ class PeriodoInscripcion(Base):
     fecha_cierra: Mapped[date | None]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
 
@@ -108,12 +108,12 @@ class Legajo(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
-        default=datetime.now(timezone.utc),
-        onupdate=datetime.now(timezone.utc)
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
 
 
@@ -128,5 +128,5 @@ class AuditoriaLegajo(Base):
     usuario_email: Mapped[str | None] = mapped_column(String(255))  # None si fue automático
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )

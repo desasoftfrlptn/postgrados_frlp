@@ -30,7 +30,7 @@ class Usuario(Base):
     activo: Mapped[bool] = mapped_column(server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 class SesionRefresh(Base):
     __tablename__ = "sesiones_refresh"
@@ -65,5 +65,5 @@ class InvitacionCuenta(Base):
     usada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ (timestamp con zona)
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )

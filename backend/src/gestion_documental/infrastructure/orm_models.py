@@ -40,7 +40,7 @@ class Documento(Base):
     tamanio_bytes: Mapped[int]
     fecha_subida: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Revisión del coordinador
