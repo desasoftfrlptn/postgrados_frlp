@@ -447,4 +447,14 @@
   .perfil-pagina-encabezado p {
     font-size: 15px;
   }
+
+  .perfil-header-icono:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 4px;
+  }
+
+  .perfil-header-icono {
+    border-radius: 4px;
+  }
 }

@@ -18,7 +18,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrado_dev_password}
       POSTGRES_DB: ${DB_NAME:-postgrado_dev}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./src/backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -42,7 +42,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
-      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+      SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-dev-secret-change-in-production}}
       STORAGE_PATH: /var/postgrado-storage
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
@@ -53,6 +53,12 @@ services:
       - ./src/backend:/app
       - postgrado-storage:/var/postgrado-storage
     command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   # ──────────────────────────────────────────
   # FRONTEND - PARA DEV
@@ -64,15 +70,19 @@ services:
     container_name: postgrado-frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       VITE_API_URL: http://localhost:8000/api/v1
+      VITE_RECAPTCHA_SITE_KEY: ${VITE_RECAPTCHA_SITE_KEY:-}
+      VITE_CALENDARIFIC_API_KEY: ${VITE_CALENDARIFIC_API_KEY:-}
+      VITE_USE_POLLING: "true"
     ports:
       - "3000:3000"
     volumes:
       - ./src/frontend:/app
       - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 3000
+    command: npm run dev -- --host 0.0.0.0 --port 3000 --strictPort
 
   # ──────────────────────────────────────────
   # MAILHOG — Servidor de email falso para desarrollo
@@ -97,8 +107,7 @@ volumes:
 # Primera vez:
 #   cp .env.example .env
 #   docker compose up -d
-#   FALTA IMPLEMENTAR EN PYTHON docker exec postgrado-backend npm run db:migrate
-#   FALTA IMPLEMENTAR EN PYTHON docker exec postgrado-backend npm run db:seed  # Datos de prueba
+#   Las tablas se crean al iniciar FastAPI.
 #
 # Ver emails enviados por el sistema:
 #   Abrir http://localhost:8025

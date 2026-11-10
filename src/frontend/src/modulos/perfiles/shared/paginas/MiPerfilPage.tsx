@@ -1,16 +1,20 @@
+// Muestra la información del perfil según el usuario autenticado.
+
 import {
   useState,
   type ChangeEvent,
 } from "react";
 
-import { useLocation } from "react-router-dom";
+import { useAuth } from "../../../manejo-sesion/useAuth";
 
 import CampoPerfil from "../componentes/CampoPerfil";
+import CambiarContrasena from "../componentes/CambiarContrasena";
 
 import DetallePerfilEstudiante from "../../estudiante/componentes/DetallePerfilEstudiante";
 import DetallePerfilDocente from "../../docente/componentes/DetallePerfilDocente";
 
 import "../estilos/MiPerfilPage.css";
+
 
 interface DatosPerfil {
   nombre: string;
@@ -28,79 +32,106 @@ interface DatosPerfil {
   cohorte: string;
 }
 
+
 type Pestaña =
   | "Datos Personales"
   | "Contacto"
   | "Domicilio"
-  | "Información";
+  | "Información"
+  | "Seguridad";
 
-const datosEstudiante: DatosPerfil = {
-  nombre: "Juan Andres",
-  apellido: "Perez",
-  dni: "55476906",
-  nacionalidad: "Argentina",
-  email: "juan.perez@email.com",
-  emailAlternativo: "jperez@email.com",
-  telefono: "221 555-1234",
-  domicilio: "Calle Falsa e/ Libertador y San Juan",
-  pais: "Argentina",
-  provincia: "Buenos Aires",
-  ciudad: "La Plata",
-  carrera: "Maestría en Educación",
-  cohorte: "2026",
-};
-
-const datosDocente: DatosPerfil = {
-  nombre: "Margarita",
-  apellido: "Rodriguez",
-  dni: "28456321",
-  nacionalidad: "Argentina",
-  email: "margarita.rodriguez@email.com",
-  emailAlternativo: "mrodriguez@email.com",
-  telefono: "221 555-5678",
-  domicilio: "Calle 50 1234",
-  pais: "Argentina",
-  provincia: "Buenos Aires",
-  ciudad: "La Plata",
-  carrera: "",
-  cohorte: "",
-};
-
-const pestañas: Pestaña[] = [
-  "Datos Personales",
-  "Contacto",
-  "Domicilio",
-  "Información",
-];
 
 export default function MiPerfilPage() {
-  const location = useLocation();
+  const { user } = useAuth();
+
+
+  const esAdministrador =
+    user?.rol === "ADMIN";
 
   const esDocente =
-    location.pathname.startsWith(
-      "/dashboard/docente"
-    );
+    user?.rol === "DOCENTE";
 
-  const rol = esDocente
-    ? "Docente"
-    : "Estudiante";
+  const esEstudiante =
+    user?.rol === "ASPIRANTE";
 
-  const datosIniciales = esDocente
-    ? datosDocente
-    : datosEstudiante;
 
-  const claveFoto = esDocente
-    ? "fotoPerfilDocente"
-    : "fotoPerfilEstudiante";
+  const rol =
+    user?.rol === "ADMIN"
+      ? "Administrador"
+      : user?.rol === "DOCENTE"
+        ? "Docente"
+        : user?.rol === "ASPIRANTE"
+          ? "Estudiante"
+          : user?.rol === "COORDINADOR"
+            ? "Coordinador"
+            : user?.rol === "CPR"
+              ? "CPR"
+              : "Usuario";
+
+
+  const datosIniciales: DatosPerfil = {
+    nombre:
+      user?.nombre ?? "",
+
+    apellido:
+      user?.apellido ?? "",
+
+    dni:
+      user?.dni ?? "",
+
+    nacionalidad: "",
+
+    email:
+      user?.email ?? "",
+
+    emailAlternativo: "",
+    telefono: "",
+    domicilio: "",
+    pais: "",
+    provincia: "",
+    ciudad: "",
+    carrera: "",
+    cohorte: "",
+  };
+
+
+  const pestañas: Pestaña[] =
+    esAdministrador
+      ? [
+          "Datos Personales",
+          "Contacto",
+          "Seguridad",
+        ]
+      : [
+          "Datos Personales",
+          "Contacto",
+          "Domicilio",
+          "Información",
+          "Seguridad",
+        ];
+
+
+  const claveFoto = user
+    ? `fotoPerfil-${user.id}`
+    : "fotoPerfil";
+
 
   const [tabActiva, setTabActiva] =
-    useState<Pestaña>("Datos Personales");
+    useState<Pestaña>(
+      "Datos Personales"
+    );
 
   const [datos, setDatos] =
-    useState<DatosPerfil>(datosIniciales);
+    useState<DatosPerfil>(
+      datosIniciales
+    );
 
-  const [datosEditados, setDatosEditados] =
-    useState<DatosPerfil>(datosIniciales);
+  const [
+    datosEditados,
+    setDatosEditados,
+  ] = useState<DatosPerfil>(
+    datosIniciales
+  );
 
   const [editando, setEditando] =
     useState(false);
@@ -108,31 +139,70 @@ export default function MiPerfilPage() {
   const [mensaje, setMensaje] =
     useState("");
 
-  const [fotoPerfil, setFotoPerfil] =
-    useState<string | null>(() =>
-      localStorage.getItem(claveFoto)
+  const [
+    fotoPerfil,
+    setFotoPerfil,
+  ] = useState<string | null>(
+    () =>
+      localStorage.getItem(
+        claveFoto
+      )
+  );
+
+
+  const cambiarPestana = (
+    pestana: Pestaña
+  ) => {
+    setTabActiva(
+      pestana
     );
 
+    setEditando(
+      false
+    );
+
+    setDatosEditados(
+      datos
+    );
+
+    setMensaje("");
+  };
+
+
   const comenzarEdicion = () => {
-    setDatosEditados(datos);
+    setDatosEditados(
+      datos
+    );
+
     setEditando(true);
     setMensaje("");
   };
 
+
   const cancelarEdicion = () => {
-    setDatosEditados(datos);
+    setDatosEditados(
+      datos
+    );
+
     setEditando(false);
     setMensaje("");
   };
 
+
   const guardarCambios = () => {
-    setDatos(datosEditados);
-    setEditando(false);
+    setDatos(
+      datosEditados
+    );
+
+    setEditando(
+      false
+    );
 
     setMensaje(
       "Los datos fueron actualizados correctamente."
     );
   };
+
 
   const actualizarCampo = (
     campo: keyof DatosPerfil,
@@ -144,6 +214,7 @@ export default function MiPerfilPage() {
     });
   };
 
+
   const cambiarFoto = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
@@ -154,7 +225,11 @@ export default function MiPerfilPage() {
       return;
     }
 
-    if (!archivo.type.startsWith("image/")) {
+    if (
+      !archivo.type.startsWith(
+        "image/"
+      )
+    ) {
       setMensaje(
         "Seleccioná un archivo de imagen válido."
       );
@@ -162,14 +237,20 @@ export default function MiPerfilPage() {
       return;
     }
 
-    const lector = new FileReader();
+    const lector =
+      new FileReader();
 
     lector.onload = () => {
-      if (typeof lector.result !== "string") {
+      if (
+        typeof lector.result
+        !== "string"
+      ) {
         return;
       }
 
-      setFotoPerfil(lector.result);
+      setFotoPerfil(
+        lector.result
+      );
 
       localStorage.setItem(
         claveFoto,
@@ -181,50 +262,67 @@ export default function MiPerfilPage() {
       );
     };
 
-    lector.readAsDataURL(archivo);
+    lector.readAsDataURL(
+      archivo
+    );
   };
 
-  const eliminarFoto = () => {
-    setFotoPerfil(null);
 
-    localStorage.removeItem(claveFoto);
+  const eliminarFoto = () => {
+    setFotoPerfil(
+      null
+    );
+
+    localStorage.removeItem(
+      claveFoto
+    );
 
     setMensaje(
       "La foto de perfil fue eliminada."
     );
   };
 
+
   return (
     <section className="perfil-pagina mi-perfil">
       <header className="perfil-pagina-encabezado">
-        <h1>Mi Perfil</h1>
+        <h1>
+          Mi Perfil
+        </h1>
 
         <p>
-          Consultá y actualizá la información registrada en tu perfil.
+          Consultá y actualizá la información
+          registrada en tu perfil.
         </p>
       </header>
+
 
       <nav
         className="mi-perfil-pestanas"
         aria-label="Secciones del perfil"
       >
-        {pestañas.map((pestaña) => (
-          <button
-            key={pestaña}
-            type="button"
-            onClick={() =>
-              setTabActiva(pestaña)
-            }
-            className={
-              tabActiva === pestaña
-                ? "mi-perfil-pestana activa"
-                : "mi-perfil-pestana"
-            }
-          >
-            {pestaña}
-          </button>
-        ))}
+        {pestañas.map(
+          (pestaña) => (
+            <button
+              key={pestaña}
+              type="button"
+              onClick={() =>
+                cambiarPestana(
+                  pestaña
+                )
+              }
+              className={
+                tabActiva === pestaña
+                  ? "mi-perfil-pestana activa"
+                  : "mi-perfil-pestana"
+              }
+            >
+              {pestaña}
+            </button>
+          )
+        )}
       </nav>
+
 
       {mensaje && (
         <p
@@ -235,17 +333,21 @@ export default function MiPerfilPage() {
         </p>
       )}
 
+
       <div className="mi-perfil-contenido">
         <article className="mi-perfil-tarjeta-personal">
           <header>
             {rol}
           </header>
 
+
           <div className="mi-perfil-avatar-contenedor">
             {fotoPerfil ? (
               <img
                 src={fotoPerfil}
-                alt={`Foto de perfil de ${datos.nombre} ${datos.apellido}`}
+                alt={
+                  `Foto de perfil de ${datos.nombre} ${datos.apellido}`
+                }
                 className="mi-perfil-avatar"
               />
             ) : (
@@ -256,6 +358,7 @@ export default function MiPerfilPage() {
                 👤
               </span>
             )}
+
 
             {editando && (
               <div className="mi-perfil-foto-acciones">
@@ -270,14 +373,18 @@ export default function MiPerfilPage() {
                   id="foto-perfil"
                   type="file"
                   accept="image/*"
-                  onChange={cambiarFoto}
+                  onChange={
+                    cambiarFoto
+                  }
                   className="mi-perfil-input-foto"
                 />
 
                 {fotoPerfil && (
                   <button
                     type="button"
-                    onClick={eliminarFoto}
+                    onClick={
+                      eliminarFoto
+                    }
                     className="mi-perfil-eliminar-foto"
                   >
                     Eliminar foto
@@ -286,48 +393,77 @@ export default function MiPerfilPage() {
               </div>
             )}
 
+
             <h2>
-              {datos.nombre} {datos.apellido}
+              {datos.nombre}{" "}
+              {datos.apellido}
             </h2>
 
-            <p>DNI {datos.dni}</p>
+            {datos.dni && (
+              <p>
+                DNI {datos.dni}
+              </p>
+            )}
           </div>
+
 
           <div className="mi-perfil-resumen-personal">
             <dl>
               <div>
-                <dt>Correo</dt>
-                <dd>{datos.email}</dd>
+                <dt>
+                  Correo
+                </dt>
+
+                <dd>
+                  {datos.email}
+                </dd>
               </div>
 
               <div>
-                <dt>Ciudad</dt>
-                <dd>{datos.ciudad}</dd>
+                <dt>
+                  Rol
+                </dt>
+
+                <dd>
+                  {rol}
+                </dd>
               </div>
             </dl>
 
-            {!editando && (
-              <button
-                type="button"
-                className="mi-perfil-modificar"
-                onClick={comenzarEdicion}
-              >
-                Modificar datos
-              </button>
-            )}
+
+            {!editando &&
+              tabActiva !== "Seguridad" && (
+                <button
+                  type="button"
+                  className="mi-perfil-modificar"
+                  onClick={
+                    comenzarEdicion
+                  }
+                >
+                  Modificar datos
+                </button>
+              )}
           </div>
         </article>
 
+
         <article className="mi-perfil-datos">
-          {tabActiva === "Datos Personales" && (
+          {tabActiva ===
+            "Datos Personales" && (
             <section>
-              <h2>Datos Personales</h2>
+              <h2>
+                Datos Personales
+              </h2>
 
               <div className="mi-perfil-grilla">
                 <CampoPerfil
                   etiqueta="Nombre"
-                  valor={datosEditados.nombre}
-                  editando={editando}
+                  valor={
+                    datosEditados.nombre
+                  }
+                  editando={
+                    editando
+                  }
                   onChange={(valor) =>
                     actualizarCampo(
                       "nombre",
@@ -338,8 +474,12 @@ export default function MiPerfilPage() {
 
                 <CampoPerfil
                   etiqueta="Apellido"
-                  valor={datosEditados.apellido}
-                  editando={editando}
+                  valor={
+                    datosEditados.apellido
+                  }
+                  editando={
+                    editando
+                  }
                   onChange={(valor) =>
                     actualizarCampo(
                       "apellido",
@@ -350,174 +490,243 @@ export default function MiPerfilPage() {
 
                 <CampoPerfil
                   etiqueta="DNI"
-                  valor={datosEditados.dni}
-                  editando={editando}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "dni",
-                      valor
-                    )
+                  valor={
+                    datosEditados.dni
                   }
+                  editando={
+                    false
+                  }
+                  onChange={() => {}}
                 />
 
-                <CampoPerfil
-                  etiqueta="Nacionalidad"
-                  valor={
-                    datosEditados.nacionalidad
-                  }
-                  editando={editando}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "nacionalidad",
-                      valor
-                    )
-                  }
-                />
+                {!esAdministrador && (
+                  <CampoPerfil
+                    etiqueta="Nacionalidad"
+                    valor={
+                      datosEditados.nacionalidad
+                    }
+                    editando={
+                      editando
+                    }
+                    onChange={(valor) =>
+                      actualizarCampo(
+                        "nacionalidad",
+                        valor
+                      )
+                    }
+                  />
+                )}
               </div>
             </section>
           )}
 
-          {tabActiva === "Contacto" && (
+
+          {tabActiva ===
+            "Contacto" && (
             <section>
-              <h2>Contacto</h2>
+              <h2>
+                Contacto
+              </h2>
 
               <div className="mi-perfil-grilla">
                 <CampoPerfil
                   etiqueta="Correo electrónico"
-                  valor={datosEditados.email}
-                  editando={editando}
-                  tipo="email"
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "email",
-                      valor
-                    )
-                  }
-                />
-
-                <CampoPerfil
-                  etiqueta="Correo alternativo"
                   valor={
-                    datosEditados.emailAlternativo
+                    datosEditados.email
                   }
-                  editando={editando}
+                  editando={
+                    false
+                  }
                   tipo="email"
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "emailAlternativo",
-                      valor
-                    )
-                  }
+                  onChange={() => {}}
                 />
 
-                <CampoPerfil
-                  etiqueta="Teléfono"
-                  valor={datosEditados.telefono}
-                  editando={editando}
-                  tipo="tel"
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "telefono",
-                      valor
-                    )
-                  }
-                />
+                {!esAdministrador && (
+                  <>
+                    <CampoPerfil
+                      etiqueta="Correo alternativo"
+                      valor={
+                        datosEditados.emailAlternativo
+                      }
+                      editando={
+                        editando
+                      }
+                      tipo="email"
+                      onChange={(valor) =>
+                        actualizarCampo(
+                          "emailAlternativo",
+                          valor
+                        )
+                      }
+                    />
+
+                    <CampoPerfil
+                      etiqueta="Teléfono"
+                      valor={
+                        datosEditados.telefono
+                      }
+                      editando={
+                        editando
+                      }
+                      tipo="tel"
+                      onChange={(valor) =>
+                        actualizarCampo(
+                          "telefono",
+                          valor
+                        )
+                      }
+                    />
+                  </>
+                )}
               </div>
             </section>
           )}
 
-          {tabActiva === "Domicilio" && (
-            <section>
-              <h2>Domicilio</h2>
 
-              <div className="mi-perfil-grilla">
-                <CampoPerfil
-                  etiqueta="Domicilio"
-                  valor={
-                    datosEditados.domicilio
-                  }
-                  editando={editando}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "domicilio",
-                      valor
-                    )
-                  }
-                />
+          {!esAdministrador &&
+            tabActiva ===
+              "Domicilio" && (
+              <section>
+                <h2>
+                  Domicilio
+                </h2>
 
-                <CampoPerfil
-                  etiqueta="Ciudad"
-                  valor={datosEditados.ciudad}
-                  editando={editando}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "ciudad",
-                      valor
-                    )
-                  }
-                />
+                <div className="mi-perfil-grilla">
+                  <CampoPerfil
+                    etiqueta="Domicilio"
+                    valor={
+                      datosEditados.domicilio
+                    }
+                    editando={
+                      editando
+                    }
+                    onChange={(valor) =>
+                      actualizarCampo(
+                        "domicilio",
+                        valor
+                      )
+                    }
+                  />
 
-                <CampoPerfil
-                  etiqueta="Provincia"
-                  valor={
-                    datosEditados.provincia
-                  }
-                  editando={editando}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "provincia",
-                      valor
-                    )
-                  }
-                />
+                  <CampoPerfil
+                    etiqueta="Ciudad"
+                    valor={
+                      datosEditados.ciudad
+                    }
+                    editando={
+                      editando
+                    }
+                    onChange={(valor) =>
+                      actualizarCampo(
+                        "ciudad",
+                        valor
+                      )
+                    }
+                  />
 
-                <CampoPerfil
-                  etiqueta="País"
-                  valor={datosEditados.pais}
-                  editando={editando}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "pais",
-                      valor
-                    )
-                  }
-                />
-              </div>
-            </section>
+                  <CampoPerfil
+                    etiqueta="Provincia"
+                    valor={
+                      datosEditados.provincia
+                    }
+                    editando={
+                      editando
+                    }
+                    onChange={(valor) =>
+                      actualizarCampo(
+                        "provincia",
+                        valor
+                      )
+                    }
+                  />
+
+                  <CampoPerfil
+                    etiqueta="País"
+                    valor={
+                      datosEditados.pais
+                    }
+                    editando={
+                      editando
+                    }
+                    onChange={(valor) =>
+                      actualizarCampo(
+                        "pais",
+                        valor
+                      )
+                    }
+                  />
+                </div>
+              </section>
+            )}
+
+
+          {!esAdministrador &&
+            tabActiva ===
+              "Información" && (
+              <>
+                {esDocente && (
+                  <DetallePerfilDocente />
+                )}
+
+                {esEstudiante && (
+                  <DetallePerfilEstudiante
+                    carrera={
+                      datos.carrera
+                    }
+                    cohorte={
+                      datos.cohorte
+                    }
+                  />
+                )}
+
+                {!esDocente &&
+                  !esEstudiante && (
+                    <section>
+                      <h2>
+                        Información
+                      </h2>
+
+                      <p>
+                        No hay información adicional
+                        disponible para este perfil.
+                      </p>
+                    </section>
+                  )}
+              </>
+            )}
+
+
+          {tabActiva ===
+            "Seguridad" && (
+            <CambiarContrasena />
           )}
 
-          {tabActiva === "Información" && (
-            <>
-              {esDocente ? (
-                <DetallePerfilDocente />
-              ) : (
-                <DetallePerfilEstudiante
-                  carrera={datos.carrera}
-                  cohorte={datos.cohorte}
-                />
-              )}
-            </>
-          )}
 
-          {editando && (
-            <footer className="mi-perfil-acciones">
-              <button
-                type="button"
-                className="mi-perfil-cancelar"
-                onClick={cancelarEdicion}
-              >
-                Cancelar
-              </button>
+          {editando &&
+            tabActiva !==
+              "Seguridad" && (
+              <footer className="mi-perfil-acciones">
+                <button
+                  type="button"
+                  className="mi-perfil-cancelar"
+                  onClick={
+                    cancelarEdicion
+                  }
+                >
+                  Cancelar
+                </button>
 
-              <button
-                type="button"
-                className="mi-perfil-guardar"
-                onClick={guardarCambios}
-              >
-                Guardar cambios
-              </button>
-            </footer>
-          )}
+                <button
+                  type="button"
+                  className="mi-perfil-guardar"
+                  onClick={
+                    guardarCambios
+                  }
+                >
+                  Guardar cambios
+                </button>
+              </footer>
+            )}
         </article>
       </div>
     </section>

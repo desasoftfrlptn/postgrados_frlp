@@ -2,12 +2,11 @@ import asyncio
 
 from dotenv import load_dotenv
 
-# Carga DATABASE_URL desde .env antes de importar la conexión.
 load_dotenv()
 
 from sqlalchemy import select
 
-from src.autenticacion.infraestructura.orm_modelos import RolORM
+from src.usuarios.modelos import RolORM
 from src.compartido.conexion import AsyncSessionLocal, engine
 
 
@@ -15,7 +14,7 @@ ROLES = (
     "ASPIRANTE",
     "DOCENTE",
     "COORDINADOR",
-    "CPR",
+    "EQUIPO PRODUCCION",
     "ADMIN",
 )
 

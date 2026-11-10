@@ -1,4 +1,7 @@
+// Renderiza las opciones de navegación disponibles para cada perfil.
+
 import { NavLink } from "react-router-dom";
+
 
 export interface OpcionMenuPerfil {
   texto: string;
@@ -6,15 +9,25 @@ export interface OpcionMenuPerfil {
   ruta?: string;
 }
 
+
 interface BarraNavegacionPerfilProps {
   rol: string;
   opciones: OpcionMenuPerfil[];
 }
 
+
 export default function BarraNavegacionPerfil({
   rol,
   opciones,
 }: BarraNavegacionPerfilProps) {
+  const esRutaInicio = (
+    ruta: string
+  ) =>
+    ruta === "/dashboard" ||
+    ruta === "/dashboard/docente" ||
+    ruta === "/dashboard/administrador";
+
+
   return (
     <nav
       className="perfil-menu"
@@ -27,16 +40,21 @@ export default function BarraNavegacionPerfil({
               <NavLink
                 to={opcion.ruta}
                 end={
-                  opcion.ruta === "/dashboard" ||
-                  opcion.ruta === "/dashboard/docente"
+                  esRutaInicio(
+                    opcion.ruta
+                  )
                 }
-                className={({ isActive }) =>
+                className={({
+                  isActive,
+                }) =>
                   isActive
                     ? "perfil-menu-enlace perfil-menu-enlace-activo"
                     : "perfil-menu-enlace"
                 }
               >
-                <span aria-hidden="true">
+                <span
+                  aria-hidden="true"
+                >
                   {opcion.icono}
                 </span>
 
@@ -49,7 +67,9 @@ export default function BarraNavegacionPerfil({
                 className="perfil-menu-enlace perfil-menu-enlace-deshabilitado"
                 aria-disabled="true"
               >
-                <span aria-hidden="true">
+                <span
+                  aria-hidden="true"
+                >
                   {opcion.icono}
                 </span>
 

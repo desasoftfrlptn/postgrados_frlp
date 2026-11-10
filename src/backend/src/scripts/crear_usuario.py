@@ -5,8 +5,8 @@ load_dotenv()
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from src.autenticacion.aplicacion.seguridad import hash_password
-from src.autenticacion.infraestructura.orm_modelos import RolORM, UsuarioORM
+from src.usuarios.seguridad import hash_password
+from src.usuarios.modelos import RolORM, UsuarioORM
 from src.compartido.conexion import AsyncSessionLocal, engine
 
 

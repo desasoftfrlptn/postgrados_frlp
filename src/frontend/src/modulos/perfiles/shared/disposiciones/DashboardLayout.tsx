@@ -1,3 +1,4 @@
+
 import { Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -5,6 +6,8 @@ import type { Rol } from "../../../../shared/tipos";
 
 import { menuEstudiante } from "../../estudiante/config/menuEstudiante";
 import { menuDocente } from "../../docente/config/menuDocente";
+import { menuAdministrador } from "../../administrador/config/menuAdministrador";
+import { menuConduccion } from "../../conduccion/config/menuConduccion";
 
 import BarraNavegacionPerfil from "../componentes/BarraNavegacionPerfil";
 
@@ -23,7 +26,10 @@ export default function DashboardLayout() {
     ADMIN: "Administrador",
   };
 
-  const rolUsuario = user ? etiquetasRol[user.rol] : "Sin sesión";
+  const rolUsuario = user
+    ? etiquetasRol[user.rol]
+    : "Sin sesión";
+
   const nombreUsuario = user
     ? user.nombre + " " + user.apellido
     : "Usuario";
@@ -37,7 +43,11 @@ export default function DashboardLayout() {
       ? menuDocente
       : (user?.rol === "ASPIRANTE" || user?.rol === "ESTUDIANTE")
         ? menuEstudiante
-        : [];
+        : user?.rol === "ADMIN"
+          ? menuAdministrador
+          : user?.rol === "COORDINADOR"
+            ? menuConduccion
+            : [];
 
   const cerrarSesion = () => {
     logout();

@@ -1,6 +1,7 @@
 // Página principal de inicio (Dashboard) para el perfil Docente.
 
 import { Link } from "react-router-dom";
+import { useAuth } from "../../../manejo-sesion/useAuth";
 
 interface TarjetaDocenteProps {
   titulo: string;
@@ -46,11 +47,15 @@ function TarjetaDocente({
 }
 
 export default function DashboardDocentePage() {
+  const { user } = useAuth();
   return (
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
-        <h1>Hola, Margarita!</h1>
-        <p>Bienvenido/a a tu panel docente.</p>
+        <h1>Hola, {user?.nombre ?? "Docente"}!</h1>
+
+        <p>
+          Bienvenido/a a tu panel docente.
+        </p>
       </header>
 
       {/* Tarjetas de métricas principales */}

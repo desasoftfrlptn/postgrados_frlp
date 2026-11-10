@@ -1,21 +1,62 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
-from src.autenticacion.dominio.puertos import LegajoRepositorio
-from src.inscripcion.infraestructura.orm_modelos import LegajoORM
-from src.inscripcion.presentacion.esquemas import LegajoCrear
 
-# logica del metodo guardar para el mapea de los campos en Postgres 
+from uuid import UUID
+
+from sqlalchemy import (
+    or_,
+    select,
+    update,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.inscripcion.puertos import (
+    LegajoRepositorio,
+)
+from src.inscripcion.infraestructura.orm_modelos import (
+    LegajoORM,
+)
+from src.inscripcion.infraestructura.documentos_modelos import (
+    DocumentoLegajoORM,
+)
+from src.inscripcion.presentacion.esquemas import (
+    LegajoCrear,
+)
+
 
 class LegajoRepositorioPostgres(LegajoRepositorio):
-    def __init__(self, session: AsyncSession):
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ):
         self.session = session
 
-    async def existe_por_email_o_dni(self, email: str, dni: str) -> bool:
-        query = select(LegajoORM).where(or_(LegajoORM.correo_electronico == email, LegajoORM.dni_pasaporte == dni))
-        resultado = await self.session.execute(query)
-        return resultado.scalars().first() is not None
-    
-    async def guardar(self, datos: LegajoCrear) -> LegajoORM:
+    async def existe_por_email_o_dni(
+        self,
+        email: str,
+        dni: str,
+    ) -> bool:
+        query = select(
+            LegajoORM
+        ).where(
+            or_(
+                LegajoORM.correo_electronico == email,
+                LegajoORM.dni_pasaporte == dni,
+            )
+        )
+
+        resultado = await self.session.execute(
+            query
+        )
+
+        return (
+            resultado.scalars().first()
+            is not None
+        )
+
+    async def guardar(
+        self,
+        datos: LegajoCrear,
+    ) -> LegajoORM:
         nuevo_legajo = LegajoORM(
             carrera_elegida=datos.carrera_elegida,
             apellido=datos.apellido,
@@ -31,9 +72,157 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
             ciudad=datos.ciudad,
             titulo_anterior=datos.titulo_anterior,
             universidad_anterior=datos.universidad_anterior,
-            estado="PENDIENTE"
+            estado="PENDIENTE",
         )
+
         self.session.add(nuevo_legajo)
+
         await self.session.commit()
-        await self.session.refresh(nuevo_legajo)
+
+        await self.session.refresh(
+            nuevo_legajo
+        )
+
         return nuevo_legajo
+
+    async def listar_legajos(
+        self,
+        dni: str | None = None,
+        apellido: str | None = None,
+        carrera: str | None = None,
+        estado: str | None = None,
+    ) -> list[LegajoORM]:
+        """
+        Lista los legajos registrados
+        aplicando los filtros recibidos.
+        """
+
+        consulta = select(LegajoORM)
+
+        if dni and dni.strip():
+            consulta = consulta.where(
+                LegajoORM.dni_pasaporte == dni.strip()
+            )
+
+        if apellido and apellido.strip():
+            consulta = consulta.where(
+                LegajoORM.apellido.ilike(
+                    f"%{apellido.strip()}%"
+                )
+            )
+
+        if carrera and carrera.strip():
+            consulta = consulta.where(
+                LegajoORM.carrera_elegida == carrera.strip()
+            )
+
+        if estado and estado.strip():
+            consulta = consulta.where(
+                LegajoORM.estado == estado.strip().upper()
+            )
+
+        consulta = consulta.order_by(
+            LegajoORM.apellido,
+            LegajoORM.nombre,
+        )
+
+        resultado = await self.session.execute(
+            consulta
+        )
+
+        return list(
+            resultado.scalars().all()
+        )
+
+    async def obtener_por_id(
+        self,
+        legajo_id: UUID,
+    ) -> LegajoORM | None:
+        """
+        Obtiene un legajo por su identificador.
+        """
+
+        consulta = select(LegajoORM).where(
+            LegajoORM.id == legajo_id
+        )
+
+        resultado = await self.session.execute(
+            consulta
+        )
+
+        return resultado.scalars().first()
+
+    async def listar_documentos_por_legajo(
+        self,
+        legajo_id: UUID,
+    ) -> list[DocumentoLegajoORM]:
+        """
+        Consulta los documentos asociados a un legajo.
+        No descarga ni expone los archivos.
+        """
+
+        consulta = (
+            select(DocumentoLegajoORM)
+            .where(
+                DocumentoLegajoORM.legajo_id == legajo_id
+            )
+            .order_by(
+                DocumentoLegajoORM.fecha,
+                DocumentoLegajoORM.tipo,
+            )
+        )
+
+        resultado = await self.session.execute(
+            consulta
+        )
+
+        return list(
+            resultado.scalars().all()
+        )
+
+    async def actualizar_estado_legajo(
+        self,
+        legajo_id: UUID,
+        estado_actual: str,
+        estado_nuevo: str,
+    ) -> LegajoORM | None:
+        """
+        Actualiza el estado solo si todavía coincide
+        con el estado anterior esperado.
+
+        Devuelve None cuando no se pudo actualizar.
+
+        La validación de roles y transiciones debe
+        realizarse previamente en la aplicación.
+        """
+
+        consulta = (
+            update(LegajoORM)
+            .where(
+                LegajoORM.id == legajo_id,
+                LegajoORM.estado == estado_actual,
+            )
+            .values(
+                estado=estado_nuevo,
+            )
+            .returning(
+                LegajoORM.id,
+            )
+        )
+
+        resultado = await self.session.execute(
+            consulta
+        )
+
+        identificador_actualizado = (
+            resultado.scalar_one_or_none()
+        )
+
+        if identificador_actualizado is None:
+            return None
+
+        await self.session.commit()
+
+        return await self.obtener_por_id(
+            identificador_actualizado
+        )

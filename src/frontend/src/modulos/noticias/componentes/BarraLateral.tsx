@@ -1,84 +1,101 @@
-export default function BarraLateral() {
+// Permite buscar y filtrar las noticias públicas.
+
+interface BarraLateralProps {
+  busqueda: string;
+  categoria: string;
+  categorias: string[];
+
+  alCambiarBusqueda: (
+    valor: string
+  ) => void;
+
+  alCambiarCategoria: (
+    valor: string
+  ) => void;
+}
+
+
+export default function BarraLateral({
+  busqueda,
+  categoria,
+  categorias,
+  alCambiarBusqueda,
+  alCambiarCategoria,
+}: BarraLateralProps) {
   return (
-    // Agrupamos las secciones de búsqueda y categorías de la barra lateral.
     <section className="flex flex-col gap-6">
-
-      {/* SECCIÓN 1: Buscador */}
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <form role="search" className="flex flex-col">
-          <label htmlFor="buscador" className="font-bold text-gray-900 mb-2">
-            Buscar Noticias
-          </label>
+        <label
+          htmlFor="buscador-noticias"
+          className="font-bold text-gray-900 mb-2 block"
+        >
+          Buscar Noticias
+        </label>
 
-          <input
-            type="search"
-            id="buscador"
-            placeholder="Buscar..."
-            className="border border-gray-300 rounded-md p-2 bg-gray-100 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </form>
+        <input
+          type="search"
+          id="buscador-noticias"
+          placeholder="Buscar..."
+          value={busqueda}
+          onChange={(event) =>
+            alCambiarBusqueda(
+              event.target.value
+            )
+          }
+          className="w-full border border-gray-300 rounded-md p-2 bg-gray-100 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </section>
 
-      {/* SECCIÓN 2: Menú de Categorías */}
+
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="font-bold text-gray-900 mb-4">Categorias</h3>
+        <h2 className="font-bold text-gray-900 mb-4">
+          Categorías
+        </h2>
 
-        {/* <nav> indica que esto es un bloque de navegación */}
         <nav aria-label="Filtro de categorías">
-          {/* <ul> y <li> es la forma correcta de hacer listas, sin usar divs */}
           <ul className="space-y-3 font-medium text-sm">
-
             <li>
-              {/* El botón seleccionado va en azul, simulando el mockup */}
               <button
                 type="button"
-                className="w-full text-left bg-blue-200 text-blue-800 px-4 py-2 rounded-md transition-colors border border-blue-300"
+                onClick={() =>
+                  alCambiarCategoria(
+                    "Todas"
+                  )
+                }
+                className={
+                  categoria === "Todas"
+                    ? "w-full text-left bg-blue-200 text-blue-800 px-4 py-2 rounded-md border border-blue-300"
+                    : "w-full text-left bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md border border-gray-300"
+                }
               >
                 Todas las noticias
               </button>
             </li>
 
-            {/* Los demás botones van en gris */}
-            <li>
-              <button
-                type="button"
-                className="w-full text-left bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition-colors border border-gray-300 shadow-sm"
-              >
-                Academico
-              </button>
-            </li>
-
-            <li>
-              <button
-                type="button"
-                className="w-full text-left bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition-colors border border-gray-300 shadow-sm"
-              >
-                Posgrado
-              </button>
-            </li>
-
-            <li>
-              <button
-                type="button"
-                className="w-full text-left bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition-colors border border-gray-300 shadow-sm"
-              >
-                Becas
-              </button>
-            </li>
-
-            <li>
-              <button
-                type="button"
-                className="w-full text-left bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md transition-colors border border-gray-300 shadow-sm"
-              >
-                Eventos y Feriados
-              </button>
-            </li>
-
+            {categorias.map(
+              (nombre) => (
+                <li key={nombre}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      alCambiarCategoria(
+                        nombre
+                      )
+                    }
+                    className={
+                      categoria === nombre
+                        ? "w-full text-left bg-blue-200 text-blue-800 px-4 py-2 rounded-md border border-blue-300"
+                        : "w-full text-left bg-gray-200 text-gray-700 hover:bg-gray-300 px-4 py-2 rounded-md border border-gray-300"
+                    }
+                  >
+                    {nombre}
+                  </button>
+                </li>
+              )
+            )}
           </ul>
         </nav>
       </section>
-
     </section>
   );
 }
