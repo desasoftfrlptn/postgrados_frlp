@@ -1,9 +1,9 @@
 """Tablas del módulo de seguimiento de graduación (Módulo C)."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, func, text
+from sqlalchemy import CheckConstraint, ForeignKey, String, func, text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.database.connection import Base
@@ -29,4 +29,7 @@ class TrabajoFinal(Base):
     fecha_cpr: Mapped[date]
     numero_resolucion: Mapped[str] = mapped_column(String(50))
     creado_por: Mapped[str] = mapped_column(String(255))  # email del CPR que lo cargó (auditoría)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
+        default=datetime.now(timezone.utc),
+    )
