@@ -1,6 +1,3 @@
-// Página de inicio de sesión para acceder
-// a las funciones privadas del sistema.
-
 import {
   useState,
   type FormEvent,
@@ -108,7 +105,8 @@ export default function LoginPage() {
         sesion.debeCambiarContrasena
       ) {
         navigate(
-          "/cambiar-contrasena-inicial"
+          "/cambiar-contrasena-inicial",
+          { replace: true }
         );
 
         return;
@@ -123,7 +121,8 @@ export default function LoginPage() {
         sesion.rol === "ADMIN"
       ) {
         navigate(
-          "/dashboard/administrador"
+          "/dashboard/administrador",
+          { replace: true }
         );
 
         return;
@@ -134,7 +133,8 @@ export default function LoginPage() {
         sesion.rol === "DOCENTE"
       ) {
         navigate(
-          "/dashboard/docente"
+          "/dashboard/docente",
+          { replace: true }
         );
 
         return;
@@ -145,7 +145,8 @@ export default function LoginPage() {
         sesion.rol === "ASPIRANTE"
       ) {
         navigate(
-          "/dashboard"
+          "/dashboard",
+          { replace: true }
         );
 
         return;
@@ -153,11 +154,28 @@ export default function LoginPage() {
 
 
       /*
-       * COORDINADOR y CPR utilizan,
-       * por ahora, el dashboard general.
+       * El Equipo de Conducción accede
+       * directamente a su panel de inicio.
+       */
+      if (
+        sesion.rol === "COORDINADOR"
+      ) {
+        navigate(
+          "/dashboard/conduccion",
+          { replace: true }
+        );
+
+        return;
+      }
+
+
+      /*
+       * CPR mantiene el dashboard general
+       * hasta contar con su panel específico.
        */
       navigate(
-        "/dashboard/general"
+        "/dashboard/general",
+        { replace: true }
       );
 
     } catch (error) {

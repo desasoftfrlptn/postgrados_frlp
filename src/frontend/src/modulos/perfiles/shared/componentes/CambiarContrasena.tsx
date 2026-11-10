@@ -19,29 +19,59 @@ export default function CambiarContrasena() {
     user,
   } = useAuth();
 
+
   const [
     contrasenaActual,
     setContrasenaActual,
   ] = useState("");
+
 
   const [
     contrasenaNueva,
     setContrasenaNueva,
   ] = useState("");
 
+
   const [
     repetirContrasena,
     setRepetirContrasena,
   ] = useState("");
 
-  const [error, setError] =
-    useState("");
 
-  const [mensaje, setMensaje] =
-    useState("");
+  const [
+    mostrarActual,
+    setMostrarActual,
+  ] = useState(false);
 
-  const [guardando, setGuardando] =
-    useState(false);
+
+  const [
+    mostrarNueva,
+    setMostrarNueva,
+  ] = useState(false);
+
+
+  const [
+    mostrarRepetida,
+    setMostrarRepetida,
+  ] = useState(false);
+
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+
+  const [
+    mensaje,
+    setMensaje,
+  ] = useState("");
+
+
+  const [
+    guardando,
+    setGuardando,
+  ] = useState(false);
 
 
   const guardar = async (
@@ -49,25 +79,31 @@ export default function CambiarContrasena() {
   ) => {
     event.preventDefault();
 
+
     if (!user) {
       return;
     }
+
 
     if (
       contrasenaNueva
       !== repetirContrasena
     ) {
+      setMensaje("");
+
       setError(
-        "Las contraseñas nuevas no coinciden"
+        "Las contraseñas nuevas no coinciden."
       );
 
       return;
     }
 
+
     try {
       setGuardando(true);
       setError("");
       setMensaje("");
+
 
       await api.post(
         "/autenticacion/cambiar-contrasena",
@@ -84,22 +120,25 @@ export default function CambiarContrasena() {
         user.token
       );
 
+
       setContrasenaActual("");
       setContrasenaNueva("");
       setRepetirContrasena("");
+
 
       setMensaje(
         "La contraseña fue actualizada correctamente."
       );
 
     } catch (error) {
+      setMensaje("");
+
       setError(
         error instanceof Error
           ? error.message
-          : (
-              "No se pudo cambiar la contraseña"
-            )
+          : "No se pudo cambiar la contraseña."
       );
+
     } finally {
       setGuardando(false);
     }
@@ -111,16 +150,37 @@ export default function CambiarContrasena() {
       className="mi-perfil-contrasena"
       aria-labelledby="titulo-cambiar-contrasena"
     >
-      <header>
-        <h2 id="titulo-cambiar-contrasena">
-          Cambiar contraseña
-        </h2>
+      <header className="mi-perfil-contrasena-encabezado">
+        <div className="mi-perfil-contrasena-icono">
+          🔐
+        </div>
+
+        <div>
+          <h2 id="titulo-cambiar-contrasena">
+            Cambiar contraseña
+          </h2>
+
+          <p>
+            Actualizá la contraseña que utilizás
+            para acceder al sistema.
+          </p>
+        </div>
+      </header>
+
+
+      <div className="mi-perfil-contrasena-aviso">
+        <span
+          aria-hidden="true"
+          className="mi-perfil-contrasena-aviso-icono"
+        >
+          ℹ️
+        </span>
 
         <p>
-          Actualizá la contraseña utilizada
-          para acceder al sistema.
+          La nueva contraseña debe tener como
+          mínimo 6 caracteres.
         </p>
-      </header>
+      </div>
 
 
       {error && (
@@ -143,69 +203,161 @@ export default function CambiarContrasena() {
       )}
 
 
-      <form onSubmit={guardar}>
-        <label htmlFor="perfil-contrasena-actual">
-          Contraseña actual
-        </label>
+      <form
+        onSubmit={guardar}
+        className="mi-perfil-contrasena-formulario"
+      >
+        <div className="mi-perfil-contrasena-campo">
+          <label htmlFor="perfil-contrasena-actual">
+            Contraseña actual
+          </label>
 
-        <input
-          id="perfil-contrasena-actual"
-          type="password"
-          required
-          value={contrasenaActual}
-          onChange={(event) =>
-            setContrasenaActual(
-              event.target.value
-            )
-          }
-        />
+          <div className="mi-perfil-contrasena-input">
+            <input
+              id="perfil-contrasena-actual"
+              type={
+                mostrarActual
+                  ? "text"
+                  : "password"
+              }
+              required
+              autoComplete="current-password"
+              placeholder="Ingresá tu contraseña actual"
+              value={contrasenaActual}
+              onChange={(event) =>
+                setContrasenaActual(
+                  event.target.value
+                )
+              }
+            />
 
-
-        <label htmlFor="perfil-contrasena-nueva">
-          Nueva contraseña
-        </label>
-
-        <input
-          id="perfil-contrasena-nueva"
-          type="password"
-          required
-          minLength={6}
-          value={contrasenaNueva}
-          onChange={(event) =>
-            setContrasenaNueva(
-              event.target.value
-            )
-          }
-        />
-
-
-        <label htmlFor="perfil-repetir-contrasena">
-          Repetir nueva contraseña
-        </label>
-
-        <input
-          id="perfil-repetir-contrasena"
-          type="password"
-          required
-          minLength={6}
-          value={repetirContrasena}
-          onChange={(event) =>
-            setRepetirContrasena(
-              event.target.value
-            )
-          }
-        />
+            <button
+              type="button"
+              className="mi-perfil-contrasena-mostrar"
+              onClick={() =>
+                setMostrarActual(
+                  !mostrarActual
+                )
+              }
+              aria-label={
+                mostrarActual
+                  ? "Ocultar contraseña actual"
+                  : "Mostrar contraseña actual"
+              }
+            >
+              {mostrarActual
+                ? "Ocultar"
+                : "Ver"}
+            </button>
+          </div>
+        </div>
 
 
-        <button
-          type="submit"
-          className="mi-perfil-guardar"
-          disabled={guardando}
-        >
-          {guardando
-            ? "Guardando..."
-            : "Cambiar contraseña"}
-        </button>
+        <div className="mi-perfil-contrasena-campo">
+          <label htmlFor="perfil-contrasena-nueva">
+            Nueva contraseña
+          </label>
+
+          <div className="mi-perfil-contrasena-input">
+            <input
+              id="perfil-contrasena-nueva"
+              type={
+                mostrarNueva
+                  ? "text"
+                  : "password"
+              }
+              required
+              minLength={6}
+              autoComplete="new-password"
+              placeholder="Ingresá la nueva contraseña"
+              value={contrasenaNueva}
+              onChange={(event) =>
+                setContrasenaNueva(
+                  event.target.value
+                )
+              }
+            />
+
+            <button
+              type="button"
+              className="mi-perfil-contrasena-mostrar"
+              onClick={() =>
+                setMostrarNueva(
+                  !mostrarNueva
+                )
+              }
+              aria-label={
+                mostrarNueva
+                  ? "Ocultar nueva contraseña"
+                  : "Mostrar nueva contraseña"
+              }
+            >
+              {mostrarNueva
+                ? "Ocultar"
+                : "Ver"}
+            </button>
+          </div>
+        </div>
+
+
+        <div className="mi-perfil-contrasena-campo">
+          <label htmlFor="perfil-repetir-contrasena">
+            Repetir nueva contraseña
+          </label>
+
+          <div className="mi-perfil-contrasena-input">
+            <input
+              id="perfil-repetir-contrasena"
+              type={
+                mostrarRepetida
+                  ? "text"
+                  : "password"
+              }
+              required
+              minLength={6}
+              autoComplete="new-password"
+              placeholder="Repetí la nueva contraseña"
+              value={repetirContrasena}
+              onChange={(event) =>
+                setRepetirContrasena(
+                  event.target.value
+                )
+              }
+            />
+
+            <button
+              type="button"
+              className="mi-perfil-contrasena-mostrar"
+              onClick={() =>
+                setMostrarRepetida(
+                  !mostrarRepetida
+                )
+              }
+              aria-label={
+                mostrarRepetida
+                  ? "Ocultar contraseña repetida"
+                  : "Mostrar contraseña repetida"
+              }
+            >
+              {mostrarRepetida
+                ? "Ocultar"
+                : "Ver"}
+            </button>
+          </div>
+        </div>
+
+
+        <footer className="mi-perfil-contrasena-acciones">
+          <button
+            type="submit"
+            className="mi-perfil-guardar"
+            disabled={guardando}
+          >
+            {guardando
+              ? "Guardando..."
+              : "Cambiar contraseña"}
+          </button>
+        </footer>
       </form>
     </section>
   );
