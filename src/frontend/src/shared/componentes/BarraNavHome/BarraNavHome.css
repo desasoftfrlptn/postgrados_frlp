@@ -1,0 +1,148 @@
+/* Estilos de la barra de navegación de las páginas públicas. */
+
+.barra-nav-home {
+  width: 100%;
+  background: var(--color-primary);
+}
+
+.barra-nav-home-contenido {
+  min-height: 78px;
+  padding: 0 28px;
+
+  display: grid;
+  grid-template-columns: 250px 1fr 180px;
+  align-items: center;
+  gap: 28px;
+}
+
+.barra-nav-home-logo {
+  display: flex;
+  align-items: center;
+}
+
+.barra-nav-home-logo img {
+  width: 225px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.barra-nav-home-enlaces {
+  margin: 0;
+  padding: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 18px;
+
+  list-style: none;
+}
+
+.barra-nav-home-enlaces a,
+.barra-nav-home-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--color-text-light);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.barra-nav-home-enlaces a {
+  position: relative;
+  gap: 8px;
+
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.barra-nav-home-icono {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.barra-nav-home-icono-usuario {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+
+  fill: currentColor;
+}
+
+.barra-nav-home-enlaces a:hover {
+  opacity: 0.8;
+}
+
+.barra-nav-home-enlaces a[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+
+  height: 2px;
+
+  background: var(--color-secondary);
+}
+
+.barra-nav-home-login {
+  min-width: 165px;
+  padding: 12px 20px;
+  justify-self: end;
+  gap: 9px;
+
+  background: var(--color-secondary);
+  border-radius: 6px;
+
+  font-size: 14px;
+}
+
+.barra-nav-home-login:hover {
+  opacity: 0.9;
+}
+
+.barra-nav-home-enlaces a:focus-visible,
+.barra-nav-home-login:focus-visible,
+.barra-nav-home-logo:focus-visible {
+  outline: 2px solid var(--color-text-light);
+  outline-offset: 4px;
+}
+
+@media (max-width: 1250px) {
+  .barra-nav-home-contenido {
+    min-height: 74px;
+    padding: 0 16px;
+
+    grid-template-columns: 190px 1fr 150px;
+    gap: 16px;
+  }
+
+  .barra-nav-home-logo img {
+    width: 180px;
+  }
+
+  .barra-nav-home-enlaces {
+    gap: 8px;
+  }
+
+  .barra-nav-home-enlaces a,
+  .barra-nav-home-login {
+    font-size: 13px;
+  }
+
+  .barra-nav-home-icono {
+    width: 19px;
+    height: 19px;
+  }
+
+  .barra-nav-home-login {
+    min-width: auto;
+    padding: 11px 16px;
+  }
+}

@@ -1,0 +1,215 @@
+/* Estilos de las páginas públicas de manejo de sesión. */
+
+.sesion {
+  width: 100%;
+  min-height: 542px;
+  padding: 22px;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.sesion::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: rgba(20, 25, 30, 0.32);
+}
+
+.sesion-formulario {
+  width: 410px;
+  padding: 22px 30px;
+
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  background: rgba(205, 205, 205, 0.5);
+  border-radius: 6px;
+}
+
+.sesion-encabezado {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.sesion-encabezado h1 {
+  margin: 0 0 5px;
+
+  color: var(--color-text-light);
+  font-size: 27px;
+  font-weight: 500;
+}
+
+.sesion-encabezado p {
+  margin: 0;
+
+  color: #eeeeee;
+  font-size: 12px;
+}
+
+.sesion-formulario label {
+  margin-bottom: 5px;
+
+  color: var(--color-text-light);
+  font-size: 16px;
+}
+
+.sesion-formulario label span {
+  color: red;
+}
+
+.sesion-formulario > input,
+.sesion-password input {
+  width: 100%;
+  height: 41px;
+  padding: 8px 12px;
+
+  color: #555555;
+  background: #d8d8d8;
+
+  border: 1px solid #999999;
+  border-radius: 2px;
+
+  font: inherit;
+  font-size: 14px;
+}
+
+.sesion-formulario input::placeholder {
+  color: #666666;
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.sesion-formulario > input {
+  margin-bottom: 17px;
+}
+
+.sesion-password {
+  position: relative;
+  margin-bottom: 4px;
+}
+
+.sesion-password input {
+  padding-right: 42px;
+}
+
+.sesion-password button {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+
+  padding: 0;
+  transform: translateY(-50%);
+
+  color: #666666;
+  background: none;
+
+  border: 0;
+
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.sesion-recuperar {
+  margin-bottom: 12px;
+  align-self: flex-end;
+
+  color: var(--color-text-light);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.sesion-recuperar:hover {
+  text-decoration: underline;
+}
+
+/* reCAPTCHA */
+
+.sesion-captcha {
+  min-height: 78px;
+  margin: 0 auto 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sesion-volver {
+  margin-top: 12px;
+
+  align-self: center;
+
+  color: var(--color-text-light);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.sesion-volver:hover {
+  text-decoration: underline;
+}
+
+.sesion-boton {
+  width: 100%;
+  height: 40px;
+
+  color: var(--color-text-light);
+  background: var(--color-secondary);
+
+  border: 0;
+  border-radius: 5px;
+
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.sesion-boton:hover {
+  opacity: 0.9;
+}
+
+.sesion-error,
+.sesion-mensaje {
+  margin: 0 0 12px;
+  padding: 7px;
+
+  background: rgba(255, 255, 255, 0.82);
+
+  text-align: center;
+  font-size: 12px;
+}
+
+.sesion-error {
+  color: #b00020;
+}
+
+.sesion-mensaje {
+  color: #126b38;
+}
+
+@media (max-width: 700px) {
+  .sesion {
+    min-height: 520px;
+    padding: 18px;
+  }
+
+  .sesion-formulario {
+    width: 100%;
+    max-width: 410px;
+    padding: 22px 20px;
+  }
+
+  .sesion-captcha {
+    transform: scale(0.92);
+    transform-origin: center;
+  }
+}
