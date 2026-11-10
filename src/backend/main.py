@@ -29,20 +29,6 @@ from src.seminarios.presentacion.rutas import (
     enrutador as seminarios_rutas,
 )
 
-from src.configuracion_publica.infraestructura import (
-    orm_modelos as _modelos_configuracion_publica,
-)
-from src.configuracion_publica.presentacion.rutas import (
-    enrutador as configuracion_publica_rutas,
-)
-
-from src.noticias.infraestructura import (
-    orm_modelos as _modelos_noticias,
-)
-from src.noticias.presentacion.rutas import (
-    enrutador as noticias_rutas,
-)
-
 
 load_dotenv()
 
@@ -138,12 +124,4 @@ app.include_router(
 
 app.include_router(
     seminarios_rutas
-)
-
-app.include_router(
-    configuracion_publica_rutas
-)
-
-app.include_router(
-    noticias_rutas
 )
