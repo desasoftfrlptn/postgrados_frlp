@@ -151,6 +151,27 @@ async def listar_legajos_conduccion(
         estado=estado,
     )
 
+@enrutador.get(
+        "/mi-legajo", 
+        response_model=LegajoRespuesta)
+async def obtener_mi_legajo(
+    db: AsyncSession = Depends(get_db),
+    usuario: UsuarioORM = Depends(usuario_actual),
+):
+    repositorio = LegajoRepositorioPostgres(
+        db
+    )
+    legajo = await repositorio.obtener_por_email_o_dni(
+    email=usuario.correo_electronico,
+    dni=usuario.dni,
+    )
+    if legajo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró el legajo.",
+        )
+
+    return legajo
 
 @enrutador.get(
     "/{legajo_id}",

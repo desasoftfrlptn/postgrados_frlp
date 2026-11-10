@@ -53,6 +53,23 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
             is not None
         )
 
+    async def obtener_por_email_o_dni(
+            self, email: str, dni: str
+    ) -> LegajoORM | None:
+                    query = select(
+                        LegajoORM
+                    ).where(
+                        or_(
+                            LegajoORM.correo_electronico == email,
+                            LegajoORM.dni_pasaporte == dni,
+                        )
+                    )
+                    resultado = await self.session.execute(
+                        query
+                    )
+                    return resultado.scalars().first()
+        
+
     async def guardar(
         self,
         datos: LegajoCrear,

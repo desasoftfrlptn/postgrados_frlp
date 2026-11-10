@@ -32,7 +32,7 @@ import SeminariosPage from "../../modulos/perfiles/administrador/paginas/Seminar
 import CohortesPage from "../../modulos/perfiles/administrador/paginas/CohortesPage";
 import CalendarioAcademicoPage from "../../modulos/perfiles/administrador/paginas/CalendarioAcademicoPage";
 import EstadisticasPage from "../../modulos/perfiles/administrador/paginas/EstadisticasPage";
-import ReportesPage from "../../modulos/perfiles/administrador/paginas/ReportesPage";
+import ReportesAdminPage from "../../modulos/perfiles/administrador/paginas/ReportesPage";
 import HomeAdministradorPage from "../../modulos/perfiles/administrador/paginas/HomeAdministradorPage";
 import ConfiguracionGeneralPage from "../../modulos/perfiles/administrador/paginas/ConfiguracionGeneralPage";
 
@@ -274,7 +274,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard/administrador/reportes",
-            element: <ReportesPage />,
+            element:  <ReportesAdminPage />,
           },
           {
             path: "dashboard/administrador/home",
@@ -289,91 +289,5 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // RUTAS EXCLUSIVAS DEL EQUIPO DE CONDUCCIÓN
-  {
-    element: (
-      <ProtectedRoute rolesPermitidos={["COORDINADOR"]} />
-    ),
-    children: [
-      {
-        element: <DashboardLayout />,
-        children: [
-          {
-            path: "dashboard/conduccion",
-            element: <PanelConduccionPage />,
-          },
-          {
-            path: "dashboard/conduccion/aspirantes",
-            element: <ListadoAspirantesPage />,
-          },
-          {
-            path: "dashboard/conduccion/legajos/:id",
-            element: <DetalleLegajoPage />,
-          },
-        ],
-      },
-    ],
-  },
 
-  // RUTAS EXCLUSIVAS DEL ADMINISTRADOR
-  {
-    element: (
-      <ProtectedRoute rolesPermitidos={["ADMIN"]} />
-    ),
-    children: [
-      {
-        element: <DashboardLayout />,
-        children: [
-          {
-            path: "dashboard/administrador",
-            element: <DashboardAdministradorPage />,
-          },
-          {
-            path: "dashboard/administrador/perfil",
-            element: <MiPerfilPage />,
-          },
-          {
-            path: "dashboard/administrador/usuarios",
-            element: <UsuariosPage />,
-          },
-          {
-            path: "dashboard/administrador/docentes",
-            element: <DocentesPage />,
-          },
-          {
-            path: "dashboard/administrador/carreras",
-            element: <CarrerasPage />,
-          },
-          {
-            path: "dashboard/administrador/seminarios",
-            element: <SeminariosPage />,
-          },
-          {
-            path: "dashboard/administrador/cohortes",
-            element: <CohortesPage />,
-          },
-          {
-            path: "dashboard/administrador/calendario",
-            element: <CalendarioAcademicoPage />,
-          },
-          {
-            path: "dashboard/administrador/estadisticas",
-            element: <EstadisticasPage />,
-          },
-          {
-            path: "dashboard/administrador/reportes",
-            element: <ReportesPage />,
-          },
-          {
-            path: "dashboard/administrador/home",
-            element: <HomeAdministradorPage />,
-          },
-          {
-            path: "dashboard/administrador/configuracion",
-            element: <ConfiguracionGeneralPage />,
-          },
-        ],
-      },
-    ],
-  },
 ]);

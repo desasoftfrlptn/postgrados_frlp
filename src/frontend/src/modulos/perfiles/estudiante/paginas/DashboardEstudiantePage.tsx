@@ -1,4 +1,6 @@
-﻿import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { api } from "../../../../shared/api/client";
+import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
@@ -34,43 +36,97 @@ function TarjetaMetrica({
   );
 }
 
+interface MiLegajo {
+  id: string;
+  carrera_elegida: string;
+  estado: string;
+  dni_pasaporte: string;
+}
+
 export default function DashboardEstudiantePage() {
   const { user } = useAuth();
+  const [legajo, setLegajo] = useState<MiLegajo | null>(null);
+  const [cargandoLegajo, setCargandoLegajo] = useState(true);
+  const [errorLegajo, setErrorLegajo] = useState<string | null>(null);
+  useEffect(() => {
+    async function cargarMiLegajo() {
+      if (!user?.token) {
+        setCargandoLegajo(false);
+        return;
+      }
+      try {
+        // Llamada al endpoint 
+        const respuesta = await api.get<MiLegajo>(
+          "/inscripcion/mi-legajo",
+          user.token
+        );
+        setLegajo(respuesta);
+        setErrorLegajo(null);
+      } catch (err) {
+        setErrorLegajo(
+          err instanceof Error ? err.message : "Sin legajo registrado"
+        );
+      } finally {
+        setCargandoLegajo(false);
+      }
+    }
+    cargarMiLegajo();
+  }, [user?.token]);
+
+    // Calculamos qué texto mostrar en la tarjeta según el estado de la petición
+  let textoEstadoLegajo = "Sin registrar";
+  if (cargandoLegajo) {
+    textoEstadoLegajo = "Cargando...";
+  } else if (legajo) {
+    textoEstadoLegajo = legajo.estado;
+  }
+
   return (
     <section className="perfil-pagina">
       <header className="perfil-pagina-encabezado">
         <h1>Hola, {user?.nombre ?? "Estudiante"}!</h1>
 
         <p>
-          Bienvenido/a a tu panel de estudiante.
+           {legajo
+            ? `Carrera: ${legajo.carrera_elegida}`
+            : "Bienvenido/a a tu panel de estudiante."}
         </p>
       </header>
 
+        {errorLegajo && (
+      <p
+        role="status"
+        className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm"
+      >
+        {errorLegajo}
+      </p>
+    )}
+    
       <section
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
-        aria-label="Resumen acadÃ©mico"
+        aria-label="Resumen académico"
       >
         <TarjetaMetrica
           titulo="Estado del legajo"
-          valor="Completo"
+          valor={textoEstadoLegajo}
           colorBorde="border-green-500"
         >
           <Link
             to="/dashboard/perfil"
             className="text-green-700 text-sm font-semibold hover:underline"
           >
-            Ver legajo â†’
+            Ver legajo →
           </Link>
         </TarjetaMetrica>
 
         <TarjetaMetrica
-          titulo="Estado AcadÃ©mico"
+          titulo="Estado Académico"
           valor="En Curso"
           colorBorde="border-yellow-400"
         >
           <span
             className="flex items-end gap-1 h-8"
-            aria-label="Estado acadÃ©mico en curso"
+            aria-label="Estado académico en curso"
           >
             <span
               className="w-3 h-4 bg-yellow-400 rounded-sm"
@@ -95,7 +151,7 @@ export default function DashboardEstudiantePage() {
           colorBorde="border-blue-500"
         >
           <span className="text-blue-600 text-sm font-semibold">
-            Ver Progreso â†’
+            Ver Progreso →
           </span>
         </TarjetaMetrica>
 
@@ -105,7 +161,7 @@ export default function DashboardEstudiantePage() {
           colorBorde="border-slate-800"
         >
           <span className="text-slate-600 text-sm font-semibold">
-            Ver todos â†’
+            Ver todos →
           </span>
         </TarjetaMetrica>
 
@@ -115,7 +171,7 @@ export default function DashboardEstudiantePage() {
           colorBorde="border-red-500"
         >
           <span className="text-slate-600 text-sm font-semibold">
-            Ver detalle â†’
+            Ver detalle →
           </span>
         </TarjetaMetrica>
 
@@ -125,7 +181,7 @@ export default function DashboardEstudiantePage() {
           colorBorde="border-teal-500"
         >
           <span className="text-slate-600 text-sm font-semibold">
-            Ver notas â†’
+            Ver notas →
           </span>
         </TarjetaMetrica>
       </section>
@@ -134,14 +190,14 @@ export default function DashboardEstudiantePage() {
         <article className="bg-white rounded-xl shadow-sm border border-gray-100">
           <header className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">
-              PrÃ³ximas Clases
+              Próximas Clases
             </h2>
           </header>
 
           <ul className="divide-y divide-gray-100 p-2">
             <li className="p-4 flex justify-between items-center gap-4 text-sm">
               <span className="font-semibold text-slate-700">
-                MetodologÃ­a de la InvestigaciÃ³n
+                Metodología de la Investigación
               </span>
 
               <time className="text-slate-500 font-medium">
@@ -151,7 +207,7 @@ export default function DashboardEstudiantePage() {
 
             <li className="p-4 flex justify-between items-center gap-4 text-sm">
               <span className="font-semibold text-slate-700">
-                GestiÃ³n de Proyectos
+                Gestión de Proyectos
               </span>
 
               <time className="text-slate-500 font-medium">
@@ -161,7 +217,7 @@ export default function DashboardEstudiantePage() {
 
             <li className="p-4 flex justify-between items-center gap-4 text-sm">
               <span className="font-semibold text-slate-700">
-                MaestrÃ­a de Sistemas
+                Maestría de Sistemas
               </span>
 
               <time className="text-slate-500 font-medium">
@@ -174,7 +230,7 @@ export default function DashboardEstudiantePage() {
         <article className="bg-white rounded-xl shadow-sm border border-gray-100">
           <header className="p-6 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">
-              Ãšltimas Notificaciones
+              Últimas Notificaciones
             </h2>
           </header>
 
@@ -184,7 +240,7 @@ export default function DashboardEstudiantePage() {
                 className="text-2xl"
                 aria-hidden="true"
               >
-                ðŸ””
+                🔔
               </span>
 
               <div>
@@ -193,8 +249,8 @@ export default function DashboardEstudiantePage() {
                 </h3>
 
                 <p className="text-sm text-red-700 mt-1 leading-relaxed">
-                  Falta completar informaciÃ³n de la encuesta de la materia
-                  MetodologÃ­a de la InvestigaciÃ³n.
+                  Falta completar información de la encuesta de la materia
+                  Metodología de la Investigación.
                 </p>
               </div>
             </div>

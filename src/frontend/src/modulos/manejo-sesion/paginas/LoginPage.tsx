@@ -297,7 +297,7 @@ export default function LoginPage() {
           ¿Olvidaste tu contraseña?
         </Link>
 
-        <Captcha
+       {/* <Captcha
           onVerify={(token: string) => {
             setCaptchaToken(token);
 
@@ -309,7 +309,7 @@ export default function LoginPage() {
             setCaptchaToken("");
             setError("No se pudo cargar el CAPTCHA");
           }}
-        />
+        /> */}
 
         <button
           className="sesion-boton mt-6"

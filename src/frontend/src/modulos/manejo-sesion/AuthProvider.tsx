@@ -69,6 +69,8 @@ export function AuthProvider({
       apellido: respuesta.apellido,
       rol: respuesta.tipo_usuario,
       token: respuesta.token,
+      dni: respuesta.dni,
+      debeCambiarContrasena: respuesta.debe_cambiar_contrasena,
     };
 
 

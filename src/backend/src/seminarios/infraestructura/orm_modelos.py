@@ -8,6 +8,9 @@ from sqlalchemy import (
     Date,
     ForeignKey,
     String,
+    Float,
+    Integer,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -61,3 +64,47 @@ class SeminarioORM(Base):
         nullable=False,
         default=True,
     )
+
+class InscripcionSeminarioORM(Base):
+    __tablename__ = "inscripciones_seminario"
+     
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4, 
+    )
+
+    legajo_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("legajos.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    seminario_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("seminarios.id", ondelete="CASCADE"), 
+        nullable=False
+    )
+
+    nota_final = Column(
+        Float,nullable=True
+    )
+
+    asistencias = Column(
+        Integer, 
+        nullable=False, 
+        default=0
+
+    )
+
+    total_clases = Column(
+        Integer, 
+        nullable=False, 
+        default=0
+    )
+
+    estado = Column(
+        String(30), 
+        nullable=False, 
+        default="CURSANDO"
+    )   
