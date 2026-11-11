@@ -5,6 +5,7 @@ import hashlib
 import io
 import os
 import uuid
+import clamd
 from pathlib import Path
 
 import magic
@@ -85,8 +86,7 @@ async def guardar_pdf(
         )
 
     validar_estructura_pdf(contenido)
-
-    # Evita conservar rutas proporcionadas por el nombre del archivo.
+    await asyncio.to_thread(analizar_con_antivirus, contenido)    # Evita conservar rutas proporcionadas por el nombre del archivo.
     nombre_original = Path(
         (archivo.filename or "documento.pdf").replace("\\", "/")
     ).name[:255]
@@ -122,3 +122,40 @@ async def guardar_pdf(
         len(contenido),
         nombre_original,
     )
+
+def analizar_con_antivirus(contenido: bytes) -> None:
+    """Analiza el archivo con ClamAV. Bloquea la carga si no está disponible."""
+
+    host = os.getenv("CLAMAV_HOST", "127.0.0.1")
+    puerto = int(os.getenv("CLAMAV_PORT", "3310"))
+
+    try:
+        antivirus = clamd.ClamdNetworkSocket(
+            host=host,
+            port=puerto,
+            timeout=10,
+        )
+
+        resultado = antivirus.instream(io.BytesIO(contenido))
+
+        if not resultado:
+            raise RuntimeError("ClamAV no devolvió un resultado")
+
+        estado, detalle = next(iter(resultado.values()))
+
+        if estado == "FOUND":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo fue rechazado porque contiene malware",
+            )
+
+        if estado != "OK":
+            raise RuntimeError(f"Resultado inesperado de ClamAV: {detalle}")
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No se pudo verificar el archivo con el antivirus. Intentá nuevamente más tarde.",
+        ) from exc
