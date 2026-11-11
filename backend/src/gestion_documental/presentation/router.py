@@ -40,7 +40,7 @@ async def subir_documento(
     legajo_id: uuid.UUID,
     request: Request,
     tipo: str = Form(...),
-    archivo: UploadFile = File(...),
+    archivo: UploadFile = File(..., alias="file"),
     db: AsyncSession = Depends(get_db),
 ):
     """Carga un PDF si la sesión de aspirante está autorizada."""
