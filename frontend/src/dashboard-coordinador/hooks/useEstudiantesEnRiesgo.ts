@@ -1,9 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
+import { riesgoApi, type EstudianteRiesgoApi } from "@/shared/api/endpoints";
 
 /**
  * US-C-003 — Dashboard de estudiantes en riesgo
  *
  * Hook de datos para el listado de estudiantes en riesgo académico.
+ *
+ * PENDIENTE (backend): GET /estadisticas/riesgo (contrato propuesto en endpoints.ts).
+ * Mientras no exista, se pueden ver datos de ejemplo con VITE_MOCK_RIESGO=true en el .env de desarrollo.
+ * Sin esa bandera NO se muestran datos inventados: el dashboard indica que no pudo cargar.
  */
 
 export type EstadoSemaforo = "rojo" | "amarillo" | "verde";
@@ -71,6 +76,20 @@ const ESTUDIANTES_MOCK: EstudianteRiesgo[] = [
   },
 ];
 
+function desdeApi(e: EstudianteRiesgoApi): EstudianteRiesgo {
+  return {
+    id: e.legajo_id,
+    nombre: `${e.nombre} ${e.apellido}`,
+    carrera: e.carrera_elegida,
+    fechaInscripcion: e.fecha_inscripcion.slice(0, 10),
+    seminariosAdeudados: e.seminarios_adeudados,
+    diasSinAvance: e.dias_sin_avance,
+    estado: e.semaforo.toLowerCase() as EstadoSemaforo,
+  };
+}
+
+const USAR_MOCK = import.meta.env.VITE_MOCK_RIESGO === "true";
+
 function fetchEstudiantesMock(): Promise<EstudianteRiesgo[]> {
   return new Promise((resolve) => setTimeout(() => resolve(ESTUDIANTES_MOCK), 200));
 }
@@ -78,12 +97,13 @@ function fetchEstudiantesMock(): Promise<EstudianteRiesgo[]> {
 export function useEstudiantesEnRiesgo() {
   const query = useQuery({
     queryKey: ["dashboard-coordinador", "estudiantes"],
-    queryFn: fetchEstudiantesMock,
+    queryFn: async () =>
+      USAR_MOCK ? fetchEstudiantesMock() : (await riesgoApi.listar()).map(desdeApi),
   });
 
   return {
     estudiantes: query.data ?? [],
     isLoading: query.isLoading,
-    error: query.isError ? "No se pudo conectar con el servidor" : null,
+    error: query.isError ? query.error.message : null,
   };
 }

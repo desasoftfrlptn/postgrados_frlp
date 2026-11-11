@@ -237,7 +237,7 @@ export const DATOS_PERSONALES_INICIAL: DatosPersonales = {
 
 export interface DatosAcademicos {
   tipoCarreras: TipoCarrera[]; // máximo 2
-  carreraElegida: string;
+  carreras: string[]; // carreras[i] es la carrera del tipo tipoCarreras[i] (un legajo por carrera)
   tituloGradoObtenido: string;
   tituloPosgrado?: string;
   canalDifusion: string;
@@ -246,7 +246,7 @@ export interface DatosAcademicos {
 
 export const DATOS_ACADEMICOS_INICIAL: DatosAcademicos = {
   tipoCarreras: [],
-  carreraElegida: "",
+  carreras: [],
   tituloGradoObtenido: "",
   tituloPosgrado: "",
   canalDifusion: "",
@@ -385,4 +385,30 @@ export interface DraftPayload {
   datosAcademicos: DatosAcademicos;
   datosDocumentos: DatosDocumentos;
   savedAt: string;
+}
+
+/** Texto para el aspirante/estudiante según el estado de su legajo. */
+export const MENSAJE_ESTADO: Record<EstadoLegajo, string> = {
+  BORRADOR: "Todavía no enviaste tu inscripción para revisión.",
+  PENDIENTE: "Tu inscripción está pendiente de revisión.",
+  EN_REVISION: "Estamos revisando tu inscripción.",
+  OBSERVADO: "Tu inscripción tiene observaciones.",
+  COMPLETADO: "Tu documentación está completa.",
+  ACTIVO: "¡Estás activo en la cohorte! Tu trayectoria está al día.",
+  VENCIDO: "Tu inscripción venció.",
+  RECHAZADO: "Tu inscripción fue rechazada.",
+  BAJA: "Tu inscripción fue dada de baja.",
+  GRADUADO: "¡Te graduaste! Felicitaciones.",
+};
+
+/** Documentos obligatorios (el título de posgrado es opcional y no figura acá). */
+export function documentosRequeridos(solicitaBeca: boolean): TipoDocumento[] {
+  const base: TipoDocumento[] = [
+    "DNI",
+    "TITULO_GRADO",
+    "PARTIDA",
+    "CUIT_CUIL",
+    "FORM_INSCRIPCION",
+  ];
+  return solicitaBeca ? [...base, "FORM_BECA"] : base;
 }

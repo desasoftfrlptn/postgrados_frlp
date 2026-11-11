@@ -1,51 +1,53 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/shared/api/client";
+import { accesosApi, documentosApi, periodosApi } from "@/shared/api/endpoints";
 import type { ConsultaLegajoResponse, TipoDocumento } from "@/shared/types/types";
- 
-interface ConsultaParams {
-  dni: string;
-  email: string;
-}
- 
-export function useConsultaEstado(params: ConsultaParams, habilitado: boolean) {
+
+/**
+ * Estado de inscripción del aspirante. Ya no recibe DNI/email: el aspirante entra con un enlace
+ * SEGUIMIENTO (cookie) y GET /accesos/legajo devuelve su legajo. Requiere RequireAcceso.
+ * Errores: 401 enlace vencido, 403 enlace de otro tipo, 429 demasiados intentos.
+ */
+export function useConsultaEstado() {
   return useQuery({
-    queryKey: ["consulta-estado", params],
-    queryFn: () =>
-      api.get<ConsultaLegajoResponse>(
-        `/legajos/consulta?dni=${encodeURIComponent(params.dni)}&email=${encodeURIComponent(params.email)}`,
-        { auth: false }
-      ),
-    enabled: habilitado,
-    retry: false, // si el DNI/email no matchean, no tiene sentido reintentar
+    queryKey: ["consulta-estado"],
+    queryFn: async (): Promise<ConsultaLegajoResponse> => {
+      const legajo = await accesosApi.legajo();
+      // PENDIENTE (backend): GET /legajos/:id/documentos. Si más adelante /accesos/legajo ya
+      // incluye los documentos, esta segunda llamada se elimina acá sin tocar el componente.
+      const documentos = await documentosApi.listar(legajo.id);
+      return {
+        id: legajo.id,
+        numero_legajo: legajo.numero_legajo,
+        nombre: legajo.nombre,
+        apellido: legajo.apellido,
+        estado: legajo.estado,
+        solicita_beca: legajo.solicita_beca,
+        documentos,
+      };
+    },
+    retry: false,
   });
 }
- 
+
+// Subir un documento reabre el legajo en el backend (el estado cambia solo): por eso se refresca la consulta.
 export function useAdjuntarDocumento(legajoId: string | undefined) {
   const queryClient = useQueryClient();
- 
+
   return useMutation({
     mutationFn: ({ file, tipo }: { file: File; tipo: TipoDocumento }) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("tipo", tipo);
-      return api.post(`/legajos/${legajoId}/documentos`, formData, { auth: false });
+      if (!legajoId) throw new Error("Todavía no se cargó el legajo.");
+      return documentosApi.subir(legajoId, file, tipo);
     },
     onSuccess: () => {
-      // Refresca la consulta para que el documento recién subido aparezca
       queryClient.invalidateQueries({ queryKey: ["consulta-estado"] });
     },
   });
 }
 
-interface PeriodoVigente {
-  abierto: boolean;
-  periodo: { fecha_abre: string; fecha_cierra: string | null } | null;
-  cohorte_id: string | null;
-}
- 
+// PENDIENTE (backend): GET /periodos/vigente
 export function useEstadoInscripcionVigente() {
   return useQuery({
     queryKey: ["periodo-vigente"],
-    queryFn: () => api.get<PeriodoVigente>("/periodos/vigente", { auth: false }),
+    queryFn: periodosApi.vigente,
   });
 }
