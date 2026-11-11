@@ -39,8 +39,13 @@ class AccesoService:
             periodo_id=periodo_id, legajo_id=legajo_id, expira_at=expira,
             usos_maximos=usos_maximos, creado_por=creado_por)
         await self.repo.crear_enlace(enlace)
+        ruta = ""
+        if tipo == "INSCRIPCION":
+            ruta = "inscripcion"
+        else:
+            ruta = "consultar"
         return {"id": enlace.id, "tipo": tipo, "expira_at": expira,
-                "url": f"{frontend_url.rstrip('/')}/acceso?token={token}"}
+                "url": f"{frontend_url.rstrip('/')}/{ruta}?token={token}"}
 
     async def validar_token(self, token: str):
         enlace = await self.repo.obtener_enlace_hash(hash_token(token))

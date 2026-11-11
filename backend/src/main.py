@@ -8,6 +8,7 @@ from src.acceso.controllers.controller import router as acceso_router
 from src.shared.auth.router import router as auth_router
 from src.seguimiento_graduacion.presentation.router import router as graduacion_router
 from src.carga_academica.presentation.router import router as carga_academica_router
+from src.inscripcion.presentation.controller_periodos import router as periodos_router
 
 from src.config import CORS_ORIGINS
 
@@ -21,8 +22,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 @app.get("/health", tags=["health"])
@@ -30,7 +31,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 PREFIX="/api/v1"
-for r in (auth_router, acceso_router, inscripcion_router, carga_academica_router, graduacion_router):
+for r in (auth_router, acceso_router, inscripcion_router, periodos_router, carga_academica_router, graduacion_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:

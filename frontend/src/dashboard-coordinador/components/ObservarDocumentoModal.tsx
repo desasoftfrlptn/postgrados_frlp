@@ -24,13 +24,20 @@ export function ObservarDocumentoModal({
   const [errorMotivo, setErrorMotivo] = useState<string | null>(null);
 
   const observar = useObservarDocumento();
-  const { mutate: actualizarLegajo, isPending } = useActualizarEstado();
+  const {
+    mutate: actualizarLegajo,
+    isPending,
+    isError: errorEstado,
+    error: detalleErrorEstado,
+    reset: resetEstado,
+  } = useActualizarEstado();
 
   function handleCerrar() {
     setAccion("OBSERVAR");
     setMotivo("");
     setErrorMotivo(null);
     observar.reset();
+    resetEstado();
     onClose();
   }
 
@@ -120,7 +127,15 @@ export function ObservarDocumentoModal({
 
           {observar.isError && (
             <p role="alert" className="text-sm text-semaforo-rojo">
-              No se pudo guardar: {(observar.error as Error).message}
+              No se pudo guardar: {observar.error.message}
+            </p>
+          )}
+
+          {/* El documento ya quedó observado pero falló el pase del legajo a OBSERVADO */}
+          {errorEstado && (
+            <p role="alert" className="text-sm text-semaforo-rojo">
+              El documento se guardó, pero no pudimos pasar el legajo a Observado:{" "}
+              {detalleErrorEstado?.message}
             </p>
           )}
 

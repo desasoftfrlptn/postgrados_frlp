@@ -31,7 +31,7 @@ const FIELDS: Array<{
   { field: "apellido", label: "Apellido", placeholder: "Pérez", required: true },
   { field: "nombre", label: "Nombre", placeholder: "María Laura", required: true },
   { field: "nacionalidad", label: "Nacionalidad", placeholder: "Argentina", required: true },
-  { field: "documento", label: "DNI o Pasaporte", placeholder: "38451982 (sin puntos)", required: true },
+  { field: "documento", label: "DNI", placeholder: "38451982 (sin puntos)", required: true },
   {
     field: "telefonoMovil",
     label: "Teléfono móvil",
@@ -99,8 +99,14 @@ export function DatosPersonalesForm({
   const validarNacionalidad = (value: string) =>
     !value.trim() ? "Ingresá la nacionalidad." : undefined;
 
+  // El backend solo acepta DNI de 7 u 8 dígitos (no admite pasaporte): se valida acá para no
+  // descubrirlo recién al confirmar la inscripción.
   const validarDocumento = (value: string) =>
-    !value.trim() ? "Ingresá el DNI o pasaporte." : undefined;
+    !value.trim()
+      ? "Ingresá el DNI."
+      : !/^\d{7,8}$/.test(value.trim().replace(/[.\s]/g, ""))
+        ? "El DNI debe tener 7 u 8 dígitos."
+        : undefined;
 
   const validarTelefonoMovil = (value: string) =>
     !value.trim() ? "Ingresá un teléfono de contacto." : undefined;
