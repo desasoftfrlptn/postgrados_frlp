@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useCohortes } from "@/dashboard-coordinador/hooks/useCohortes";
 import { useInscripcion } from "@/shared/hooks/useInscripcion";
+import { CAMPOS_COORDINADOR, erroresDeCampo } from "@/shared/api/mappers";
 import {
   CARRERAS_POSGRADO,
   CANALES_DIFUSION,
@@ -166,6 +167,8 @@ export function FormularioInscripcion({
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<FormErrors>({});
   const [enviado, setEnviado] = useState(false);
+  // Documentos (ej. el formulario de beca) que no se pudieron subir: el legajo igual quedó creado
+  const [avisoDocumentos, setAvisoDocumentos] = useState<string | null>(null);
 
   const {
     data: cohortes,
@@ -225,7 +228,7 @@ export function FormularioInscripcion({
     }
 
     try {
-      await inscripcion.mutateAsync({
+      const resultado = await inscripcion.mutateAsync({
         datosPersonales: {
           nombre: form.nombre.trim(),
           apellido: form.apellido.trim(),
@@ -256,7 +259,7 @@ export function FormularioInscripcion({
         datosAcademicos: {
           tituloGradoObtenido: form.titulo_grado.trim(),
           tipoCarreras: [form.tipo_carrera],
-          carreraElegida: form.carrera_elegida,
+          carreras: [form.carrera_elegida],
           canalDifusion: form.como_conocio,
           motivaciones: form.motivacion.trim(),
         },
@@ -264,10 +267,22 @@ export function FormularioInscripcion({
         cohorte_id: form.cohorte_id,
       });
 
+      setAvisoDocumentos(
+        resultado.documentosFallidos.length > 0
+          ? "No se pudo subir el formulario de beca. Subilo desde el legajo del aspirante."
+          : null,
+      );
       setEnviado(true);
       onExito?.();
     } catch (error) {
-      console.error("Error al crear legajo:", error);
+      // 409/422 con campo: se marca en el formulario. El mensaje general se muestra arriba.
+      const delServidor = erroresDeCampo(error, CAMPOS_COORDINADOR) as FormErrors;
+      if (Object.keys(delServidor).length > 0) {
+        setErrors((anteriores) => ({ ...anteriores, ...delServidor }));
+        window.setTimeout(() => {
+          document.querySelector(".border-semaforo-rojo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+      }
     }
   }
 
@@ -293,7 +308,17 @@ export function FormularioInscripcion({
               <strong className="text-ink">Pendiente</strong>.
             </p>
 
-            {form.beca.solicita_beca && (
+            {avisoDocumentos && (
+              <div
+                role="alert"
+                className="mt-5 flex max-w-md items-start gap-3 rounded-xl border border-semaforo-amarillo/30 bg-semaforo-amarillo-soft px-4 py-3 text-left text-xs text-semaforo-amarillo dark:bg-semaforo-amarillo-soft-dark"
+              >
+                <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                <p>{avisoDocumentos}</p>
+              </div>
+            )}
+
+            {form.beca.solicita_beca && !avisoDocumentos && (
               <div className="mt-5 flex max-w-md items-start gap-3 rounded-xl border border-brand-500/15 bg-brand-500/5 px-4 py-3 text-left">
                 <FileCheck2
                   size={18}
@@ -313,6 +338,7 @@ export function FormularioInscripcion({
                 setForm(INITIAL);
                 setErrors({});
                 setEnviado(false);
+                setAvisoDocumentos(null);
                 inscripcion.reset();
               }}
             >

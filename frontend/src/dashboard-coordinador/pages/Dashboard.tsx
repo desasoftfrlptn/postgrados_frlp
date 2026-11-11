@@ -1,11 +1,10 @@
-import { useContext, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { menuItems } from "@/shared/menuConfig";
 import ListaInscriptos from "../components/ListaInscriptos";
 import DetalleLegajo from "../components/DetalleLegajo";
 import Panel from "./Panel";
-import { UserContext } from "@/shared/context/UserContext";
 import ListaSeminarios from "../components/ListaSeminarios";
 import EstudiantesEnRiesgoPage from "./EstudiantesEnRiesgoPage";
 import Alerta from "@/AlertasNotificaciones/pages/Alerta";
@@ -13,14 +12,15 @@ import type { Notificacion } from "@/AlertasNotificaciones/types/notificacion.ty
 import { NotificationsButton } from "@/shared/components/NotificationsButton";
 import { Desgranamiento } from "../components/Desgranamiento";
 import { FormularioInscripcion } from "@/Inscripcion/components/FormularioInscripcion";
+import { useAuth } from "@/shared/auth/authContext";
 
 export function Dashboard({ path }: { path: string }) {
-  const currentUser = useContext(UserContext);
   const navigate = useNavigate();
+  const {user: user} = useAuth();
 
   const puedeInscribir =
-    currentUser?.rol === "coordinador" ||
-    currentUser?.rol === "admin";
+    user?.rol === "coordinador" ||
+    user?.rol === "admin";
 
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([
     {
@@ -45,10 +45,14 @@ export function Dashboard({ path }: { path: string }) {
     );
   };
 
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <div className="flex h-screen w-full bg-paper text-ink">
       <Sidebar
-        user={currentUser}
+        user={user}
         items={menuItems}
         currentPath={path}
         onNavigate={navigate}

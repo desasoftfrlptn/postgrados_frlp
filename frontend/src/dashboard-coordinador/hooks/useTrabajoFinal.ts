@@ -1,27 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError } from "@/shared/api/client";
-import type { CrearTrabajoFinalRequest, TrabajoFinal } from "@/shared/types/types";
+import { ApiError } from "@/shared/api/client";
+import { trabajoFinalApi } from "@/shared/api/endpoints";
+import type { CrearTrabajoFinalRequest } from "@/shared/types/types";
 
+// PENDIENTE (backend): /legajos/:id/trabajo-final todavía no tiene router.
+// Devuelve null (no un error) cuando el legajo aún no tiene trabajo final.
 export function useTrabajoFinal(legajoId: string) {
   return useQuery({
     queryKey: ["trabajo-final", legajoId],
-    queryFn: () => api.get<TrabajoFinal | null>(`/legajos/${legajoId}/trabajo-final`),
+    queryFn: () => trabajoFinalApi.obtener(legajoId),
     enabled: Boolean(legajoId),
   });
 }
- 
+
 export function useCrearTrabajoFinal(legajoId: string) {
   const queryClient = useQueryClient();
- 
+
   return useMutation({
-    mutationFn: (datos: CrearTrabajoFinalRequest) =>
-      api.post<TrabajoFinal>(`/legajos/${legajoId}/trabajo-final`, datos),
+    mutationFn: (datos: CrearTrabajoFinalRequest) => trabajoFinalApi.crear(legajoId, datos),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trabajo-final", legajoId] });
     },
   });
 }
- 
-// Re-exporta ApiError acá para poder chequear error.statusCode === 403 sin importar directamente de client.ts
+
+// Se mantiene la re-exportación por compatibilidad; los componentes nuevos usan isApiError de client.ts
+// (error.isForbidden, error.isNotFound, ...).
 export { ApiError };
- 
