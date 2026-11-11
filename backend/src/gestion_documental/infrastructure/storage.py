@@ -1,14 +1,15 @@
-
 """Almacenamiento privado de documentos PDF."""
 
 import asyncio
 import hashlib
+import io
 import os
 import uuid
 from pathlib import Path
 
 import magic
 from fastapi import HTTPException, UploadFile, status
+from pypdf import PdfReader
 
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
@@ -17,6 +18,33 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 STORAGE_ROOT = Path(
     os.getenv("STORAGE_PATH", "/var/postgrado-storage")
 )
+
+
+def validar_estructura_pdf(contenido: bytes) -> None:
+    """Comprueba que el archivo sea un PDF legible y no esté cifrado."""
+
+    try:
+        lector = PdfReader(io.BytesIO(contenido), strict=True)
+
+        if lector.is_encrypted:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se permiten archivos PDF protegidos con contraseña",
+            )
+
+        if len(lector.pages) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El PDF debe contener al menos una página",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo PDF está dañado o no es válido",
+        ) from exc
 
 
 async def guardar_pdf(
@@ -55,6 +83,8 @@ async def guardar_pdf(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El archivo debe ser un PDF válido",
         )
+
+    validar_estructura_pdf(contenido)
 
     # Evita conservar rutas proporcionadas por el nombre del archivo.
     nombre_original = Path(
