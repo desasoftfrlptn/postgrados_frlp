@@ -128,6 +128,14 @@ async function request<T>(
       }
     );
 
+  if (respuesta.status === 401 && token) {
+  window.dispatchEvent(
+    new CustomEvent<string>("sesion-invalidada", {
+      detail: token,
+    })
+  );
+}
+
 
   if (!respuesta.ok) {
     let data: unknown;
