@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { inscripcionService } from '../services/inscripcionService';
 
 const Paso1DatosPersonales = ({ formData, handleChange, errores, onNext }) => (
@@ -39,7 +39,18 @@ const Paso1DatosPersonales = ({ formData, handleChange, errores, onNext }) => (
   </>
 );
 
-const Paso2DatosAcademicos = ({ formData, handleChange, errores, onPrev, onNext }) => (
+const Paso2DatosAcademicos = ({
+  formData,
+  handleChange,
+  handleChangeCohorte,
+  cohortes,
+  cargandoCohortes,
+  errorCohortes,
+  onRecargarCohortes,
+  errores,
+  onPrev,
+  onNext,
+}) => (
   <>
     <div className="form-grid">
       <div className="form-group">
@@ -59,16 +70,59 @@ const Paso2DatosAcademicos = ({ formData, handleChange, errores, onPrev, onNext 
       </div>
       <div className="form-group">
         <label>Carrera a la que se postula <span style={{color: 'red'}}>*</span></label>
-        <select name="posgrado" value={formData.posgrado} onChange={handleChange} className="form-control" style={{background: 'white'}}>
-          <option>Maestría en Ingeniería</option>
-          <option>Especialización en Sistemas</option>
-          <option>Doctorado</option>
-        </select>
+        {cargandoCohortes ? (
+          <select className="form-control" disabled style={{background: '#f8f9fa'}}>
+            <option>Cargando carreras con inscripciones abiertas...</option>
+          </select>
+        ) : errorCohortes ? (
+          <div>
+            <div style={{color: '#dc3545', fontSize: '13px', marginBottom: '6px'}}>
+              Error al consultar carreras: {errorCohortes}
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{fontSize: '12px', padding: '4px 10px'}}
+              onClick={onRecargarCohortes}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : !cohortes || cohortes.length === 0 ? (
+          <div style={{backgroundColor: '#fff3cd', color: '#856404', padding: '10px 12px', borderRadius: '4px', fontSize: '13px', border: '1px solid #ffeeba'}}>
+            No hay carreras con período de inscripción abierto actualmente.
+          </div>
+        ) : (
+          <>
+            <select
+              name="cohorte_id"
+              value={formData.cohorte_id || ''}
+              onChange={handleChangeCohorte}
+              className={`form-control ${errores.cohorte_id ? 'error' : ''}`}
+              style={{background: 'white'}}
+            >
+              <option value="">-- Seleccione una carrera de posgrado --</option>
+              {cohortes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre || `${c.carrera} (${c.anio})`}
+                </option>
+              ))}
+            </select>
+            {errores.cohorte_id && <span className="error-text">{errores.cohorte_id}</span>}
+          </>
+        )}
       </div>
     </div>
     <div style={{display: 'flex', gap: '15px', marginTop: '20px'}}>
       <button className="btn-secondary" style={{flex: 1}} onClick={onPrev}>Volver</button>
-      <button className="btn-primary" style={{flex: 2}} onClick={onNext}>Continuar a Documentación</button>
+      <button
+        className="btn-primary"
+        style={{flex: 2}}
+        onClick={onNext}
+        disabled={cargandoCohortes || (!cohortes || cohortes.length === 0)}
+      >
+        Continuar a Documentación
+      </button>
     </div>
   </>
 );
@@ -147,7 +201,7 @@ const Paso4Resumen = ({ formData, archivos, cargando, errorEnvio, onPrev, onConf
       <div className="resumen-box">
         <h3>2. Perfil Académico & Postulación</h3>
         <div className="resumen-grid">
-          <div className="resumen-item"><span>Carrera Seleccionada</span><p><strong>{formData.posgrado}</strong></p></div>
+          <div className="resumen-item"><span>Carrera Seleccionada</span><p><strong>{formData.nombreCohorte || formData.posgrado || 'No seleccionada'}</strong></p></div>
           <div className="resumen-item"><span>Título de Grado</span><p>{formData.titulo || '-'}</p></div>
           <div className="resumen-item"><span>Universidad</span><p>{formData.universidad || '-'} {formData.anioEgreso ? `(${formData.anioEgreso})` : ''}</p></div>
         </div>
@@ -280,10 +334,61 @@ export default function Preinscripcion() {
   const [legajoConfirmado, setLegajoConfirmado] = useState(null);
   const [errores, setErrores] = useState({});
   const [erroresArchivos, setErroresArchivos] = useState({});
+
+  // Listado de cohortes dinámicas de la API
+  const [cohortes, setCohortes] = useState([]);
+  const [cargandoCohortes, setCargandoCohortes] = useState(true);
+  const [errorCohortes, setErrorCohortes] = useState(null);
+
   const [formData, setFormData] = useState({
     nombre: '', apellido: '', nacionalidad: '', dni: '', email: '', domicilio: '',
-    titulo: '', universidad: '', anioEgreso: '', posgrado: 'Maestría en Ingeniería'
+    titulo: '', universidad: '', anioEgreso: '',
+    cohorte_id: '', posgrado: '', nombreCohorte: '',
   });
+
+  const cargarCohortes = useCallback(async () => {
+    try {
+      setCargandoCohortes(true);
+      setErrorCohortes(null);
+      const data = await inscripcionService.obtenerCohortes();
+      const lista = Array.isArray(data) ? data : [];
+      setCohortes(lista);
+      if (lista.length > 0) {
+        setFormData((prev) => {
+          if (prev.cohorte_id) return prev;
+          const primera = lista[0];
+          return {
+            ...prev,
+            cohorte_id: primera.id,
+            posgrado: primera.carrera || primera.nombre,
+            nombreCohorte: primera.nombre,
+          };
+        });
+      }
+    } catch (err) {
+      setErrorCohortes(err.message || 'Error al conectar con el servidor para obtener las carreras.');
+    } finally {
+      setCargandoCohortes(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarCohortes();
+  }, [cargarCohortes]);
+
+  const handleChangeCohorte = (e) => {
+    const selectedId = e.target.value;
+    const cohorteEncontrada = cohortes.find((c) => String(c.id) === String(selectedId));
+    setFormData((prev) => ({
+      ...prev,
+      cohorte_id: selectedId,
+      posgrado: cohorteEncontrada ? (cohorteEncontrada.carrera || cohorteEncontrada.nombre) : '',
+      nombreCohorte: cohorteEncontrada ? cohorteEncontrada.nombre : '',
+    }));
+    if (errores.cohorte_id) {
+      setErrores((prev) => ({ ...prev, cohorte_id: '' }));
+    }
+  };
   // Estado para guardar los archivos PDF seleccionados
   const [archivos, setArchivos] = useState({
     titulo: null,
@@ -348,6 +453,7 @@ export default function Preinscripcion() {
     if(!formData.titulo) nuevosErrores.titulo = 'El título de grado es obligatorio';
     if(!formData.universidad) nuevosErrores.universidad = 'La universidad es obligatoria';
     if(!formData.anioEgreso) nuevosErrores.anioEgreso = 'El año de egreso es obligatorio';
+    if(!formData.cohorte_id) nuevosErrores.cohorte_id = 'Debe seleccionar una carrera de posgrado';
 
     if(Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
@@ -398,7 +504,7 @@ export default function Preinscripcion() {
         id: legajoId,
         nombre: `${formData.nombre} ${formData.apellido}`,
         email: formData.email,
-        posgrado: formData.posgrado,
+        posgrado: formData.nombreCohorte || formData.posgrado,
       });
       setPaso(5);
     } catch (error) {
@@ -413,9 +519,13 @@ export default function Preinscripcion() {
     setPaso(1);
     setLegajoConfirmado(null);
     setErrorEnvio(null);
+    const primera = cohortes[0];
     setFormData({
       nombre: '', apellido: '', nacionalidad: '', dni: '', email: '', domicilio: '',
-      titulo: '', universidad: '', anioEgreso: '', posgrado: 'Maestría en Ingeniería'
+      titulo: '', universidad: '', anioEgreso: '',
+      cohorte_id: primera?.id || '',
+      posgrado: primera ? (primera.carrera || primera.nombre) : '',
+      nombreCohorte: primera ? primera.nombre : '',
     });
     setArchivos({
       titulo: null,
@@ -452,6 +562,11 @@ export default function Preinscripcion() {
           <Paso2DatosAcademicos
             formData={formData}
             handleChange={handleChange}
+            handleChangeCohorte={handleChangeCohorte}
+            cohortes={cohortes}
+            cargandoCohortes={cargandoCohortes}
+            errorCohortes={errorCohortes}
+            onRecargarCohortes={cargarCohortes}
             errores={errores}
             onPrev={() => setPaso(1)}
             onNext={validatePaso2}
