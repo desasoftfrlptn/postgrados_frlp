@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { api } from "../../../../shared/api/client";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -34,25 +36,79 @@ function TarjetaMetrica({
   );
 }
 
+interface MiLegajo {
+  id: string;
+  carrera_elegida: string;
+  estado: string;
+  dni_pasaporte: string;
+}
+
 export default function DashboardEstudiantePage() {
   const { user } = useAuth();
+  const [legajo, setLegajo] = useState<MiLegajo | null>(null);
+  const [cargandoLegajo, setCargandoLegajo] = useState(true);
+  const [errorLegajo, setErrorLegajo] = useState<string | null>(null);
+  useEffect(() => {
+    async function cargarMiLegajo() {
+      if (!user?.token) {
+        setCargandoLegajo(false);
+        return;
+      }
+      try {
+        // Llamada al endpoint 
+        const respuesta = await api.get<MiLegajo>(
+          "/inscripcion/mi-legajo",
+          user.token
+        );
+        setLegajo(respuesta);
+        setErrorLegajo(null);
+      } catch (err) {
+        setErrorLegajo(
+          err instanceof Error ? err.message : "Sin legajo registrado"
+        );
+      } finally {
+        setCargandoLegajo(false);
+      }
+    }
+    cargarMiLegajo();
+  }, [user?.token]);
+
+    // Calculamos qué texto mostrar en la tarjeta según el estado de la petición
+  let textoEstadoLegajo = "Sin registrar";
+  if (cargandoLegajo) {
+    textoEstadoLegajo = "Cargando...";
+  } else if (legajo) {
+    textoEstadoLegajo = legajo.estado;
+  }
+
   return (
     <section className="perfil-pagina">
       <header className="perfil-pagina-encabezado">
         <h1>Hola, {user?.nombre ?? "Estudiante"}!</h1>
 
         <p>
-          Bienvenido/a a tu panel de estudiante.
+           {legajo
+            ? `Carrera: ${legajo.carrera_elegida}`
+            : "Bienvenido/a a tu panel de estudiante."}
         </p>
       </header>
 
+        {errorLegajo && (
+      <p
+        role="status"
+        className="mb-6 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm"
+      >
+        {errorLegajo}
+      </p>
+    )}
+    
       <section
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
         aria-label="Resumen académico"
       >
         <TarjetaMetrica
           titulo="Estado del legajo"
-          valor="Completo"
+          valor={textoEstadoLegajo}
           colorBorde="border-green-500"
         >
           <Link

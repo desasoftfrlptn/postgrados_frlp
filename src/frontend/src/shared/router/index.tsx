@@ -5,6 +5,10 @@ import DashboardDocentePage from "../../modulos/perfiles/docente/paginas/Dashboa
 import PanelAsistenciaPage from "../../modulos/perfiles/docente/paginas/PanelAsistenciaPage";
 import MisSeminariosPage from "../../modulos/perfiles/docente/paginas/MisSeminariosPage";
 import CalificacionesPage from "../../modulos/perfiles/docente/paginas/CalificacionesPage";
+import EstudiantesPage from "../../modulos/perfiles/docente/paginas/EstudiantesPage";
+import ReportesPage from "../../modulos/perfiles/docente/paginas/ReportesPage";
+import PendientesPage from "../../modulos/perfiles/docente/paginas/PendientesPage";
+import ProfesoresPage from "../../modulos/perfiles/docente/paginas/ProfesoresPage"; // <-- Importamos la última página
 
 // ESTUDIANTE
 import DashboardEstudiantePage from "../../modulos/perfiles/estudiante/paginas/DashboardEstudiantePage";
@@ -28,7 +32,7 @@ import SeminariosPage from "../../modulos/perfiles/administrador/paginas/Seminar
 import CohortesPage from "../../modulos/perfiles/administrador/paginas/CohortesPage";
 import CalendarioAcademicoPage from "../../modulos/perfiles/administrador/paginas/CalendarioAcademicoPage";
 import EstadisticasPage from "../../modulos/perfiles/administrador/paginas/EstadisticasPage";
-import ReportesPage from "../../modulos/perfiles/administrador/paginas/ReportesPage";
+import ReportesAdminPage from "../../modulos/perfiles/administrador/paginas/ReportesPage";
 import HomeAdministradorPage from "../../modulos/perfiles/administrador/paginas/HomeAdministradorPage";
 import ConfiguracionGeneralPage from "../../modulos/perfiles/administrador/paginas/ConfiguracionGeneralPage";
 
@@ -169,12 +173,28 @@ export const router = createBrowserRouter([
             element: <MisSeminariosPage />,
           },
           {
+            path: "dashboard/docente/estudiantes",
+            element: <EstudiantesPage />,
+          },
+          {
             path: "dashboard/docente/asistencia",
             element: <PanelAsistenciaPage />,
           },
           {
             path: "dashboard/docente/calificaciones",
             element: <CalificacionesPage />,
+          },
+          {
+            path: "dashboard/docente/reportes",
+            element: <ReportesPage />,
+          },
+          {
+            path: "dashboard/docente/pendientes",
+            element: <PendientesPage />,
+          },
+          {
+            path: "dashboard/docente/profesores", // <-- Conectamos la última ruta
+            element: <ProfesoresPage />,
           },
         ],
       },
@@ -254,7 +274,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard/administrador/reportes",
-            element: <ReportesPage />,
+            element:  <ReportesAdminPage />,
           },
           {
             path: "dashboard/administrador/home",
@@ -268,4 +288,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
+
+
 ]);

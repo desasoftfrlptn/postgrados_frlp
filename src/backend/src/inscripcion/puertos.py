@@ -55,3 +55,8 @@ class LegajoRepositorio(ABC):
         Devuelve None si no existe.
         """
         pass
+    
+    @abstractmethod
+    async def obtener_por_email_o_dni(
+        self, email: str, dni: str) -> Any | None:
+        pass    

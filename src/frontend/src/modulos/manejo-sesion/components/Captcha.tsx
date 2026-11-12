@@ -1,4 +1,4 @@
-// Componente reutilizable para mostrar y validar Google reCAPTCHA.
+﻿// Componente reutilizable para mostrar y validar Google reCAPTCHA.
 
 import { useEffect, useRef } from "react";
 
@@ -29,7 +29,7 @@ interface CaptchaProps {
   onError?: () => void;
 }
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI";
 
 export default function Captcha({
   onVerify,
@@ -123,7 +123,7 @@ export default function Captcha({
     <div
       className="sesion-captcha"
       ref={captchaRef}
-      aria-label="Verificación CAPTCHA"
+      aria-label="VerificaciÃ³n CAPTCHA"
     />
   );
 }

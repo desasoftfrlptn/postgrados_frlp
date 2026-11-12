@@ -1,3 +1,5 @@
+// Configuración de las opciones del menú lateral para el perfil del Docente.
+
 import type { OpcionMenuPerfil } from "../../shared/componentes/BarraNavegacionPerfil";
 
 export const menuDocente: OpcionMenuPerfil[] = [
@@ -17,8 +19,13 @@ export const menuDocente: OpcionMenuPerfil[] = [
     ruta: "/dashboard/docente/seminarios",
   },
   {
+    texto: "Estudiantes",
+    icono: "👥",
+    ruta: "/dashboard/docente/estudiantes",
+  },
+  {
     texto: "Asistencias",
-    icono: "📋",
+    icono: "📅",
     ruta: "/dashboard/docente/asistencia",
   },
   {
@@ -26,4 +33,19 @@ export const menuDocente: OpcionMenuPerfil[] = [
     icono: "📝",
     ruta: "/dashboard/docente/calificaciones",
   },
+  {
+    texto: "Reportes",
+    icono: "📊",
+    ruta: "/dashboard/docente/reportes",
+  },
+  {
+    texto: "Pendientes",
+    icono: "⏳",
+    ruta: "/dashboard/docente/pendientes",
+  }, // <-- Esta es la coma importante que une Pendientes con Colegas
+  {
+    texto: "Colegas",
+    icono: "👨‍🏫",
+    ruta: "/dashboard/docente/profesores",
+  }
 ];

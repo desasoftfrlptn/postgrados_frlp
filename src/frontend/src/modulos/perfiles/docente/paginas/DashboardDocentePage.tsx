@@ -1,3 +1,5 @@
+// Página principal de inicio (Dashboard) para el perfil Docente.
+
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
@@ -8,6 +10,7 @@ interface TarjetaDocenteProps {
   ruta?: string;
 }
 
+// Subcomponente semántico para las tarjetas de resumen
 function TarjetaDocente({
   titulo,
   valor,
@@ -25,10 +28,11 @@ function TarjetaDocente({
           {valor}
         </strong>
 
+        {/* Si pasamos una ruta, usamos el enrutador. Si no, es solo texto decorativo */}
         {ruta ? (
           <Link
             to={ruta}
-            className="text-blue-600 text-sm font-semibold hover:underline"
+            className="text-blue-600 text-sm font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
           >
             {accionTexto}
           </Link>
@@ -45,7 +49,7 @@ function TarjetaDocente({
 export default function DashboardDocentePage() {
   const { user } = useAuth();
   return (
-    <section className="perfil-pagina">
+    <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
         <h1>Hola, {user?.nombre ?? "Docente"}!</h1>
 
@@ -54,6 +58,7 @@ export default function DashboardDocentePage() {
         </p>
       </header>
 
+      {/* Tarjetas de métricas principales */}
       <section
         className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
         aria-label="Resumen docente"
@@ -61,13 +66,14 @@ export default function DashboardDocentePage() {
         <TarjetaDocente
           titulo="Seminarios Asignados"
           valor="4"
-          accionTexto="Ver detalle"
+          accionTexto="Ver detalle →"
+          ruta="/dashboard/docente/seminarios"
         />
 
         <TarjetaDocente
           titulo="Estudiantes a Cargo"
           valor="183"
-          accionTexto="Ver estudiantes"
+          accionTexto="Sin acciones"
         />
 
         <TarjetaDocente
@@ -78,7 +84,9 @@ export default function DashboardDocentePage() {
         />
       </section>
 
+      {/* Listados de clases y alertas */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
         <article className="bg-white rounded-xl shadow-sm border border-gray-100">
           <header className="p-6 border-b border-gray-100 bg-slate-50 rounded-t-xl">
             <h2 className="text-lg font-bold text-gray-900">
@@ -91,8 +99,7 @@ export default function DashboardDocentePage() {
               <span className="font-semibold text-slate-700">
                 Metodología de la Investigación
               </span>
-
-              <time className="text-slate-500 font-medium">
+              <time dateTime="2026-05-17" className="text-slate-500 font-medium">
                 Jueves 17/05
               </time>
             </li>
@@ -101,8 +108,7 @@ export default function DashboardDocentePage() {
               <span className="font-semibold text-slate-700">
                 Gestión de Proyectos
               </span>
-
-              <time className="text-slate-500 font-medium">
+              <time dateTime="2026-05-31" className="text-slate-500 font-medium">
                 Martes 31/05
               </time>
             </li>
@@ -111,8 +117,7 @@ export default function DashboardDocentePage() {
               <span className="font-semibold text-slate-700">
                 Maestría de Sistemas
               </span>
-
-              <time className="text-slate-500 font-medium">
+              <time dateTime="2026-06-08" className="text-slate-500 font-medium">
                 Lunes 08/06
               </time>
             </li>
@@ -122,50 +127,41 @@ export default function DashboardDocentePage() {
         <article className="bg-white rounded-xl shadow-sm border border-gray-100">
           <header className="p-6 border-b border-gray-100 bg-slate-50 rounded-t-xl">
             <h2 className="text-lg font-bold text-gray-900">
-              Últimos Mensajes
+              Últimas Alertas
             </h2>
           </header>
 
           <ul className="p-4 space-y-4">
             <li className="flex items-start gap-4 bg-red-50 p-4 rounded-lg border border-red-100">
-              <span
-                className="text-2xl"
-                aria-hidden="true"
-              >
+              <span className="text-2xl" aria-hidden="true">
                 🔔
               </span>
-
               <div>
                 <h3 className="text-sm font-bold text-red-900">
                   Recordatorio: Carga de notas
                 </h3>
-
                 <p className="text-sm text-red-700 mt-1">
-                  Falta completar información de notas de algunos estudiantes.
+                  Falta completar información de notas de algunos estudiantes en el acta de cierre.
                 </p>
               </div>
             </li>
 
             <li className="flex items-start gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-              <span
-                className="text-2xl"
-                aria-hidden="true"
-              >
+              <span className="text-2xl" aria-hidden="true">
                 🔔
               </span>
-
               <div>
                 <h3 className="text-sm font-bold text-slate-800">
                   Recordatorio: Asistencias
                 </h3>
-
                 <p className="text-sm text-slate-600 mt-1">
-                  Hay asistencias pendientes de guardar.
+                  Hay asistencias pendientes de guardar de tu última clase.
                 </p>
               </div>
             </li>
           </ul>
         </article>
+
       </section>
     </section>
   );

@@ -194,10 +194,7 @@ export default function LoginPage() {
   return (
     <section
       className="sesion"
-      style={{
-        backgroundImage:
-          `url(${imagenFondo})`,
-      }}
+      style={{ backgroundImage: `url(${imagenFondo})` }}
       aria-labelledby="titulo-login"
     >
       <form
@@ -230,10 +227,7 @@ export default function LoginPage() {
 
         <label htmlFor="email">
           Correo Electrónico{" "}
-
-          <span aria-hidden="true">
-            *
-          </span>
+          <span aria-hidden="true">*</span>
         </label>
 
 
@@ -257,14 +251,11 @@ export default function LoginPage() {
 
         <label htmlFor="password">
           Contraseña{" "}
-
-          <span aria-hidden="true">
-            *
-          </span>
+          <span aria-hidden="true">*</span>
         </label>
 
 
-        <div className="sesion-password">
+        <div className="sesion-password relative flex">
           <input
             id="password"
             name="password"
@@ -275,19 +266,14 @@ export default function LoginPage() {
             }
             autoComplete="current-password"
             required
-            value={
-              password
-            }
-            onChange={(event) =>
-              setPassword(
-                event.target.value
-              )
-            }
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
 
           <button
             type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-100 rounded-md transition-colors"
             onClick={() =>
               setMostrarPassword(
                 !mostrarPassword
@@ -299,32 +285,34 @@ export default function LoginPage() {
                 : "Mostrar contraseña"
             }
           >
-            ◉
+            {mostrarPassword ? "🙈" : "👁️"}
           </button>
         </div>
 
 
         <Link
-          className="sesion-recuperar"
+          className="sesion-recuperar mt-4 block text-right"
           to="/recuperar-contrasena"
         >
           ¿Olvidaste tu contraseña?
         </Link>
 
+       {/* <Captcha
+          onVerify={(token: string) => {
+            setCaptchaToken(token);
 
-        {/*
-          CAPTCHA DESHABILITADO TEMPORALMENTE
-
-          <Captcha
-            onVerify={(token) =>
-              setCaptchaToken(token)
+            if (token) {
+              setError("");
             }
-          />
-        */}
-
+          }}
+          onError={() => {
+            setCaptchaToken("");
+            setError("No se pudo cargar el CAPTCHA");
+          }}
+        /> */}
 
         <button
-          className="sesion-boton"
+          className="sesion-boton mt-6"
           type="submit"
           disabled={
             enviando

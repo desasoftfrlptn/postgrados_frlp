@@ -24,6 +24,7 @@ export type Semaforo =
 
 export type Rol =
   | "ASPIRANTE"
+  | "ESTUDIANTE"
   | "DOCENTE"
   | "COORDINADOR"
   | "CPR"

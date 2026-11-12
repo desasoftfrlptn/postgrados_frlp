@@ -18,6 +18,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
 
   const etiquetasRol: Record<Rol, string> = {
+    ESTUDIANTE: "Estudiante",
     ASPIRANTE: "Aspirante",
     DOCENTE: "Docente",
     COORDINADOR: "Coordinador",
@@ -30,17 +31,17 @@ export default function DashboardLayout() {
     : "Sin sesión";
 
   const nombreUsuario = user
-    ? `${user.nombre} ${user.apellido}`
+    ? user.nombre + " " + user.apellido
     : "Usuario";
 
   const inicialesUsuario = user
-    ? `${user.nombre.charAt(0)}${user.apellido.charAt(0)}`.toUpperCase()
+    ? (user.nombre.charAt(0) + user.apellido.charAt(0)).toUpperCase()
     : "";
 
   const opcionesMenu =
     user?.rol === "DOCENTE"
       ? menuDocente
-      : user?.rol === "ASPIRANTE"
+      : (user?.rol === "ASPIRANTE" || user?.rol === "ESTUDIANTE")
         ? menuEstudiante
         : user?.rol === "ADMIN"
           ? menuAdministrador
@@ -54,7 +55,7 @@ export default function DashboardLayout() {
   };
 
   return (
-    <div className="perfil-layout">
+    <div className="perfil-layout animate-fade-in">
       <aside className="perfil-sidebar">
         <header className="perfil-sidebar-encabezado">
           <h2>UTN FRLP</h2>

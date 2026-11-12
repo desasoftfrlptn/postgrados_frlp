@@ -76,43 +76,23 @@ export function AuthProvider({
       );
     }
 
-    const respuesta =
-      await api.post<LoginRespuestaAPI>(
-        "/autenticacion/login",
-        {
-          correo_electronico:
-            email.trim(),
-
-          contrasena:
-            password,
-        }
-      );
-
+    const respuesta = await api.post<LoginRespuestaAPI>(
+      "/autenticacion/login",
+      {
+        correo_electronico: email.trim(),
+        contrasena: password,
+      }
+    );
 
     const usuario: AuthState = {
-      id:
-        respuesta.id,
-
-      email:
-        respuesta.correo_electronico,
-
-      nombre:
-        respuesta.nombre,
-
-      apellido:
-        respuesta.apellido,
-
-      dni:
-        respuesta.dni,
-
-      rol:
-        respuesta.tipo_usuario,
-
-      token:
-        respuesta.token,
-
-      debeCambiarContrasena:
-        respuesta.debe_cambiar_contrasena,
+      id: respuesta.id,
+      email: respuesta.correo_electronico,
+      nombre: respuesta.nombre,
+      apellido: respuesta.apellido,
+      rol: respuesta.tipo_usuario,
+      token: respuesta.token,
+      dni: respuesta.dni,
+      debeCambiarContrasena: respuesta.debe_cambiar_contrasena,
     };
 
 
