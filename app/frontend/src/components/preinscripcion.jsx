@@ -327,7 +327,7 @@ const Paso5Exito = ({ legajoConfirmado, onReset }) => (
   </div>
 );
 
-export default function Preinscripcion() {
+export default function Preinscripcion({ onVolverAlLogin }) {
   const [paso, setPaso] = useState(1);
   const [cargando, setCargando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState(null);
@@ -537,8 +537,29 @@ export default function Preinscripcion() {
 
   return (
     <div>
-      <header className="utn-header">
-        <h1>UTN</h1><h2>Sistema de Posgrado - Preinscripción</h2>
+      <header className="utn-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>UTN</h1><h2>Sistema de Posgrado - Preinscripción</h2>
+        </div>
+        {onVolverAlLogin && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onVolverAlLogin}
+            style={{
+              fontSize: '13px',
+              padding: '8px 14px',
+              backgroundColor: '#ffffff',
+              color: '#002B49',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: '600',
+              cursor: 'pointer',
+            }}
+          >
+            ← Volver al Inicio de Sesión
+          </button>
+        )}
       </header>
       <div className="preinscripcion-container">
         <div className="steps">
