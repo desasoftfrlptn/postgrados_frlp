@@ -9,6 +9,7 @@ from src.shared.auth.router import router as auth_router
 from src.seguimiento_graduacion.presentation.router import router as graduacion_router
 from src.carga_academica.presentation.router import router as carga_academica_router
 from src.inscripcion.presentation.controller_periodos import router as periodos_router
+from src.inscripcion.presentation.cohortes_controller import router as cohortes_router
 
 from src.config import CORS_ORIGINS
 
@@ -31,7 +32,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 PREFIX="/api/v1"
-for r in (auth_router, acceso_router, inscripcion_router, periodos_router, carga_academica_router, graduacion_router):
+for r in (auth_router, acceso_router, inscripcion_router, periodos_router, carga_academica_router, graduacion_router, cohortes_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:

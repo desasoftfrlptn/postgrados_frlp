@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
@@ -93,7 +93,6 @@ class LegajoPagina(BaseModel):
     total: int
     pages: int
 
-
 class CrearPeriodoRequest(BaseModel):
     fecha_abre: date
     fecha_cierra: date | None = None
@@ -123,3 +122,20 @@ class PeriodoVigenteResponse(BaseModel):
     abierto: bool
     periodo: dict[str, date | None] | None
     cohorte_id: UUID | None
+
+class CohorteCreate(BaseModel):
+    anio: int
+    nombre: str
+    fecha_inicio: Optional[date] = None
+
+class CohorteInscripcionUpdate(BaseModel):
+    abierta: bool
+
+class CohorteResponse(BaseModel):
+    id: UUID
+    anio: int
+    nombre: str
+    abierta: bool
+    fecha_inicio: Optional[date] = None
+
+    model_config = ConfigDict(from_attributes=True)

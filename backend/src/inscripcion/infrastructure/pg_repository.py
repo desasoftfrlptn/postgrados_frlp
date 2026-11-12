@@ -1,6 +1,6 @@
 """Implementación PostgreSQL del repositorio usando SQLAlchemy async."""
 
-from typing import Any
+from typing import Any, List, Optional
 from uuid import UUID
 
 from sqlalchemy import func, select, update
@@ -14,6 +14,7 @@ from src.shared.security.tokens import generar_token, hash_token
 from src.shared.auth.passwords import hash_contrasena
 from datetime import datetime, timedelta, timezone
 
+from src.inscripcion.domain.repository import CohorteRepository
 
 class PostgresLegajoRepository:
     def __init__(self, db: AsyncSession):
@@ -115,3 +116,29 @@ class PostgresLegajoRepository:
                 "Ya existe un legajo con ese email o número de legajo", "email"
             ) from exc
         return legajo
+
+class PostgresCohorteRepository(CohorteRepository):
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def obtener(self) -> List[Cohorte]:
+        result = await self.session.execute(select(Cohorte))
+        return list(result.scalars().all())
+
+    async def obtener_por_id(self, cohorte_id: UUID) -> Optional[Cohorte]:
+        result = await self.session.execute(
+            select(Cohorte).where(Cohorte.id == cohorte_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def crear(self, datos: dict[str, Any]) -> Cohorte:
+        db_model = Cohorte(**datos)
+        self.session.add(db_model)
+        await self.session.commit()
+        await self.session.refresh(db_model)
+        return db_model
+
+    async def modificar(self, cohorte: Cohorte) -> Cohorte:
+        await self.session.commit()
+        await self.session.refresh(cohorte)
+        return cohorte

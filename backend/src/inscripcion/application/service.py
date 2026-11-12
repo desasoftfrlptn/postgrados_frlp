@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from math import ceil
 import re
-from typing import Any
+from typing import Any, List
 from uuid import UUID
 
 from src.inscripcion.domain.estados import transicion_permitida
@@ -16,7 +16,7 @@ from src.inscripcion.domain.exceptions import (
     ReglaNegocioInvalida,
     TransicionNoPermitida,
 )
-from src.inscripcion.domain.repository import LegajoRepository
+from src.inscripcion.domain.repository import LegajoRepository, CohorteRepository
 
 
 class LegajoService:
@@ -120,3 +120,29 @@ class LegajoService:
         anio = cohorte.anio if cohorte else datetime.now().year
         correlativo = await self._repository.contar_numeros_legajo(legajo.cohorte_id) + 1
         return f"{anio % 100:02d}-{codigo_cohorte:03d}-{correlativo:03d}"
+
+class CohorteService:
+    def __init__(self, repository: CohorteRepository):
+        self.repository = repository
+
+    async def crear_cohorte(self, anio: int, nombre: str, fecha_inicio=None) -> Any:
+        datos = {
+            "anio": anio,
+            "nombre": nombre,
+            "inscripcion_abierta": False,
+            "fecha_inicio": fecha_inicio
+        }
+        return await self.repository.crear(datos)
+    
+    async def listar_cohortes(self) -> List[Any]:
+        return await self.repository.obtener()
+    
+    async def gestionar_inscripcion(self, cohorte_id: UUID, abierta: bool) -> Any:
+        cohorte = await self.repository.obtener_por_id(cohorte_id)
+        if not cohorte:
+            raise ValueError("Cohorte no encontrada")
+
+        cohorte.inscripcion_abierta = abierta
+
+        return await self.repository.modificar(cohorte)
+    
