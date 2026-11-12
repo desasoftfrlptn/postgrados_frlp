@@ -1,12 +1,8 @@
 // Proveedor global para manejar la sesión del usuario.
 
-import {
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 
-import {
-  api,
-} from "../../shared/api/client";
+import { api, } from "../../shared/api/client";
 
 import {
   AuthContext,
@@ -40,6 +36,32 @@ export function AuthProvider({
       null
     );
 
+    useEffect(() => {
+  const manejarSesionInvalidada = (event: Event) => {
+
+  const tokenRechazado = (event as CustomEvent<string>).detail;
+
+  setUser((usuarioActual) => {
+    if (usuarioActual?.token === tokenRechazado) {
+      return null;
+    }
+
+    return usuarioActual;
+  });
+};
+
+  window.addEventListener(
+    "sesion-invalidada",
+    manejarSesionInvalidada
+  );
+
+  return () => {
+    window.removeEventListener(
+      "sesion-invalidada",
+      manejarSesionInvalidada
+    );
+  };
+}, []);
 
   const login = async (
     email: string,
