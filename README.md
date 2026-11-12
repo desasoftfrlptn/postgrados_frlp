@@ -75,34 +75,44 @@ Lee en este orden antes de escribir código:
 
 ## Quickstart — Levantá el entorno en 5 minutos
 
-> **Requisitos previos:** Git · Docker Desktop · Node.js 20+ (o Python 3.11+)
+> **Requisitos previos:** Git y Docker Desktop iniciado con contenedores Linux. No hace falta instalar Python ni Node.js en la computadora.
 
 ```bash
-# 1. Cloná tu repositorio (URL provisto por GitHub)
-git clone https://github.com/desasoftfrlptn/postgrados_frlp.git
-cd postgrado-[NOMBRE-EQUIPO]
+# 1. Cloná el repositorio
+ git clone https://github.com/desasoftfrlptn/postgrados_frlp.git
+ cd postgrados_frlp
 
-# 2. Configurá variables de entorno
-cp .env.example .env
+# 2. Copiá las variables de ejemplo (solo si todavía no existe .env)
+ cp .env.example .env
 
-# 3. Levantá los servicios (base de datos + backend + frontend)
-docker-compose up -d
-
-# 4. Instalá dependencias
-npm install        # Si usás Node/NestJS
-# -- ó --
-pip install -r requirements.txt  # Si usás Python/FastAPI
-
-# 5. Ejecutá las migraciones de base de datos
-npm run db:migrate   # Prisma
-# -- ó --
-alembic upgrade head  # SQLAlchemy
-
-# 6. Iniciá el servidor de desarrollo
-npm run dev
+# 3. Construí y levantá todo el entorno
+ docker compose up --build
 ```
 
-✅ **Criterio de éxito:** La app corre en `http://localhost:3000` sin errores en consola.
+En PowerShell podés usar `Copy-Item .env.example .env` para el paso 2.
+Después del primer build, alcanza con `docker compose up`. Para dejarlo en segundo plano, usá `docker compose up -d --build`.
+
+- Frontend React: http://localhost:3000
+- Backend FastAPI: http://localhost:8000
+- Documentación de la API: http://localhost:8000/docs
+- Correos de desarrollo (MailHog): http://localhost:8025
+
+Compose inicia PostgreSQL, espera que esté disponible, inicia el backend y espera que `/health` responda antes de iniciar el frontend. FastAPI crea las tablas al arrancar; no hay un paso manual de migraciones para este inicio. Las dependencias se instalan dentro de las imágenes y los cambios del código se recargan durante el desarrollo.
+
+El backend recibe `SECRET_KEY` desde `.env`; por compatibilidad también acepta el valor de `JWT_SECRET` de `.env` a través de Compose. Si no definís ninguno, Compose utiliza una clave exclusivamente de desarrollo. La conexión del contenedor apunta al servicio `db`, no a `localhost`.
+
+Las integraciones de CAPTCHA y calendario requieren sus propias claves (`VITE_RECAPTCHA_SITE_KEY` y `VITE_CALENDARIFIC_API_KEY`). Son opcionales para levantar el entorno.
+
+```bash
+# Ver el estado y los logs
+ docker compose ps
+ docker compose logs -f backend frontend
+
+# Detener los servicios conservando los datos
+ docker compose down
+```
+
+Los datos de PostgreSQL y los archivos del sistema se conservan en volúmenes Docker. Si cambiás dependencias, reconstruí con `docker compose up --build --renew-anon-volumes` para actualizar también el volumen de `node_modules`.
 
 ---
 

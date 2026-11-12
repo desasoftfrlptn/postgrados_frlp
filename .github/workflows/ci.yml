@@ -2,6 +2,9 @@
 # Se ejecuta en: cada Push a develop/main, cada Pull Request a develop/main
 # Objetivo: Garantizar que el código que llega a las ramas principales no rompe nada
 
+
+# Nota: Esto es un Pipeline de integracion continua, para cuando yo haga un pull request se despliegue esto. Esta todo hecho en Next no en Fast (Es para produccion)
+
 name: CI Pipeline
 
 on:

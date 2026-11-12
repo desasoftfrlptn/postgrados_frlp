@@ -1,0 +1,212 @@
+/* Estilos de la página pública de carreras. */
+
+.carreras-fondo {
+  padding: 28px 32px;
+  background: var(--color-primary);
+}
+
+.carreras {
+  width: min(100%, 1500px);
+  margin: auto;
+  padding: 38px 70px;
+
+  background: var(--color-background);
+  border-radius: 32px;
+}
+
+.carreras-encabezado h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.carreras-encabezado p {
+  margin: 0;
+  color: #666;
+  font-size: 15px;
+}
+
+.carreras-filtros {
+  margin-top: 25px;
+  display: flex;
+  gap: 35px;
+
+  border-bottom: 1px solid #999;
+}
+
+.carreras-filtros button {
+  padding: 0 15px 10px;
+
+  color: #666;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.carreras-filtros button.activo {
+  color: #1769d2;
+  border-bottom-color: #1769d2;
+}
+
+.carreras-listado {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.carrera-tarjeta {
+  min-height: 105px;
+  padding: 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+
+  border: 1px solid #888;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
+}
+
+.carrera-informacion {
+  flex: 1;
+}
+
+.carrera-tarjeta h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.carrera-tarjeta p {
+  max-width: 800px;
+  margin: 0;
+
+  color: #666;
+  font-size: 14px;
+}
+
+.carrera-acciones {
+  min-width: 130px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 18px;
+}
+
+.carrera-tipo {
+  padding: 5px 14px;
+
+  background: #e5e5e5;
+  border-radius: 10px;
+
+  font-size: 11px;
+}
+
+.carrera-tipo.especialización {
+  color: #1fad64;
+}
+
+.carrera-tipo.maestría {
+  color: #f59e0b;
+}
+
+.carrera-tipo.posgrado {
+  color: #00a9a5;
+}
+
+.carrera-acciones a {
+  color: #0057d9;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.carreras-inscripcion {
+  margin-top: 45px;
+  padding: 12px 20px;
+
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 25px;
+
+  background: #e0e0e0;
+  border: 1px solid #777;
+  border-radius: 7px;
+}
+
+.carreras-inscripcion-icono {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.carreras-pregunta {
+  width: 48px;
+  height: 48px;
+
+  display: grid;
+  place-items: center;
+
+  color: #064be4;
+  background: #cfcfcf;
+  border-radius: 50%;
+
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.carreras-inscripcion strong {
+  font-size: 14px;
+}
+
+.carreras-inscripcion p {
+  margin: 4px 0 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.carreras-inscripcion > a {
+  padding: 13px 18px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: #fff;
+  background: var(--color-secondary);
+  border-radius: 7px;
+
+  font-size: 14px;
+  text-decoration: none;
+}
+
+@media (max-width: 800px) {
+  .carreras {
+    padding: 30px 25px;
+  }
+
+  .carreras-filtros {
+    gap: 10px;
+    overflow-x: auto;
+  }
+
+  .carrera-tarjeta {
+    align-items: flex-start;
+  }
+
+  .carreras-inscripcion {
+    grid-template-columns: auto 1fr;
+  }
+
+  .carreras-inscripcion > a {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}

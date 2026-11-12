@@ -1,0 +1,274 @@
+/* Estilos de la página pública de calendario académico. */
+
+.calendario-fondo {
+  padding: 28px 32px;
+  background: var(--color-primary);
+}
+
+.calendario {
+  width: min(100%, 1500px);
+  margin: auto;
+  padding: 38px 70px;
+  background: var(--color-background);
+  border-radius: 32px;
+}
+
+.calendario-encabezado {
+  padding-bottom: 12px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 1px solid #999;
+}
+
+.calendario-encabezado h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.calendario-encabezado p {
+  margin: 0;
+  color: #666;
+  font-size: 15px;
+}
+
+.calendario-anio {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.calendario-anio label {
+  font-size: 12px;
+}
+
+.calendario-anio select {
+  width: 90px;
+  padding: 5px 8px;
+  border: 0;
+  background: #ddd;
+}
+
+.calendario-cuerpo {
+  margin-top: 28px;
+
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 30px;
+}
+
+.calendario-eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.calendario-evento {
+  min-height: 58px;
+  display: flex;
+  overflow: hidden;
+  background: #ddd;
+  border: 1px solid #888;
+  border-radius: 6px;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
+}
+
+.calendario-evento-fecha {
+  width: 65px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendario-evento-fecha span {
+  font-size: 10px;
+}
+
+.calendario-evento-fecha strong {
+  font-size: 20px;
+}
+
+.calendario-evento-info {
+  padding: 8px 12px;
+}
+
+.calendario-evento-info h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.calendario-evento-info p,
+.calendario-eventos > p {
+  margin: 0;
+  color: #666;
+  font-size: 12px;
+}
+
+.calendario-panel {
+  align-self: start;
+}
+
+.calendario-navegacion {
+  height: 48px;
+  padding: 0 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #ddd;
+  border: 1px solid #bbb;
+}
+
+.calendario-navegacion h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.calendario-navegacion button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #fff;
+  background: #707070;
+  border: 0;
+  border-radius: 50%;
+
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calendario-navegacion button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.calendario-dias-semana,
+.calendario-dias {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+}
+.calendario-dias-semana {
+  padding: 16px 12px 8px;
+  color: #666;
+  font-size: 13px;
+}
+
+.calendario-dias {
+  min-height: 250px;
+  padding: 8px 12px 16px;
+
+  background: #ddd;
+}
+
+.calendario-dia {
+  width: 34px;
+  height: 34px;
+  margin: auto;
+
+  display: grid;
+  place-items: center;
+
+  color: #666;
+  border-radius: 50%;
+  font-size: 13px;
+}
+
+.calendario-leyenda {
+  margin-top: 18px;
+  padding: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 24px;
+
+  border: 1px solid #bbb;
+}
+
+.calendario-leyenda p {
+  margin: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  color: #666;
+  font-size: 13px;
+}
+
+.leyenda-color {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+
+/* Colores de eventos */
+
+.calendario-evento-clases .calendario-evento-fecha,
+.calendario-dia-clases,
+.leyenda-clases {
+  background: #536dfe;
+}
+
+.calendario-evento-inscripcion .calendario-evento-fecha,
+.calendario-dia-inscripcion,
+.leyenda-inscripcion {
+  background: #2ee86f;
+}
+
+.calendario-evento-examen .calendario-evento-fecha,
+.calendario-dia-examen,
+.leyenda-examen {
+  background: #ae48d4;
+}
+
+.calendario-evento-feriado .calendario-evento-fecha,
+.calendario-dia-feriado,
+.leyenda-feriado {
+  background: #ff4b4b;
+}
+
+.calendario-evento-otros .calendario-evento-fecha,
+.calendario-dia-otros,
+.leyenda-otros {
+  background: #aaa;
+}
+
+.calendario-dia-clases,
+.calendario-dia-inscripcion,
+.calendario-dia-examen,
+.calendario-dia-feriado,
+.calendario-dia-otros {
+  color: #fff;
+}
+
+.calendario-error {
+  margin: 12px 0 0;
+  color: #b00020;
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .calendario {
+    padding: 30px 25px;
+  }
+
+  .calendario-cuerpo {
+    grid-template-columns: 1fr;
+  }
+
+  .calendario-encabezado {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+}

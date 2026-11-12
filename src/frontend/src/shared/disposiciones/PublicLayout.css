@@ -1,0 +1,11 @@
+/* Distribución general de las páginas públicas. */
+
+.layout-publico {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-publico-contenido {
+  flex: 1;
+}
