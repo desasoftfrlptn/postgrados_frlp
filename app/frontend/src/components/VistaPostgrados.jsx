@@ -25,6 +25,7 @@ export default function VistaPostgrados() {
   });
   const [errorCreacion, setErrorCreacion] = useState('');
   const [creando, setCreando] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
   // Carga inicial de cohortes desde FastAPI
   const cargarCohortes = useCallback(async () => {
@@ -95,25 +96,303 @@ export default function VistaPostgrados() {
     }
   };
 
+  // Crear nueva cohorte oficial en FastAPI (POST /api/v1/cohortes)
+  const handleCrearCohorte = async (e) => {
+    e.preventDefault();
+    setErrorCreacion('');
+
+    const carreraLimpia = nuevaCohorte.carrera.trim();
+    if (!carreraLimpia) {
+      setErrorCreacion('El nombre de la carrera o posgrado es obligatorio.');
+      return;
+    }
+
+    const codigoLimpio = nuevaCohorte.codigo_carrera.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(codigoLimpio)) {
+      setErrorCreacion('El código de carrera debe tener exactamente 4 caracteres alfanuméricos en mayúsculas (ej: MISI, DISO).');
+      return;
+    }
+
+    const anioNum = parseInt(nuevaCohorte.anio, 10);
+    if (!anioNum || anioNum < 2020 || anioNum > 2100) {
+      setErrorCreacion('El año de la cohorte debe ser un año válido (ej: 2026).');
+      return;
+    }
+
+    const numeroNum = parseInt(nuevaCohorte.numero_cohorte, 10);
+    if (!numeroNum || numeroNum < 1 || numeroNum > 99) {
+      setErrorCreacion('El número de cohorte debe ser un valor ordinal entre 1 y 99.');
+      return;
+    }
+
+    const nombreLimpio = nuevaCohorte.nombre.trim() || `Cohorte ${anioNum} - ${carreraLimpia}`;
+
+    const payload = {
+      anio: anioNum,
+      nombre: nombreLimpio,
+      carrera: carreraLimpia,
+      codigo_carrera: codigoLimpio,
+      numero_cohorte: numeroNum,
+      tipo_carrera: nuevaCohorte.tipo_carrera,
+      abierta: Boolean(nuevaCohorte.abierta),
+      fecha_inicio: nuevaCohorte.fecha_inicio ? nuevaCohorte.fecha_inicio : null,
+    };
+
+    try {
+      setCreando(true);
+      const cohorteCreada = await cohorteService.crearCohorte(payload);
+      setCohortes((prev) => [cohorteCreada, ...prev]);
+      setFeedback({
+        tipo: 'success',
+        mensaje: `Cohorte "${cohorteCreada.nombre}" registrada exitosamente con código ${cohorteCreada.codigo_carrera}-${String(cohorteCreada.numero_cohorte).padStart(2, '0')}.`,
+      });
+      // Reset del formulario
+      setNuevaCohorte({
+        anio: new Date().getFullYear(),
+        nombre: '',
+        carrera: '',
+        codigo_carrera: '',
+        numero_cohorte: 1,
+        tipo_carrera: 'Maestria',
+        abierta: true,
+        fecha_inicio: '',
+      });
+      setMostrarFormulario(false);
+    } catch (err) {
+      setErrorCreacion(err.message || 'Error al registrar la nueva cohorte en FastAPI.');
+    } finally {
+      setCreando(false);
+    }
+  };
+
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.6rem', color: '#002B49' }}>Gestión de Posgrados y Cohortes</h2>
           <p style={{ margin: '4px 0 0', color: '#6c757d', fontSize: '14px' }}>
             Control de carreras, períodos de preinscripción y cohortes académicas activas.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={cargarCohortes}
-          disabled={cargando}
-          style={{ padding: '8px 14px', fontSize: '13px' }}
-        >
-          {cargando ? 'Actualizando...' : '🔄 Actualizar'}
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setMostrarFormulario((prev) => !prev)}
+            style={{ padding: '8px 16px', fontSize: '13px' }}
+          >
+            {mostrarFormulario ? '✕ Cancelar' : '➕ Registrar Nueva Cohorte'}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={cargarCohortes}
+            disabled={cargando}
+            style={{ padding: '8px 14px', fontSize: '13px' }}
+          >
+            {cargando ? 'Actualizando...' : '🔄 Actualizar'}
+          </button>
+        </div>
       </header>
+
+      {/* Formulario de Creación de Cohortes Oficiales */}
+      {mostrarFormulario && (
+        <div
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            border: '1px solid #ced4da',
+            padding: '24px',
+            marginBottom: '30px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          }}
+        >
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '1.2rem', color: '#002B49' }}>
+            Registrar Nueva Cohorte Oficial
+          </h3>
+          <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#6c757d' }}>
+            Los campos marcados con asterisco (*) son obligatorios según el modelo de datos de la UTN.
+          </p>
+
+          {errorCreacion && (
+            <div
+              role="alert"
+              style={{
+                backgroundColor: '#f8d7da',
+                color: '#842029',
+                border: '1px solid #f5c2c7',
+                borderRadius: '4px',
+                padding: '10px 14px',
+                fontSize: '13px',
+                marginBottom: '16px',
+              }}
+            >
+              ⚠️ {errorCreacion}
+            </div>
+          )}
+
+          <form onSubmit={handleCrearCohorte}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Carrera / Programa <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="form-control"
+                  placeholder="Ej: Maestría en Ingeniería en Sistemas"
+                  value={nuevaCohorte.carrera}
+                  onChange={(e) => {
+                    const carrera = e.target.value;
+                    setNuevaCohorte((prev) => ({
+                      ...prev,
+                      carrera,
+                      nombre: prev.nombre || (carrera ? `Cohorte ${prev.anio} - ${carrera}` : ''),
+                    }));
+                    setErrorCreacion('');
+                  }}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Tipo de Carrera <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <select
+                  className="form-control"
+                  style={{ background: '#fff' }}
+                  value={nuevaCohorte.tipo_carrera}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, tipo_carrera: e.target.value }))}
+                  disabled={creando}
+                >
+                  <option value="Maestria">Maestría</option>
+                  <option value="Especializacion">Especialización</option>
+                  <option value="Doctorado">Doctorado</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Código de Carrera (4 letras) <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={4}
+                  className="form-control"
+                  placeholder="MISI"
+                  style={{ textTransform: 'uppercase', fontFamily: 'monospace', fontWeight: 'bold' }}
+                  value={nuevaCohorte.codigo_carrera}
+                  onChange={(e) => {
+                    setNuevaCohorte((prev) => ({ ...prev, codigo_carrera: e.target.value.toUpperCase() }));
+                    setErrorCreacion('');
+                  }}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Año <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={2020}
+                  max={2100}
+                  className="form-control"
+                  value={nuevaCohorte.anio}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, anio: parseInt(e.target.value, 10) || '' }))}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Número de Cohorte (Ordinal) <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  max={99}
+                  className="form-control"
+                  value={nuevaCohorte.numero_cohorte}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, numero_cohorte: parseInt(e.target.value, 10) || 1 }))}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Fecha de Inicio de Cursada
+                </label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={nuevaCohorte.fecha_inicio}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, fecha_inicio: e.target.value }))}
+                  disabled={creando}
+                />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Nombre Descriptivo de la Cohorte <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="form-control"
+                  placeholder="Ej: Cohorte 2026 - Maestría en Ingeniería en Sistemas"
+                  value={nuevaCohorte.nombre}
+                  onChange={(e) => {
+                    setNuevaCohorte((prev) => ({ ...prev, nombre: e.target.value }));
+                    setErrorCreacion('');
+                  }}
+                  disabled={creando}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+              <input
+                type="checkbox"
+                id="check-abierta"
+                checked={nuevaCohorte.abierta}
+                onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, abierta: e.target.checked }))}
+                disabled={creando}
+                style={{ width: '16px', height: '16px' }}
+              />
+              <label htmlFor="check-abierta" style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                Abrir período de preinscripción inmediatamente al crear
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setMostrarFormulario(false)}
+                disabled={creando}
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={creando}
+                style={{ padding: '8px 20px', fontSize: '13px' }}
+              >
+                {creando ? 'Registrando en FastAPI...' : 'Guardar y Publicar Cohorte'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Banner de Feedback de Éxito */}
       {feedback && (
