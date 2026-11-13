@@ -12,6 +12,26 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 > Los cambios que están en `develop` pero no en un release van acá.
 
 ### Added
+- Panel con configuración de ítems según el usuario
+- Dashboard del coordinador con:
+    - Alertas 
+    - Lista de inscripciones
+    - Legajo digital de inscripto con workflow de estados
+- Login
+- Welcome screen para aspirantes/estudiantes
+- Formulario de inscripción por pasos con wizard
+- Mock inicial de datos con msw
+- Tipado compartido para asegurar consistencia en todos los módulos
+- Cliente de la api con el contrato definido
+- Componentes compartidos: Button, NotificationsButton, Sidebar, Spinner, ThemeToggle y VentanaEmergente
+- Contexto para el tema oscuro/claro
+- Página 404 NotFound
+- Estilos configurados con Tailwind en index.css
+- Componente TestLegajos para testear las llamadas a la api (utilizando mocking) 
+- Rutas iniciales con react-router-dom en App.tsx
+- example.env para habilitar/deshabilitar el mocking
+
+### Added
 - Estructura inicial del repositorio
 - Documentación base: SRS, PRD, BFD, Arquitectura, Cronograma
 
