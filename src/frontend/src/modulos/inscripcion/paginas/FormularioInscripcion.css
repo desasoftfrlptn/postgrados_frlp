@@ -1,0 +1,535 @@
+/* Estilos del formulario público de preinscripción. */
+
+.inscripcion {
+  min-height: 100%;
+  padding: 28px 32px;
+
+  display: flex;
+  justify-content: center;
+
+  background: var(--color-primary);
+}
+
+.inscripcion-formulario {
+  width: min(100%, 1500px);
+  padding: 38px 70px;
+
+  background: var(--color-background);
+  border-radius: 32px;
+}
+
+.inscripcion-formulario h1 {
+  margin: 0 0 20px;
+
+  font-size: 32px;
+  font-weight: 400;
+}
+
+/* Etapas */
+
+.inscripcion-etapas {
+  position: relative;
+
+  margin: 0 0 18px;
+  padding: 18px 20px;
+
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+
+  background: #e0e0e0;
+  border: 1px solid #999999;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
+
+  list-style: none;
+}
+
+.inscripcion-etapas::before {
+  content: "";
+
+  position: absolute;
+  top: 39px;
+  left: 12.5%;
+  right: 12.5%;
+
+  height: 2px;
+
+  background: #aaaaaa;
+}
+
+.inscripcion-etapa {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+
+  color: #666666;
+}
+
+.inscripcion-etapa > span {
+  width: 44px;
+  height: 44px;
+
+  display: grid;
+  place-items: center;
+
+  color: #555555;
+  background: #bdbdbd;
+  border-radius: 50%;
+
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.inscripcion-etapa p {
+  margin: 0;
+
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.inscripcion-etapa.activa {
+  color: var(--color-secondary);
+  font-weight: 600;
+}
+
+.inscripcion-etapa.activa > span {
+  color: var(--color-text-light);
+  background: var(--color-secondary);
+}
+
+/* Formulario */
+
+.inscripcion-formulario form,
+.inscripcion-contenido-etapa {
+  padding: 20px;
+
+  background: #e0e0e0;
+  border: 1px solid #999999;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.15);
+}
+
+.inscripcion-formulario fieldset {
+  margin: 0;
+  padding: 0;
+
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 28px;
+
+  border: 0;
+}
+
+.inscripcion-formulario legend {
+  grid-column: 1 / -1;
+
+  margin-bottom: 12px;
+
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.inscripcion-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.inscripcion-campo label {
+  color: #333333;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.inscripcion-campo label span {
+  color: #c62828;
+  font-weight: 700;
+}
+
+.inscripcion-campo input,
+.inscripcion-campo select {
+  width: 100%;
+  height: 36px;
+  padding: 5px 10px;
+
+  color: #555555;
+  background: #eeeeee;
+  border: 1px solid #aaaaaa;
+  border-radius: 3px;
+}
+
+.inscripcion-campo input:focus-visible,
+.inscripcion-campo select:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+.inscripcion-campo-ancho-completo {
+  grid-column: 1 / -1;
+}
+
+/* Etapas siguientes */
+
+.inscripcion-contenido-etapa h2 {
+  margin: 0 0 8px;
+
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.inscripcion-titulo-confirmacion {
+  color: var(--color-secondary);
+
+  padding-bottom: 8px;
+  border-bottom: 2px solid #c5b8e8;
+}
+
+.inscripcion-contenido-etapa p {
+  margin: 0;
+
+  color: #555555;
+  font-size: 14px;
+}
+
+.inscripcion-contenido-etapa > p {
+  margin-bottom: 18px;
+}
+
+/* Botones */
+
+.inscripcion-botones {
+  margin-top: 22px;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.inscripcion-botones button {
+  padding: 10px 20px;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  color: var(--color-text-light);
+  background: var(--color-secondary);
+  border: 0;
+  border-radius: 5px;
+
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.inscripcion-botones button:hover {
+  opacity: 0.9;
+}
+
+.inscripcion-botones button:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 3px;
+}
+
+/* Mensajes */
+
+.inscripcion-mensaje {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  background: #f3f0fa;
+  border: 1px solid #c5b8e8;
+  border-radius: 4px;
+
+  color: var(--color-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Responsive */
+
+@media (max-width: 800px) {
+  .inscripcion {
+    padding: 20px 16px;
+  }
+
+  .inscripcion-formulario {
+    padding: 30px 25px;
+  }
+
+  .inscripcion-formulario h1 {
+    font-size: 26px;
+  }
+
+  .inscripcion-etapas {
+    padding: 14px 5px;
+  }
+
+  .inscripcion-etapas::before {
+    top: 34px;
+  }
+
+  .inscripcion-etapa > span {
+    width: 38px;
+    height: 38px;
+
+    font-size: 14px;
+  }
+
+  .inscripcion-etapa p {
+    font-size: 11px;
+  }
+
+  .inscripcion-formulario fieldset {
+    grid-template-columns: 1fr;
+  }
+
+  .inscripcion-campo-ancho-completo {
+    grid-column: auto;
+  }
+
+  .inscripcion-botones {
+    flex-wrap: wrap;
+  }
+}
+
+.inscripcion-contenido-etapa .inscripcion-aviso-documentacion {
+  margin: 16px 0 20px;
+  padding: 10px 14px;
+  border: 1px solid #c5b8e8;
+  border-radius: 4px;
+  background: #f3f0fa;
+  color: var(--color-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.inscripcion-aviso-documentacion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inscripcion-documentacion {
+  margin: 0;
+  padding: 18px 20px 20px;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 28px;
+
+  border: 1px solid #bbb;
+}
+
+.inscripcion-documentacion legend {
+  padding: 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.inscripcion-documento {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inscripcion-documento label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #444;
+}
+
+.inscripcion-documento label span {
+  margin-left: 4px;
+  color: #c62828;
+  font-weight: 700;
+}
+
+.inscripcion-documento input[type="file"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  background: #eee;
+  color: #666;
+  cursor: pointer;
+}
+
+.inscripcion-aviso-icono {
+  width: 18px;
+  height: 18px;
+
+  position: relative;
+  flex-shrink: 0;
+
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.inscripcion-aviso-icono::before {
+  content: "i";
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  transform: translate(-50%, -50%);
+
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.inscripcion-beca {
+  margin: 0;
+  padding: 0;
+
+  display: grid;
+  gap: 8px;
+
+  border: 0;
+}
+
+.inscripcion-beca legend {
+  padding: 0 8px;
+
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.inscripcion-opcion-beca {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.inscripcion-opcion-beca input[type="radio"] {
+  margin: 0;
+  accent-color: var(--color-secondary);
+}
+
+.inscripcion-opcion-beca label {
+  color: #444;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.inscripcion-contenido-etapa .inscripcion-aviso-beca {
+  margin: 18px 0 0;
+  padding: 10px 14px;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  background: #f3f0fa;
+  border: 1px solid #c5b8e8;
+  border-radius: 4px;
+
+  color: var(--color-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Resumen de confirmación */
+
+.inscripcion-resumen {
+  margin: 0;
+  padding: 16px 18px;
+
+  background: #eeeeee;
+  border: 1px solid #bbbbbb;
+  align-self: start;
+}
+
+.inscripcion-resumen h3 {
+  margin: 0;
+
+  color: var(--color-secondary);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.inscripcion-resumen-encabezado button {
+  padding: 5px 10px;
+
+  color: var(--color-secondary);
+  background: transparent;
+  border: 1px solid var(--color-secondary);
+  border-radius: 4px;
+
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.inscripcion-resumen-encabezado button:hover {
+  color: var(--color-text-light);
+  background: var(--color-secondary);
+}
+
+.inscripcion-resumen-encabezado button:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+.inscripcion-resumen p {
+  margin: 0 0 8px;
+
+  color: #555555;
+  font-size: 14px;
+}
+
+.inscripcion-resumen p:last-child {
+  margin-bottom: 0;
+}
+
+.inscripcion-resumen strong {
+  color: #333333;
+  font-weight: 600;
+}
+
+.inscripcion-resumen-grid {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.inscripcion-resumen-grid .inscripcion-resumen:last-child {
+  grid-column: 1;
+  width: 100%;
+  padding: 10px 18px;
+}
+
+@media (max-width: 800px) {
+  .inscripcion-resumen-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .inscripcion-resumen-grid .inscripcion-resumen:last-child {
+    grid-column: auto;
+  }
+}
+
+.inscripcion-resumen p {
+  overflow-wrap: anywhere;
+}
+
+.inscripcion-resumen-encabezado {
+  margin-bottom: 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+} 

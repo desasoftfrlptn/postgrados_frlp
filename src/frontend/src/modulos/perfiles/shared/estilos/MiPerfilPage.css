@@ -1,0 +1,587 @@
+.mi-perfil {
+  width: 100%;
+}
+
+
+/* ============================= */
+/* PESTAÑAS */
+/* ============================= */
+
+.mi-perfil-pestanas {
+  margin-bottom: 24px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.mi-perfil-pestana {
+  padding: 12px 18px;
+  color: #6b7280;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mi-perfil-pestana:hover {
+  color: #374151;
+}
+
+.mi-perfil-pestana.activa {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+
+/* ============================= */
+/* MENSAJES */
+/* ============================= */
+
+.mi-perfil-mensaje {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  color: #166534;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+
+.mi-perfil-error {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+}
+
+
+/* ============================= */
+/* CONTENIDO GENERAL */
+/* ============================= */
+
+.mi-perfil-contenido {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr);
+  gap: 24px;
+  align-items: start;
+}
+
+
+/* ============================= */
+/* TARJETA PERSONAL */
+/* ============================= */
+
+.mi-perfil-tarjeta-personal {
+  overflow: hidden;
+  color: #ffffff;
+  background: #0f172a;
+  border-radius: 14px;
+  box-shadow:
+    0 4px 12px
+    rgba(15, 23, 42, 0.08);
+}
+
+.mi-perfil-tarjeta-personal > header {
+  padding: 10px;
+  background: #2563eb;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mi-perfil-avatar-contenedor {
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-bottom: 1px solid #334155;
+}
+
+.mi-perfil-avatar {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.mi-perfil-avatar-vacio {
+  display: grid;
+  place-items: center;
+  background: #334155;
+  font-size: 38px;
+}
+
+.mi-perfil-avatar-contenedor h2 {
+  margin: 14px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.mi-perfil-avatar-contenedor p {
+  margin: 5px 0 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+
+/* ============================= */
+/* FOTO */
+/* ============================= */
+
+.mi-perfil-foto-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mi-perfil-input-foto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.mi-perfil-boton-foto {
+  padding: 7px 12px;
+  color: #ffffff;
+  background: #2563eb;
+  border-radius: 5px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mi-perfil-boton-foto:hover {
+  background: #1d4ed8;
+}
+
+.mi-perfil-eliminar-foto {
+  padding: 5px;
+  color: #fca5a5;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+
+/* ============================= */
+/* RESUMEN PERSONAL */
+/* ============================= */
+
+.mi-perfil-resumen-personal {
+  padding: 20px;
+}
+
+.mi-perfil-resumen-personal dl {
+  margin: 0;
+}
+
+.mi-perfil-resumen-personal dl div {
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #1e293b;
+  border-radius: 8px;
+}
+
+.mi-perfil-resumen-personal dl div:last-child {
+  margin-bottom: 0;
+}
+
+.mi-perfil-resumen-personal dt {
+  margin-bottom: 5px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.mi-perfil-resumen-personal dd {
+  margin: 0;
+  color: #cbd5e1;
+  overflow-wrap: anywhere;
+}
+
+.mi-perfil-modificar {
+  width: 100%;
+  margin-top: 14px;
+  padding: 10px;
+  color: #ffffff;
+  background: #2563eb;
+  border: 0;
+  border-radius: 7px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mi-perfil-modificar:hover {
+  background: #1d4ed8;
+}
+
+
+/* ============================= */
+/* PANEL DE DATOS */
+/* ============================= */
+
+.mi-perfil-datos {
+  min-height: 100%;
+  padding: 28px 30px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow:
+    0 2px 8px
+    rgba(15, 23, 42, 0.04);
+}
+
+.mi-perfil-datos h2 {
+  margin: 0 0 18px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+
+/* ============================= */
+/* CAMPOS GENERALES */
+/* ============================= */
+
+.mi-perfil-grilla {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.mi-perfil-campo label {
+  display: block;
+  margin-bottom: 7px;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mi-perfil-campo input,
+.mi-perfil-campo p {
+  width: 100%;
+  min-height: 42px;
+  margin: 0;
+  padding: 10px 12px;
+  color: #1f2937;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.mi-perfil-campo input:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+
+/* ============================= */
+/* INFORMACIÓN ACADÉMICA */
+/* ============================= */
+
+.mi-perfil-carrera {
+  margin-bottom: 16px;
+  padding: 14px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.mi-perfil-indicadores {
+  display: grid;
+  grid-template-columns:
+    repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mi-perfil-indicadores div {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.mi-perfil-indicadores dt {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.mi-perfil-indicadores dd {
+  margin: 6px 0 0;
+  color: #1f2937;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+
+/* ============================= */
+/* ACCIONES GENERALES */
+/* ============================= */
+
+.mi-perfil-acciones {
+  margin-top: 24px;
+  padding-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.mi-perfil-cancelar,
+.mi-perfil-guardar {
+  padding: 10px 18px;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mi-perfil-cancelar {
+  color: #374151;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+}
+
+.mi-perfil-cancelar:hover {
+  background: #f9fafb;
+}
+
+.mi-perfil-guardar {
+  color: #ffffff;
+  background: #2563eb;
+  border: 0;
+}
+
+.mi-perfil-guardar:hover {
+  background: #1d4ed8;
+}
+
+.mi-perfil-guardar:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+
+/* ============================= */
+/* SEGURIDAD */
+/* ============================= */
+
+.mi-perfil-contrasena {
+  width: 100%;
+  max-width: 720px;
+}
+
+.mi-perfil-contrasena-encabezado {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.mi-perfil-contrasena-icono {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-radius: 10px;
+  font-size: 21px;
+}
+
+.mi-perfil-contrasena-encabezado h2 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 21px;
+}
+
+.mi-perfil-contrasena-encabezado p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mi-perfil-contrasena-aviso {
+  margin-bottom: 22px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+}
+
+.mi-perfil-contrasena-aviso p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mi-perfil-contrasena-aviso-icono {
+  flex-shrink: 0;
+}
+
+.mi-perfil-contrasena-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.mi-perfil-contrasena-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mi-perfil-contrasena-campo label {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mi-perfil-contrasena-input {
+  position: relative;
+  width: 100%;
+}
+
+.mi-perfil-contrasena-input input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 72px 10px 12px;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  box-sizing: border-box;
+  font-size: 14px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.mi-perfil-contrasena-input input::placeholder {
+  color: #9ca3af;
+}
+
+.mi-perfil-contrasena-input input:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow:
+    0 0 0 3px
+    rgba(37, 99, 235, 0.12);
+}
+
+.mi-perfil-contrasena-mostrar {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  padding: 4px 6px;
+  color: #2563eb;
+  background: transparent;
+  border: 0;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mi-perfil-contrasena-mostrar:hover {
+  color: #1d4ed8;
+}
+
+.mi-perfil-contrasena-acciones {
+  margin-top: 4px;
+  padding-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #e5e7eb;
+}
+
+
+/* ============================= */
+/* RESPONSIVE */
+/* ============================= */
+
+@media (max-width: 1000px) {
+  .mi-perfil-contenido {
+    grid-template-columns:
+      minmax(240px, 0.8fr)
+      minmax(0, 1.8fr);
+  }
+}
+
+
+@media (max-width: 800px) {
+  .mi-perfil-pestanas {
+    margin-bottom: 18px;
+  }
+
+  .mi-perfil-contenido {
+    grid-template-columns: 1fr;
+  }
+
+  .mi-perfil-grilla,
+  .mi-perfil-indicadores {
+    grid-template-columns: 1fr;
+  }
+
+  .mi-perfil-datos {
+    padding: 22px;
+  }
+
+  .mi-perfil-contrasena {
+    max-width: none;
+  }
+}
+
+
+@media (max-width: 520px) {
+  .mi-perfil-pestana {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .mi-perfil-datos {
+    padding: 18px;
+  }
+
+  .mi-perfil-contrasena-encabezado {
+    gap: 10px;
+  }
+
+  .mi-perfil-contrasena-icono {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .mi-perfil-contrasena-acciones {
+    justify-content: stretch;
+  }
+
+  .mi-perfil-contrasena-acciones
+  .mi-perfil-guardar {
+    width: 100%;
+  }
+}

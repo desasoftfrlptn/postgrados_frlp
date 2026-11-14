@@ -1,0 +1,205 @@
+/* Estilos de la página pública de inicio. */
+
+.home-hero {
+  min-height: 310px;
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  color: var(--color-text-light);
+  background-color: #002b4c;
+  background-size: cover;
+  background-position: center 67%;
+  background-repeat: no-repeat;
+}
+
+.home-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    90deg,
+    rgba(0, 20, 40, 0.9) 0%,
+    rgba(0, 20, 40, 0.7) 30%,
+    rgba(0, 20, 40, 0.35) 55%,
+    rgba(0, 20, 40, 0.08) 75%,
+    transparent 100%
+  );
+}
+
+.home-hero-contenido,
+.home-accesos {
+  width: min(calc(100% - var(--espaciado-lateral) * 2), var(--ancho-maximo));
+  margin: auto;
+}
+
+.home-hero-contenido {
+  position: relative;
+  z-index: 1;
+}
+
+.home-hero h1 {
+  max-width: 760px;
+  margin-bottom: 14px;
+  font-size: clamp(40px, 3.2vw, 54px);
+  line-height: 1.08;
+}
+
+.home-hero p {
+  max-width: 640px;
+  margin: 0;
+  font-size: 16px;
+}
+
+.home-acciones {
+  margin-top: 20px;
+  display: flex;
+  gap: 18px;
+}
+
+.home-boton {
+  min-height: 44px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 7px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.home-boton svg,
+.home-tarjeta-icono svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.home-boton svg {
+  width: 18px;
+  height: 18px;
+}
+
+.home-boton-principal {
+  background: var(--color-secondary);
+}
+
+.home-boton-secundario {
+  border: 1px solid #fff;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.home-boton-principal:hover {
+  opacity: 0.9;
+}
+
+.home-boton-secundario:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.home-accesos {
+  padding: 32px 0 30px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 26px;
+}
+
+.home-tarjeta {
+  min-height: 160px;
+  padding: 20px;
+  display: flex;
+  gap: 18px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.12);
+}
+
+.home-tarjeta-icono {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.home-tarjeta-icono svg {
+  width: 27px;
+  height: 27px;
+}
+
+.home-icono-carreras {
+  color: #2563eb;
+  background: #e7f0ff;
+}
+
+.home-icono-calendario {
+  color: #12a96c;
+  background: #e5f8ef;
+}
+
+.home-icono-noticias {
+  color: #f59e0b;
+  background: #fff2d8;
+}
+
+.home-icono-preguntas {
+  color: #7c3aed;
+  background: #eee7ff;
+}
+
+.home-tarjeta-contenido {
+  flex: 1;
+}
+
+.home-tarjeta h3 {
+  margin: 0 0 9px;
+  font-size: 16px;
+}
+
+.home-tarjeta p {
+  min-height: 46px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.home-tarjeta a {
+  display: flex;
+  gap: 8px;
+  color: #2563eb;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.home-tarjeta:nth-of-type(2) a { color: #12a96c; }
+.home-tarjeta:nth-of-type(3) a { color: #f59e0b; }
+.home-tarjeta:nth-of-type(4) a { color: #7c3aed; }
+
+.home-tarjeta a:hover {
+  text-decoration: underline;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+@media (max-width: 1100px) {
+  .home-hero { min-height: 360px; }
+  .home-accesos { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .home-hero { min-height: 420px; }
+  .home-hero h1 { font-size: 38px; }
+
+  .home-acciones {
+    flex-direction: column;
+  }
+
+  .home-accesos {
+    grid-template-columns: 1fr;
+  }
+}

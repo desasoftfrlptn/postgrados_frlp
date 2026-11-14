@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Variables y estilos generales de la aplicación. */
+
+:root {
+  --color-primary: #001f3f;
+  --color-secondary: #341276;
+  --color-background: #ffffff;
+  --color-text: #111111;
+  --color-text-light: #ffffff;
+  --color-border: #d9d9d9;
+
+  --ancho-maximo: 1720px;
+  --espaciado-lateral: 32px;
+
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: var(--color-background);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --espaciado-lateral: 16px;
+  }
+}
