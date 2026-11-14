@@ -5,141 +5,67 @@
 
 # Nota: Esto es un Pipeline de integracion continua, para cuando yo haga un pull request se despliegue esto. Esta todo hecho en Next no en Fast (Es para produccion)
 
+
 name: CI Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
-  # ──────────────────────────────────────────
-  # JOB 1: Calidad de código (Lint)
-  # ──────────────────────────────────────────
-  lint:
-    name: Linting y Formato
+  backend:
+    name: Verificación Backend
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: src/core/package-lock.json
-
-      - name: Instalar dependencias (Backend)
-        working-directory: src/core
-        run: npm ci
-
-      - name: Ejecutar ESLint (Backend)
-        working-directory: src/core
-        run: npm run lint
-
-      - name: Verificar formato (Prettier)
-        working-directory: src/core
-        run: npm run format:check
-
-      - name: Instalar dependencias (Frontend)
-        working-directory: src/frontend
-        run: npm ci
-
-      - name: Ejecutar ESLint (Frontend)
-        working-directory: src/frontend
-        run: npm run lint
-
-  # ──────────────────────────────────────────
-  # JOB 2: Tests con cobertura
-  # ──────────────────────────────────────────
-  test:
-    name: Tests Unitarios y Cobertura
-    runs-on: ubuntu-latest
-    needs: lint  # Solo corre si el lint pasa
-    
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-          POSTGRES_DB: fenix_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
         with:
-          node-version: '20'
+          python-version: "3.12"
 
       - name: Instalar dependencias
-        working-directory: src/core
-        run: npm ci
+        working-directory: src/backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Ejecutar migraciones de test
-        working-directory: src/core
+      - name: Verificar sintaxis Python
+        working-directory: src/backend
+        run: python -m compileall -q src main.py
+
+      - name: Verificar importación de FastAPI
+        working-directory: src/backend
         env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fenix_test
-        run: npm run db:migrate
+          SECRET_KEY: ci-test-secret-key
+          DATABASE_URL: postgresql+asyncpg://ci:ci@localhost:5432/ci
+        run: python -c "from main import app; print(app.title)"
 
-      - name: Ejecutar tests con cobertura
-        working-directory: src/core
-        env:
-          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/fenix_test
-          JWT_SECRET: test-secret-for-ci
-          STORAGE_PATH: /tmp/fenix-test-storage
-        run: npm run test:coverage
-
-      - name: Verificar umbral de cobertura (≥70%)
-        working-directory: src/core
-        run: npm run test:coverage:check
-
-      - name: Subir reporte de cobertura
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: src/core/coverage/
-
-  # ──────────────────────────────────────────
-  # JOB 3: Build
-  # ──────────────────────────────────────────
-  build:
-    name: Build de Producción
+  frontend:
+    name: Lint y Build Frontend
     runs-on: ubuntu-latest
-    needs: test
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
 
-      - name: Build Backend
-        working-directory: src/core
-        run: |
-          npm ci
-          npm run build
-
-      - name: Build Frontend
+      - name: Instalar dependencias
         working-directory: src/frontend
-        env:
-          VITE_API_URL: https://fenix.example.com/api/v1
-        run: |
-          npm ci
-          npm run build
+        run: npm ci
 
-      - name: Verificar que el build no tiene warnings críticos
+      - name: Ejecutar ESLint
         working-directory: src/frontend
-        run: echo "Build exitoso sin errores"
+        run: npm run lint
+
+      - name: Build de producción
+        working-directory: src/frontend
+        run: npm run build

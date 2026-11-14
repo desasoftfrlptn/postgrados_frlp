@@ -55,6 +55,7 @@ import PaginaNoticias from "../../modulos/noticias/paginas/paginaNoticias";
 import PaginaCarreras from "../../modulos/carreras/paginas/PaginaCarreras";
 import PaginaContacto from "../../modulos/contacto/paginas/PaginaContacto";
 import PaginaCalendario from "../../modulos/calendario/paginas/PaginaCalendario";
+import EstadoInscripcionPage from "../../modulos/inscripcion/paginas/EstadoInscripcionPage";
 
 import PublicLayout from "../disposiciones/PublicLayout";
 import PaginaNoEncontrada from "../paginas/PaginaNoEncontrada";
@@ -104,6 +105,10 @@ export const router = createBrowserRouter([
       {
         path: "*",
         element: <PaginaNoEncontrada />,
+      },
+      {
+  path: "estado-inscripcion",
+  element: <EstadoInscripcionPage />,
       },
     ],
   },

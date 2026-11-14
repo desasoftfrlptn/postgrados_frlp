@@ -20,6 +20,9 @@ const valoresIniciales = {
   boton_informacion:
     "Solicitar información",
 
+  boton_estado_inscripcion:
+    "Consultar estado de inscripción",
+
   tarjeta_carreras_titulo:
     "Carreras de Posgrado",
 
@@ -118,6 +121,24 @@ export default function HomePage() {
               {
                 configuracion.boton_informacion
               }
+            </Link>
+
+            <Link
+            className="home-boton home-boton-secundario"
+            to="/estado-inscripcion"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M5 3h14v18H5V3Z" />
+              <path d="M8 8h8M8 12h8M8 16h5" />
+              <path d="m15 16 2 2 4-4" />
+            </svg>
+
+            {
+              configuracion.boton_estado_inscripcion
+            }
             </Link>
           </nav>
         </section>
