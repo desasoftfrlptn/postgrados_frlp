@@ -3,6 +3,7 @@ import './App.css';
 
 import Preinscripcion from './components/preinscripcion.jsx';
 import PanelDocente from './components/panelDocente.jsx';
+import PanelConduccionEstudiante from './components/PanelConduccionEstudiante.jsx';
 import { PanelConduccionInscripciones } from './components/PanelConduccionInscripciones.jsx';
 import VistaPostgrados from './components/VistaPostgrados.jsx';
 import { VistaEstadisticas } from './components/VistaEstadisticas.jsx';
@@ -145,6 +146,12 @@ export default function App() {
     : (usuarioActivo?.rol === 'DOCENTE' ? 'docente' : 'preinscripcion');
 
   const [vista, setVista] = useState(vistaInicial);
+  const [legajoBuscado, setLegajoBuscado] = useState(null);
+
+  const handleIrAEstudiante = (legajo) => {
+    setLegajoBuscado(legajo);
+    setVista('estudiante');
+  };
 
   const handleLogout = () => {
     authService.logout();
@@ -174,7 +181,7 @@ export default function App() {
         <button className={vista === 'docente' ? 'active' : ''} onClick={() => setVista('docente')}>Docente</button>
         {tienePermisoConduccion && (
           <button 
-            className={['inscripciones', 'posgrados', 'estadisticas'].includes(vista) ? 'active' : ''} 
+            className={['inscripciones', 'estudiante', 'posgrados', 'estadisticas'].includes(vista) ? 'active' : ''} 
             onClick={() => setVista('inscripciones')}
           >
             Equipo de Conducción
@@ -237,13 +244,15 @@ export default function App() {
           <div className="sidebar-logo">UTN</div>
           <ul>
             <li className={vista === 'inscripciones' ? 'active' : ''} onClick={() => setVista('inscripciones')}><span className="sidebar-icon">📋</span> Inscripciones</li>
+            <li className={vista === 'estudiante' ? 'active' : ''} onClick={() => setVista('estudiante')}><span className="sidebar-icon">👥</span> Estudiantes</li>
             <li className={vista === 'posgrados' ? 'active' : ''} onClick={() => setVista('posgrados')}><span className="sidebar-icon">🎓</span> Posgrados</li>
             <li className={vista === 'estadisticas' ? 'active' : ''} onClick={() => setVista('estadisticas')}><span className="sidebar-icon">📊</span> Estadisticas</li>
           </ul>
         </aside>
         <main className="main-content">
            <div className="panel-header">Panel de Equipo de conducción</div>
-           {vista === 'inscripciones' && <PanelConduccionInscripciones />}
+           {vista === 'inscripciones' && <PanelConduccionInscripciones onIrAEstudiante={handleIrAEstudiante} />}
+           {vista === 'estudiante' && <PanelConduccionEstudiante legajoInicial={legajoBuscado} />}
            {vista === 'posgrados' && <VistaPostgrados />}
            {vista === 'estadisticas' && <VistaEstadisticas />}
         </main>
