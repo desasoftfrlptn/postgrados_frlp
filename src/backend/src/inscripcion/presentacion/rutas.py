@@ -218,10 +218,10 @@ async def obtener_documentacion_legajo(
     ),
 ):
     """
-    Consulta los documentos registrados
-    de un legajo.
+    Permite al Equipo de Conducción consultar
+    los metadatos documentales de un legajo.
 
-    No expone rutas físicas de archivos.
+    No expone rutas físicas ni archivos privados.
     """
 
     repositorio = LegajoRepositorioPostgres(
