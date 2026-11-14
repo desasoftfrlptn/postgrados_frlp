@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // Formulario público de preinscripción para aspirantes a carreras de posgrado.
 
 import { useEffect, useState } from "react";
@@ -8,12 +7,6 @@ import {
 } from "../borrador";
 import "./FormularioInscripcion.css";
 
-
-=======
-import { useEffect, useState } from "react";
-import "./FormularioInscripcion.css";
-
-
 type CohorteDisponible = {
   id: string;
   nombre: string;
@@ -22,8 +15,6 @@ type CohorteDisponible = {
   carrera_nombre: string;
 };
 
-
->>>>>>> 84ef3708c051c2d0bc286f31bc425d71a2b6cfc8
 const etapas = [
   "Datos Personales",
   "Documentación",
@@ -62,11 +53,9 @@ export default function FormularioInscripcion() {
   const [etapa, setEtapa] = useState(1);
   const [otroPais, setOtroPais] = useState("");
   const [mensaje, setMensaje] = useState("");
-<<<<<<< HEAD
+
   const [cargandoBorrador, setCargandoBorrador] = useState(true);
   const [numeroSeguimiento, setNumeroSeguimiento] = useState("");
-=======
-
 
   const [cohortesDisponibles, setCohortesDisponibles] = useState<
     CohorteDisponible[]
@@ -102,8 +91,6 @@ export default function FormularioInscripcion() {
 
     void cargarCohortes();
   }, []);
-
->>>>>>> 84ef3708c051c2d0bc286f31bc425d71a2b6cfc8
 
   const [documentos, setDocumentos] = useState({
     formularioPreinscripcion: null as File | null,
