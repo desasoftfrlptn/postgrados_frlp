@@ -38,6 +38,7 @@ class LegajoRepositorio(ABC):
         apellido: str | None = None,
         carrera: str | None = None,
         estado: str | None = None,
+        cohorte_id: UUID | None = None,
     ) -> list[Any]:
         """
         Consulta los legajos registrados

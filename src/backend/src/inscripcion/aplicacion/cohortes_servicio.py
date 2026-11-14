@@ -1,3 +1,4 @@
+
 from datetime import date
 from uuid import UUID
 
@@ -16,6 +17,7 @@ async def crear_cohorte(
     repositorio: CohorteRepositorioPostgres,
     anio: int,
     nombre: str,
+    carrera_id: UUID,
     fecha_inicio: date | None = None,
 ):
     nombre_normalizado = nombre.strip()
@@ -30,9 +32,19 @@ async def crear_cohorte(
             "El año de la cohorte debe ser positivo."
         )
 
+    carrera = await repositorio.obtener_carrera_activa(
+        carrera_id
+    )
+
+    if carrera is None:
+        raise ValueError(
+            "La carrera seleccionada no existe o está inactiva."
+        )
+
     return await repositorio.crear_cohorte(
         anio=anio,
         nombre=nombre_normalizado,
+        carrera_id=carrera_id,
         fecha_inicio=fecha_inicio,
     )
 

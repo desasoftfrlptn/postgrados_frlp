@@ -9,6 +9,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    ForeignKey,
     Integer,
     String,
     false,
@@ -55,4 +56,13 @@ class CohorteORM(Base):
         DateTime,
         nullable=True,
         server_default=func.now(),
+    )
+
+    carrera_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "carreras.id",
+            name="fk_cohortes_carrera_id",
+        ),
+        nullable=True,
     )

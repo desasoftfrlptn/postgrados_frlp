@@ -303,3 +303,455 @@
     white-space: normal;
   }
 }
+
+/* Listado de aspirantes — diseño institucional.
+   Estilos aislados de DetalleLegajoPage. */
+
+.conduccion-listado {
+  --cl-ink: #14233b;
+  --cl-muted: #637188;
+  --cl-border: #e2e8f0;
+  --cl-blue: #1859b8;
+  --cl-light: #f7f9fd;
+
+  color: var(--cl-ink);
+  max-width: 1380px;
+}
+
+.conduccion-listado .conduccion-listado-encabezado {
+  margin: 0 0 18px;
+  padding: 24px 28px;
+  border-radius: 16px;
+  background: linear-gradient(
+    112deg,
+    #0d2346 0%,
+    #173d75 76%,
+    #20528a 100%
+  );
+  box-shadow: 0 12px 26px rgba(12, 38, 75, 0.13);
+}
+
+.conduccion-listado-eyebrow {
+  display: block;
+  color: #a8c8f8;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.13em;
+  margin-bottom: 8px;
+}
+
+.conduccion-listado .conduccion-listado-encabezado h1 {
+  color: #fff;
+  font-size: clamp(25px, 3vw, 33px);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
+}
+
+.conduccion-listado .conduccion-listado-encabezado p {
+  color: #d5e3f8;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.conduccion-listado-panel {
+  background: #fff;
+  border: 1px solid var(--cl-border);
+  border-radius: 15px;
+  box-shadow: 0 6px 24px rgba(20, 35, 59, 0.04);
+  overflow: hidden;
+}
+
+.conduccion-listado-superior {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 23px 26px 17px;
+}
+
+.conduccion-listado-superior h2 {
+  color: var(--cl-ink);
+  font-size: 18px;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+  margin: 0;
+}
+
+.conduccion-listado-superior p {
+  color: var(--cl-muted);
+  font-size: 12px;
+  margin: 5px 0 0;
+}
+
+.conduccion-listado-contador {
+  flex: none;
+  background: #edf4ff;
+  border: 1px solid #d5e5fc;
+  color: #1d559f;
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conduccion-listado-filtros {
+  padding: 0 26px 19px;
+  border-bottom: 1px solid var(--cl-border);
+}
+
+.conduccion-listado-filtros-principales {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  gap: 12px;
+}
+
+.conduccion-listado-campo {
+  min-width: 0;
+}
+
+.conduccion-listado-campo label {
+  display: block;
+  margin: 0 0 6px;
+  color: #34435b;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.conduccion-listado-campo input,
+.conduccion-listado-campo select {
+  width: 100%;
+  min-height: 43px;
+  padding: 9px 13px;
+  border: 1px solid #d8e0eb;
+  border-radius: 9px;
+  background: #fff;
+  color: #172c48;
+  font: inherit;
+  font-size: 13px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.conduccion-listado-campo input::placeholder {
+  color: #95a0af;
+}
+
+.conduccion-listado-campo input:focus,
+.conduccion-listado-campo select:focus {
+  border-color: #377cd2;
+  box-shadow: 0 0 0 3px #dbeafe;
+}
+
+.conduccion-listado-campo input:disabled,
+.conduccion-listado-campo select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.conduccion-listado-filtros-acciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.conduccion-listado-boton-secundario,
+.conduccion-listado-boton-texto {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 720;
+  cursor: pointer;
+}
+
+.conduccion-listado-boton-secundario {
+  background: #eef4fd;
+  color: #1b548f;
+}
+
+.conduccion-listado-boton-secundario:hover {
+  background: #dfeeff;
+}
+
+.conduccion-listado-boton-texto {
+  color: #687890;
+  background: transparent;
+}
+
+.conduccion-listado-boton-texto:hover {
+  color: #1b548f;
+}
+
+.conduccion-listado button:focus-visible,
+.conduccion-listado-link:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+.conduccion-listado-avanzados:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px;
+  background: var(--cl-light);
+  border: 1px solid var(--cl-border);
+  border-radius: 10px;
+}
+
+.conduccion-listado-avanzados[hidden] {
+  display: none;
+}
+
+.conduccion-listado-error {
+  color: #9f2533;
+  font-size: 13px;
+  margin: 10px 0;
+}
+
+.conduccion-listado-mensaje,
+.conduccion-listado-vacio {
+  padding: 34px 26px;
+  color: var(--cl-muted);
+  font-size: 13px;
+}
+
+.conduccion-listado-vacio strong {
+  display: block;
+  font-size: 15px;
+  color: var(--cl-ink);
+}
+
+.conduccion-listado-vacio p {
+  margin: 7px 0 13px;
+}
+
+.conduccion-listado-tabla-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.conduccion-listado-tabla {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 900px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.conduccion-listado-tabla th {
+  padding: 13px 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+  color: #68778a;
+  background: #f7f9fc;
+  border-bottom: 1px solid var(--cl-border);
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.conduccion-listado-tabla td {
+  padding: 16px;
+  color: #384961;
+  border-bottom: 1px solid #edf1f6;
+  vertical-align: middle;
+}
+
+.conduccion-listado-tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.conduccion-listado-tabla tbody tr:hover {
+  background: #f8fbff;
+}
+
+.conduccion-listado-persona {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 210px;
+}
+
+.conduccion-listado-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: #24518d;
+  background: #e9f1fc;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.conduccion-listado-persona-datos {
+  min-width: 0;
+}
+
+.conduccion-listado-nombre {
+  display: block;
+  color: #182b47;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.conduccion-listado-email {
+  display: block;
+  margin-top: 4px;
+  color: #8491a3;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.conduccion-listado-documento {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.conduccion-listado-cohorte {
+  font-size: 12px;
+  color: #405474;
+}
+
+.conduccion-listado-estado {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.conduccion-listado-estado--pendiente {
+  color: #8f6214;
+  background: #fff2d5;
+}
+
+.conduccion-listado-estado--revision {
+  color: #2659a7;
+  background: #e5efff;
+}
+
+.conduccion-listado-estado--advertencia {
+  color: #a64c27;
+  background: #ffeddd;
+}
+
+.conduccion-listado-estado--exito {
+  color: #15744f;
+  background: #def8e9;
+}
+
+.conduccion-listado-estado--rechazado {
+  color: #a03743;
+  background: #ffe6e9;
+}
+
+.conduccion-listado-estado--otro {
+  color: #5c677c;
+  background: #edf0f5;
+}
+
+.conduccion-listado-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #edf4ff;
+  color: #1b579b;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.conduccion-listado-link:hover {
+  background: #dceaff;
+}
+
+@media (max-width: 850px) {
+  .conduccion-listado-filtros-principales {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .conduccion-listado .conduccion-listado-encabezado {
+    padding: 21px 18px;
+  }
+
+  .conduccion-listado-superior {
+    padding: 19px 17px 15px;
+    align-items: flex-start;
+  }
+
+  .conduccion-listado-filtros {
+    padding: 0 17px 15px;
+  }
+
+  .conduccion-listado-filtros-principales,
+  .conduccion-listado-avanzados:not([hidden]) {
+    grid-template-columns: 1fr;
+  }
+
+  .conduccion-listado-superior h2 {
+    font-size: 16px;
+  }
+
+  .conduccion-listado-contador {
+    white-space: nowrap;
+  }
+}
+
+/* Listado de aspirantes: estilo consistente con el resto del sistema */
+
+.conduccion-listado .conduccion-listado-encabezado {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 24px;
+}
+
+.conduccion-listado .conduccion-listado-encabezado h1 {
+  color: #0f172a;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.conduccion-listado .conduccion-listado-encabezado p {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.conduccion-listado-eyebrow {
+  display: none;
+}
+
+.conduccion-listado-panel {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.conduccion-listado-boton-texto {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.conduccion-listado-boton-texto:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+.conduccion-listado-boton-texto:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}

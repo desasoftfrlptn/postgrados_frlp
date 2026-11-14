@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -7,15 +6,16 @@ from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class LegajoCrear(BaseModel):
+    cohorte_id: UUID
     carrera_elegida: str
     apellido: str
     nombre: str
     nacionalidad: str
     dni_pasaporte: str
-    telefono_movil: Optional[str] = None
     correo_electronico: EmailStr
-    correo_alternativo: Optional[EmailStr] = None
-    domicilio: Optional[str] = None
+    telefono_movil: str
+    correo_alternativo: EmailStr
+    domicilio: str
     pais: str
     provincia: str
     ciudad: str
@@ -25,8 +25,8 @@ class LegajoCrear(BaseModel):
 
 class LegajoRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     id: UUID
+    cohorte_id: Optional[UUID] = None
     carrera_elegida: str
     apellido: str
     nombre: str

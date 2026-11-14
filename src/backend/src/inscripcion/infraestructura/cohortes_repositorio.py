@@ -1,9 +1,11 @@
+
 from datetime import date
 from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.carreras.modelos import CarreraORM
 from src.inscripcion.infraestructura.cohortes_modelos import (
     CohorteORM,
 )
@@ -39,15 +41,30 @@ class CohorteRepositorioPostgres:
 
         return resultado.scalars().first()
 
+    async def obtener_carrera_activa(
+        self,
+        carrera_id: UUID,
+    ) -> CarreraORM | None:
+        consulta = select(CarreraORM).where(
+            CarreraORM.id == carrera_id,
+            CarreraORM.activo.is_(True),
+        )
+
+        resultado = await self.session.execute(consulta)
+
+        return resultado.scalars().first()
+
     async def crear_cohorte(
         self,
         anio: int,
         nombre: str,
+        carrera_id: UUID,
         fecha_inicio: date | None,
     ) -> CohorteORM:
         cohorte = CohorteORM(
             anio=anio,
             nombre=nombre,
+            carrera_id=carrera_id,
             fecha_inicio=fecha_inicio,
             abierta=False,
         )

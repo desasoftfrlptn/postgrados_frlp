@@ -1,3 +1,4 @@
+
 from uuid import UUID
 
 from fastapi import (
@@ -5,20 +6,26 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.carreras.modelos import CarreraORM
 from src.compartido.conexion import get_db
 from src.inscripcion.aplicacion.cohortes_servicio import (
     crear_cohorte,
     listar_cohortes,
     modificar_inscripcion,
 )
+from src.inscripcion.infraestructura.cohortes_modelos import (
+    CohorteORM,
+)
 from src.inscripcion.infraestructura.cohortes_repositorio import (
     CohorteRepositorioPostgres,
 )
 from src.inscripcion.presentacion.cohortes_esquemas import (
     CohorteCrear,
+    CohorteDisponible,
     CohorteInscripcionModificar,
     CohorteRespuesta,
 )
@@ -45,6 +52,43 @@ async def listar_cohortes_controller(
     return await listar_cohortes(repositorio)
 
 
+@enrutador.get(
+    "/disponibles",
+    response_model=list[CohorteDisponible],
+)
+async def listar_cohortes_disponibles(
+    db: AsyncSession = Depends(get_db),
+):
+    consulta = (
+        select(
+            CohorteORM.id,
+            CohorteORM.nombre,
+            CohorteORM.anio,
+            CohorteORM.carrera_id,
+            CarreraORM.nombre.label("carrera_nombre"),
+        )
+        .join(
+            CarreraORM,
+            CohorteORM.carrera_id == CarreraORM.id,
+        )
+        .where(
+            CohorteORM.abierta.is_(True),
+            CarreraORM.activo.is_(True),
+        )
+        .order_by(
+            CarreraORM.nombre,
+            CohorteORM.anio.desc(),
+        )
+    )
+
+    resultado = await db.execute(consulta)
+
+    return [
+        CohorteDisponible(**fila)
+        for fila in resultado.mappings().all()
+    ]
+
+
 @enrutador.post(
     "",
     response_model=CohorteRespuesta,
@@ -62,6 +106,7 @@ async def crear_cohorte_controller(
             repositorio=repositorio,
             anio=datos.anio,
             nombre=datos.nombre,
+            carrera_id=datos.carrera_id,
             fecha_inicio=datos.fecha_inicio,
         )
 

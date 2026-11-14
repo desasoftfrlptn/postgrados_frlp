@@ -1,7 +1,3 @@
-
-# Rutas públicas de inscripción y consultas
-# protegidas del Equipo de Conducción.
-
 from uuid import UUID
 
 from fastapi import (
@@ -9,9 +5,12 @@ from fastapi import (
     Depends,
     HTTPException,
 )
-from sqlalchemy import or_, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.carreras.modelos import CarreraORM
+from src.inscripcion.infraestructura.cohortes_modelos import CohorteORM
 
 from src.compartido.conexion import get_db
 from src.inscripcion.aplicacion.cambiar_estado_legajo import (
@@ -33,7 +32,9 @@ from src.inscripcion.presentacion.esquemas import (
 )
 from src.usuarios.modelos import UsuarioORM
 from src.usuarios.rutas import usuario_actual
-
+from src.inscripcion.aplicacion.listar_legajos import (
+    listar_legajos,
+)
 
 enrutador = APIRouter(
     prefix="/api/v1/inscripcion",
@@ -65,6 +66,7 @@ async def coordinador_actual(
     return usuario
 
 
+
 @enrutador.post(
     "/",
     response_model=LegajoRespuesta,
@@ -75,27 +77,85 @@ async def inscribir_aspirante(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Conserva el registro público de aspirantes.
+    Registra un aspirante en una cohorte
+    que esté abierta y tenga cupo.
     """
 
-    duplicado = await db.scalar(
+    # Bloquea la cohorte durante la inscripción
+    # para evitar superar el cupo por concurrencia.
+    resultado = await db.execute(
+        select(CohorteORM)
+        .where(CohorteORM.id == datos.cohorte_id)
+        .with_for_update()
+    )
+    cohorte = resultado.scalar_one_or_none()
+
+    if cohorte is None:
+        raise HTTPException(
+            status_code=404,
+            detail="La cohorte seleccionada no existe.",
+        )
+
+    if not cohorte.abierta:
+        raise HTTPException(
+            status_code=422,
+            detail="La inscripción a esta cohorte está cerrada.",
+        )
+
+    # Comprobar que la carrera corresponda a la cohorte.
+    carrera = await db.get(CarreraORM, cohorte.carrera_id)
+
+    if carrera is None or not carrera.activo:
+        raise HTTPException(
+            status_code=422,
+            detail="La carrera de la cohorte no está disponible.",
+        )
+
+    if datos.carrera_elegida.strip() != carrera.nombre.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="La carrera elegida no corresponde a la cohorte.",
+        )
+
+    # El correo debe ser único globalmente.
+    correo_existente = await db.scalar(
         select(LegajoORM.id).where(
-            or_(
-                LegajoORM.correo_electronico
-                == datos.correo_electronico,
-                LegajoORM.dni_pasaporte
-                == datos.dni_pasaporte,
-            )
+            LegajoORM.correo_electronico
+            == datos.correo_electronico
         )
     )
 
-    if duplicado is not None:
+    if correo_existente is not None:
         raise HTTPException(
             status_code=409,
-            detail=(
-                "Ya existe una inscripción con ese "
-                "correo electrónico o documento."
-            ),
+            detail="Ya existe una inscripción con ese correo electrónico.",
+        )
+
+    # El DNI debe ser único dentro de la cohorte.
+    dni_existente = await db.scalar(
+        select(LegajoORM.id).where(
+            LegajoORM.dni_pasaporte == datos.dni_pasaporte,
+            LegajoORM.cohorte_id == datos.cohorte_id,
+        )
+    )
+
+    if dni_existente is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="El documento ya está registrado en esta cohorte.",
+        )
+
+    # Controlar el cupo máximo.
+    cantidad = await db.scalar(
+        select(func.count(LegajoORM.id)).where(
+            LegajoORM.cohorte_id == datos.cohorte_id
+        )
+    )
+
+    if cantidad >= 500:
+        raise HTTPException(
+            status_code=409,
+            detail="La cohorte alcanzó el cupo máximo de 500 aspirantes.",
         )
 
     nuevo_legajo = LegajoORM(
@@ -108,17 +168,16 @@ async def inscribir_aspirante(
     try:
         await db.commit()
         await db.refresh(nuevo_legajo)
+
     except IntegrityError as exc:
         await db.rollback()
         raise HTTPException(
             status_code=409,
-            detail=(
-                "Ya existe una inscripción con ese "
-                "correo electrónico o documento."
-            ),
+            detail="La inscripción ya existe o contiene datos duplicados.",
         ) from exc
 
     return nuevo_legajo
+
 
 
 @enrutador.get(
@@ -130,25 +189,24 @@ async def listar_legajos_conduccion(
     apellido: str | None = None,
     carrera: str | None = None,
     estado: str | None = None,
+    cohorte_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
-    usuario: UsuarioORM = Depends(
-        coordinador_actual
-    ),
+    usuario: UsuarioORM = Depends(coordinador_actual),
 ):
     """
-    Lista los legajos para Conducción,
-    aplicando filtros opcionales.
+    Lista los legajos del Equipo de Conducción
+    permitiendo combinar los filtros.
     """
 
-    repositorio = LegajoRepositorioPostgres(
-        db
-    )
+    repositorio = LegajoRepositorioPostgres(db)
 
-    return await repositorio.listar_legajos(
+    return await listar_legajos(
+        repositorio=repositorio,
         dni=dni,
         apellido=apellido,
         carrera=carrera,
         estado=estado,
+        cohorte_id=cohorte_id,
     )
 
 @enrutador.get(

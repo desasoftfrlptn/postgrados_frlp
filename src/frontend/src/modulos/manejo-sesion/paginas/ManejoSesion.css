@@ -1,15 +1,16 @@
+
 /* Estilos de las páginas públicas de manejo de sesión. */
 
 .sesion {
-  width: 100%;
-  min-height: 542px;
-  padding: 22px;
-
   position: relative;
 
   display: flex;
   align-items: center;
   justify-content: center;
+
+  width: 100%;
+  min-height: 542px;
+  padding: 22px;
 
   background-size: cover;
   background-position: center;
@@ -18,6 +19,7 @@
 
 .sesion::before {
   content: "";
+
   position: absolute;
   inset: 0;
 
@@ -25,18 +27,21 @@
 }
 
 .sesion-formulario {
-  width: 410px;
-  padding: 22px 30px;
-
   position: relative;
   z-index: 1;
 
   display: flex;
   flex-direction: column;
 
+  width: 410px;
+  max-width: 100%;
+  padding: 22px 30px;
+
   background: rgba(205, 205, 205, 0.5);
   border-radius: 6px;
 }
+
+/* Encabezado */
 
 .sesion-encabezado {
   margin-bottom: 24px;
@@ -57,6 +62,8 @@
   color: #eeeeee;
   font-size: 12px;
 }
+
+/* Etiquetas y campos */
 
 .sesion-formulario label {
   margin-bottom: 5px;
@@ -95,38 +102,75 @@
   margin-bottom: 17px;
 }
 
+/* Contraseña y botón para mostrar u ocultar */
+
 .sesion-password {
   position: relative;
+  display: flex;
+
+  width: 100%;
   margin-bottom: 4px;
 }
 
 .sesion-password input {
-  padding-right: 42px;
+  padding-right: 48px;
 }
 
-.sesion-password button {
+.sesion-password-mostrar {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 8px;
 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
   padding: 0;
+
   transform: translateY(-50%);
 
-  color: #666666;
-  background: none;
+  color: #555555;
+  background: transparent;
 
   border: 0;
+  border-radius: 5px;
 
-  font-size: 16px;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
+.sesion-password-mostrar:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.sesion-password-mostrar:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 2px;
+}
+
+.sesion-password-mostrar svg {
+  display: block;
+
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+}
+
+/* Recuperación de contraseña */
+
 .sesion-recuperar {
-  margin-bottom: 12px;
+  display: block;
   align-self: flex-end;
+
+  margin-top: 16px;
+  margin-bottom: 12px;
 
   color: var(--color-text-light);
   font-size: 11px;
+  text-align: right;
   text-decoration: none;
 }
 
@@ -134,21 +178,23 @@
   text-decoration: underline;
 }
 
-/* reCAPTCHA */
+/* reCAPTCHA: estilos conservados para su reactivación. */
 
 .sesion-captcha {
-  min-height: 78px;
-  margin: 0 auto 14px;
-
   display: flex;
   align-items: center;
   justify-content: center;
+
+  min-height: 78px;
+  margin: 0 auto 14px;
 }
 
-.sesion-volver {
-  margin-top: 12px;
+/* Navegación */
 
+.sesion-volver {
   align-self: center;
+
+  margin-top: 12px;
 
   color: var(--color-text-light);
   font-size: 12px;
@@ -159,9 +205,12 @@
   text-decoration: underline;
 }
 
+/* Botón principal */
+
 .sesion-boton {
   width: 100%;
   height: 40px;
+  margin-top: 24px;
 
   color: var(--color-text-light);
   background: var(--color-secondary);
@@ -176,6 +225,13 @@
 .sesion-boton:hover {
   opacity: 0.9;
 }
+
+.sesion-boton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Mensajes de error y confirmación */
 
 .sesion-error,
 .sesion-mensaje {
@@ -195,6 +251,8 @@
 .sesion-mensaje {
   color: #126b38;
 }
+
+/* Diseño responsive */
 
 @media (max-width: 700px) {
   .sesion {

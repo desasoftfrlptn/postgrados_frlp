@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Formulario público de preinscripción para aspirantes a carreras de posgrado.
 
 import { useEffect, useState } from "react";
@@ -8,6 +9,21 @@ import {
 import "./FormularioInscripcion.css";
 
 
+=======
+import { useEffect, useState } from "react";
+import "./FormularioInscripcion.css";
+
+
+type CohorteDisponible = {
+  id: string;
+  nombre: string;
+  anio: number;
+  carrera_id: string;
+  carrera_nombre: string;
+};
+
+
+>>>>>>> 84ef3708c051c2d0bc286f31bc425d71a2b6cfc8
 const etapas = [
   "Datos Personales",
   "Documentación",
@@ -46,8 +62,48 @@ export default function FormularioInscripcion() {
   const [etapa, setEtapa] = useState(1);
   const [otroPais, setOtroPais] = useState("");
   const [mensaje, setMensaje] = useState("");
+<<<<<<< HEAD
   const [cargandoBorrador, setCargandoBorrador] = useState(true);
   const [numeroSeguimiento, setNumeroSeguimiento] = useState("");
+=======
+
+
+  const [cohortesDisponibles, setCohortesDisponibles] = useState<
+    CohorteDisponible[]
+  >([]);
+
+  const [cohorteSeleccionada, setCohorteSeleccionada] = useState("");
+
+  const [errorCohortes, setErrorCohortes] = useState("");
+  const [cargandoCohortes, setCargandoCohortes] = useState(true);
+
+  useEffect(() => {
+    const cargarCohortes = async () => {
+      try {
+        const respuesta = await fetch(
+          "http://localhost:8000/api/v1/cohortes/disponibles"
+        );
+
+        if (!respuesta.ok) {
+          throw new Error("No se pudieron cargar las cohortes.");
+        }
+
+        const cohortes: CohorteDisponible[] = await respuesta.json();
+
+        setCohortesDisponibles(cohortes);
+      } catch {
+        setErrorCohortes(
+          "No se pudieron consultar las carreras disponibles."
+        );
+      } finally {
+        setCargandoCohortes(false);
+      }
+    };
+
+    void cargarCohortes();
+  }, []);
+
+>>>>>>> 84ef3708c051c2d0bc286f31bc425d71a2b6cfc8
 
   const [documentos, setDocumentos] = useState({
     formularioPreinscripcion: null as File | null,
@@ -63,7 +119,7 @@ export default function FormularioInscripcion() {
     apellido: "",
     nombre: "",
     email: "",
-    tipo_carrera: "Especializacion",
+    tipo_carrera: "",
     nacionalidad: "",
     telefono: "",
     domicilio: "",
@@ -200,9 +256,29 @@ export default function FormularioInscripcion() {
   const enviarFormulario = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!cohorteSeleccionada || !datos.tipo_carrera) {
+      setMensaje("Seleccioná una carrera y una cohorte disponible.");
+      setEtapa(1);
+      return;
+    }
+
+    // El endpoint actual acepta JSON de legajo, no archivos PDF.
     const datosFormulario = {
-      ...datos,
+      cohorte_id: cohorteSeleccionada,
+      carrera_elegida: datos.tipo_carrera,
+      apellido: datos.apellido,
+      nombre: datos.nombre,
+      nacionalidad: datos.nacionalidad,
+      dni_pasaporte: datos.dni,
+      telefono_movil: datos.telefono,
+      correo_electronico: datos.email,
+      correo_alternativo: datos.correo_alternativo,
+      domicilio: datos.domicilio,
       pais: datos.pais === "Otro" ? otroPais : datos.pais,
+      provincia: datos.provincia,
+      ciudad: datos.ciudad,
+      titulo_anterior: datos.titulo_anterior,
+      universidad_anterior: datos.universidad_anterior,
     };
 
     try {
@@ -210,24 +286,35 @@ export default function FormularioInscripcion() {
         "http://localhost:8000/api/v1/inscripcion/",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(datosFormulario),
         }
       );
 
-      if (respuesta.ok) {
-        const resultado = await respuesta.json();
 
-        setNumeroSeguimiento(
-          resultado.numero_seguimiento ?? ""
+      if (!respuesta.ok) {
+        const error: { detail?: string | unknown[] } =
+          await respuesta.json();
+
+        setMensaje(
+          typeof error.detail === "string"
+            ? error.detail
+            : "No se pudo registrar la inscripción. Verificá los datos."
         );
-
-        setMensaje("¡Inscripción enviada con éxito! Revisá tu email.");
-      } else {
-        setMensaje("Error al enviar la inscripción. Verificá tus datos.");
+        return;
       }
+
+      const resultado = await respuesta.json();
+
+      setNumeroSeguimiento(
+        resultado.numero_seguimiento ?? ""
+      );
+
+      setMensaje(
+        "Datos de inscripción registrados. Importante: los PDF aún no fueron " +
+        "enviados; falta integrar la carga de documentación."
+      );
+
     } catch {
       setMensaje("Error de conexión con el servidor.");
     }
@@ -286,20 +373,75 @@ export default function FormularioInscripcion() {
                   name="carrera"
                   required
                   value={datos.tipo_carrera}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setDatos({
                       ...datos,
                       tipo_carrera: e.target.value,
-                    })
-                  }
+                    });
+                    setCohorteSeleccionada("");
+                  }}
                 >
-                  <option value="Especializacion">
-                    Especialización
-                  </option>
-                  <option value="Maestria">Maestría</option>
-                  <option value="Doctorado">Doctorado</option>
+                  <option value="">Seleccionar carrera</option>
+
+                  {[...new Set(
+                    cohortesDisponibles.map(
+                      (cohorte) => cohorte.carrera_nombre
+                    )
+                  )].map((nombre) => (
+                    <option key={nombre} value={nombre}>
+                      {nombre}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              <div className="inscripcion-campo">
+                <label htmlFor="cohorte">
+                  Cohorte <span>*</span>
+                </label>
+
+                <select
+                  id="cohorte"
+                  name="cohorte"
+                  required
+                  value={cohorteSeleccionada}
+                  disabled={!datos.tipo_carrera || cargandoCohortes}
+                  onChange={(e) =>
+                    setCohorteSeleccionada(e.target.value)
+                  }
+                >
+                  <option value="">Seleccionar cohorte</option>
+
+                  {cohortesDisponibles
+                    .filter(
+                      (cohorte) =>
+                        cohorte.carrera_nombre === datos.tipo_carrera
+                    )
+                    .map((cohorte) => (
+                      <option key={cohorte.id} value={cohorte.id}>
+                        {cohorte.nombre} ({cohorte.anio})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {errorCohortes && (
+                <p className="inscripcion-mensaje" role="alert">
+                  {errorCohortes}
+                </p>
+              )}
+
+              {cargandoCohortes && (
+                <p className="inscripcion-mensaje" role="status">
+                  Cargando carreras y cohortes...
+                </p>
+              )}
+
+              {!cargandoCohortes && !errorCohortes && cohortesDisponibles.length === 0 && (
+                <p className="inscripcion-mensaje" role="status">
+                  No hay cohortes abiertas para inscripción.
+                </p>
+              )}
 
               <div className="inscripcion-campo">
                 <label htmlFor="apellido">
@@ -395,6 +537,7 @@ export default function FormularioInscripcion() {
 
                 <input
                   id="telefono"
+                  required
                   name="telefono"
                   pattern="[0-9\s-]+"
                   title="El teléfono solo puede contener números, espacios y guiones."
@@ -437,6 +580,7 @@ export default function FormularioInscripcion() {
 
                 <input
                   id="correo_alternativo"
+                  required
                   name="correo_alternativo"
                   type="email"
                   placeholder="ejemplo@correo.com"
@@ -455,6 +599,7 @@ export default function FormularioInscripcion() {
 
                 <input
                   id="domicilio"
+                  required
                   name="domicilio"
                   placeholder="Ingresá tu domicilio actual"
                   value={datos.domicilio}
@@ -627,7 +772,7 @@ export default function FormularioInscripcion() {
                   <option value="Comentarios de colegas u otros">
                     Comentarios de colegas u otros
                   </option>
-                </select>           
+                </select>
               </div>
 
               <div className="inscripcion-campo inscripcion-campo-ancho-completo">
@@ -1000,6 +1145,12 @@ export default function FormularioInscripcion() {
                 </div>
 
                 <p><strong>Carrera:</strong> {datos.tipo_carrera}</p>
+                <p>
+                  <strong>Cohorte:</strong>{" "}
+                  {cohortesDisponibles.find(
+                    (cohorte) => cohorte.id === cohorteSeleccionada
+                  )?.nombre ?? "No seleccionada"}
+                </p>
                 <p><strong>Apellido/s:</strong> {datos.apellido}</p>
                 <p><strong>Nombre/s:</strong> {datos.nombre}</p>
                 <p><strong>Nacionalidad:</strong> {datos.nacionalidad}</p>
@@ -1107,7 +1258,7 @@ export default function FormularioInscripcion() {
             </div>
           </form>
         )}
-        
+
       </section>
     </section>
   );

@@ -2,6 +2,7 @@
 from uuid import UUID
 
 from sqlalchemy import (
+    func,
     or_,
     select,
     update,
@@ -53,22 +54,26 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
             is not None
         )
 
+
     async def obtener_por_email_o_dni(
-            self, email: str, dni: str
+        self,
+        email: str,
+        dni: str,
     ) -> LegajoORM | None:
-                    query = select(
-                        LegajoORM
-                    ).where(
-                        or_(
-                            LegajoORM.correo_electronico == email,
-                            LegajoORM.dni_pasaporte == dni,
-                        )
-                    )
-                    resultado = await self.session.execute(
-                        query
-                    )
-                    return resultado.scalars().first()
-        
+        """
+        Obtiene un legajo únicamente cuando el correo
+        y el DNI corresponden al usuario autenticado.
+        """
+
+        consulta = select(LegajoORM).where(
+            LegajoORM.correo_electronico == email,
+            LegajoORM.dni_pasaporte == dni,
+        )
+
+        resultado = await self.session.execute(consulta)
+
+        return resultado.scalars().first()
+
 
     async def guardar(
         self,
@@ -102,12 +107,53 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
 
         return nuevo_legajo
 
+
+    async def existe_por_email(
+        self,
+        email: str,
+    ) -> bool:
+        consulta = select(LegajoORM.id).where(
+            LegajoORM.correo_electronico == email.strip()
+        )
+
+        resultado = await self.session.execute(consulta)
+
+        return resultado.scalar_one_or_none() is not None
+
+    async def existe_dni_en_cohorte(
+        self,
+        dni: str,
+        cohorte_id: UUID,
+    ) -> bool:
+        consulta = select(LegajoORM.id).where(
+            LegajoORM.dni_pasaporte == dni.strip(),
+            LegajoORM.cohorte_id == cohorte_id,
+        )
+
+        resultado = await self.session.execute(consulta)
+
+        return resultado.scalar_one_or_none() is not None
+
+    async def contar_legajos_por_cohorte(
+        self,
+        cohorte_id: UUID,
+    ) -> int:
+        consulta = select(func.count(LegajoORM.id)).where(
+            LegajoORM.cohorte_id == cohorte_id
+        )
+
+        resultado = await self.session.execute(consulta)
+
+        return resultado.scalar_one()
+
+
     async def listar_legajos(
         self,
         dni: str | None = None,
         apellido: str | None = None,
         carrera: str | None = None,
         estado: str | None = None,
+        cohorte_id: UUID | None = None,
     ) -> list[LegajoORM]:
         """
         Lista los legajos registrados
@@ -116,6 +162,10 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
 
         consulta = select(LegajoORM)
 
+        if cohorte_id is not None:
+            consulta = consulta.where(
+                LegajoORM.cohorte_id == cohorte_id
+            )
         if dni and dni.strip():
             consulta = consulta.where(
                 LegajoORM.dni_pasaporte == dni.strip()
@@ -168,6 +218,7 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
         )
 
         return resultado.scalars().first()
+
 
     async def listar_documentos_por_legajo(
         self,
