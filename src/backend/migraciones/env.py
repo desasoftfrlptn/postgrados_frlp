@@ -5,10 +5,8 @@ from dotenv import load_dotenv
 from alembic import context
 from sqlalchemy.engine import Connection
 
-# Cargar las variables de entorno del proyecto.
 load_dotenv()
 
-# Reutilizar la conexión y Base existentes.
 from src.compartido.conexion import (
     Base,
     DATABASE_URL,
