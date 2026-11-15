@@ -1,10 +1,12 @@
 // Muestra la información del perfil según el usuario autenticado.
 
 import {
+  useEffect,
   useState,
   type ChangeEvent,
 } from "react";
 
+import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
 import CampoPerfil from "../componentes/CampoPerfil";
@@ -30,6 +32,21 @@ interface DatosPerfil {
   ciudad: string;
   carrera: string;
   cohorte: string;
+}
+
+interface LegajoPerfil {
+  nombre: string;
+  apellido: string;
+  dni_pasaporte: string;
+  nacionalidad: string;
+  correo_electronico: string;
+  correo_alternativo?: string | null;
+  telefono_movil?: string | null;
+  domicilio?: string | null;
+  pais: string;
+  provincia: string;
+  ciudad: string;
+  carrera_elegida: string;
 }
 
 
@@ -149,6 +166,37 @@ export default function MiPerfilPage() {
       )
   );
 
+  useEffect(() => {
+    async function cargarLegajo() {
+      if (!esEstudiante || !user?.token) return;
+      try {
+        const legajo = await api.get<LegajoPerfil>(
+          "/inscripcion/mi-legajo",
+          user.token
+        );
+        const cargados: DatosPerfil = {
+          nombre: legajo.nombre,
+          apellido: legajo.apellido,
+          dni: legajo.dni_pasaporte,
+          nacionalidad: legajo.nacionalidad ?? "",
+          email: legajo.correo_electronico,
+          emailAlternativo: legajo.correo_alternativo ?? "",
+          telefono: legajo.telefono_movil ?? "",
+          domicilio: legajo.domicilio ?? "",
+          pais: legajo.pais ?? "",
+          provincia: legajo.provincia ?? "",
+          ciudad: legajo.ciudad ?? "",
+          carrera: legajo.carrera_elegida ?? "",
+          cohorte: "2026",
+        };
+        setDatos(cargados);
+        setDatosEditados(cargados);
+      } catch {
+        // Si aún no tiene legajo asociado, conserva los datos de sesión
+      }
+    }
+    cargarLegajo();
+  }, [esEstudiante, user?.token]);
 
   const cambiarPestana = (
     pestana: Pestaña
@@ -189,18 +237,35 @@ export default function MiPerfilPage() {
   };
 
 
-  const guardarCambios = () => {
-    setDatos(
-      datosEditados
-    );
+    const guardarCambios = async () => {
+    if (esEstudiante && user?.token) {
+      try {
+        await api.patch(
+          "/inscripcion/mi-legajo",
+          {
+            nacionalidad: datosEditados.nacionalidad,
+            correo_alternativo: datosEditados.emailAlternativo || null,
+            telefono_movil: datosEditados.telefono || null,
+            domicilio: datosEditados.domicilio || null,
+            ciudad: datosEditados.ciudad,
+            provincia: datosEditados.provincia,
+            pais: datosEditados.pais,
+          },
+          user.token
+        );
+      } catch (err) {
+        setMensaje(
+          err instanceof Error
+            ? err.message
+            : "No se pudieron guardar los cambios en el legajo."
+        );
+        return;
+      }
+    }
 
-    setEditando(
-      false
-    );
-
-    setMensaje(
-      "Los datos fueron actualizados correctamente."
-    );
+    setDatos(datosEditados);
+    setEditando(false);
+    setMensaje("Los datos fueron actualizados correctamente.");
   };
 
 

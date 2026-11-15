@@ -1,34 +1,99 @@
 // Página responsable de mostrar al docente los seminarios que tiene asignados en el ciclo lectivo actual.
-
+import { useEffect, useState } from "react";
+import { api } from "../../../../shared/api/client";
+import { useAuth } from "../../../manejo-sesion/useAuth";
 import { Link } from "react-router-dom";
+
+
+
+interface SeminarioDocente {
+  id: string;
+  nombre: string;
+  carrera_id: string;
+  carrera_nombre: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  activo: boolean;
+}
 
 export default function MisSeminariosPage() {
   // Datos simulados (Mock) de los seminarios asignados al docente
-  const seminarios = [
-    { 
-      id: "SEM-401", 
-      nombre: "Metodología de la Investigación", 
-      carrera: "Maestría en Ingeniería en Sistemas de Información", 
-      cohorte: "2026", 
-      fechaInicio: "2026-03-01", 
-      fechaFin: "2026-07-15" 
-    },
-    { 
-      id: "SEM-405", 
-      nombre: "Gestión de Proyectos IT", 
-      carrera: "Especialización en Gestión de TIC", 
-      cohorte: "2026", 
-      fechaInicio: "2026-08-01", 
-      fechaFin: "2026-11-30" 
-    }
-  ];
+  // const seminarios = [
+  //   { 
+  //     id: "SEM-401", 
+  //     nombre: "Metodología de la Investigación", 
+  //     carrera: "Maestría en Ingeniería en Sistemas de Información", 
+  //     cohorte: "2026", 
+  //     fechaInicio: "2026-03-01", 
+  //     fechaFin: "2026-07-15" 
+  //   },
+  //   { 
+  //     id: "SEM-405", 
+  //     nombre: "Gestión de Proyectos IT", 
+  //     carrera: "Especialización en Gestión de TIC", 
+  //     cohorte: "2026", 
+  //     fechaInicio: "2026-08-01", 
+  //     fechaFin: "2026-11-30" 
+  //   }
+  // ];
+    const { user } = useAuth();
+    const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
+    const [cargando, setCargando] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-  return (
+    useEffect(() => {
+      async function cargarSeminarios() {   
+    if (!user?.token) {
+      setCargando(false);
+      return;
+    }
+    try {
+      const respuesta = await api.get<SeminarioDocente[]>(
+        "/seminarios/mis-seminarios",
+        user.token
+      );
+      setSeminarios(respuesta);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudieron cargar los seminarios."
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+    cargarSeminarios();
+}, [user?.token]);
+ 
+    return (
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
         <h1>Mis Seminarios</h1>
         <p>Consultá el detalle de los seminarios que tenés asignados para dictar este ciclo.</p>
       </header>
+
+   {cargando && (
+     <p role="status" className="mt-6 text-slate-600 font-medium">
+       Cargando tus seminarios asignados...
+     </p>
+   )}
+
+   {error && (
+     <p
+       role="alert"
+       className="mt-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm"
+     >
+       {error}
+     </p>
+   )}
+
+   {!cargando && !error && seminarios.length === 0 && (
+     <p role="status" className="mt-6 p-6 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-center">
+       Todavía no tenés seminarios activos asignados en este ciclo lectivo.
+     </p>
+   )}
 
       {/* Uso de CSS Grid para distribuir las tarjetas de forma responsiva */}
       <ul className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
@@ -44,14 +109,14 @@ export default function MisSeminariosPage() {
                     {seminario.id}
                   </span>
                   <span className="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-1 rounded">
-                    Cohorte {seminario.cohorte}
+                    {seminario.activo ? "Activo" : "Inactivo"}
                   </span>
                 </div>
                 <h2 className="text-xl font-bold text-blue-900 leading-tight">
                   {seminario.nombre}
                 </h2>
                 <p className="text-sm font-medium text-blue-700 mt-1">
-                  {seminario.carrera}
+                  {seminario.carrera_nombre}
                 </p>
               </header>
               
@@ -63,8 +128,8 @@ export default function MisSeminariosPage() {
                   <div className="flex flex-col mb-3">
                     <dt className="text-xs font-bold text-slate-500 uppercase">Período de dictado</dt>
                     <dd className="text-sm font-medium text-slate-800 mt-1">
-                      Desde <time dateTime={seminario.fechaInicio}>{new Date(seminario.fechaInicio).toLocaleDateString('es-AR')}</time> 
-                      {" "}hasta <time dateTime={seminario.fechaFin}>{new Date(seminario.fechaFin).toLocaleDateString('es-AR')}</time>
+                      Desde <time dateTime={seminario.fecha_inicio}>{new Date(seminario.fecha_inicio).toLocaleDateString('es-AR')}</time> 
+                      {" "}hasta <time dateTime={seminario.fecha_fin}>{new Date(seminario.fecha_fin).toLocaleDateString('es-AR')}</time>
                     </dd>
                   </div>
                 </dl>

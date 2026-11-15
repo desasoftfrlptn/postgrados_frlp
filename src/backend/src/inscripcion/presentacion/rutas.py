@@ -27,9 +27,11 @@ from src.inscripcion.infraestructura.repositorio import (
 )
 from src.inscripcion.presentacion.esquemas import (
     DocumentacionLegajoRespuesta,
+    LegajoActualizarPerfil,
     LegajoCrear,
     LegajoRespuesta,
 )
+
 from src.usuarios.modelos import UsuarioORM
 from src.usuarios.rutas import usuario_actual
 from src.inscripcion.aplicacion.listar_legajos import (
@@ -231,6 +233,36 @@ async def obtener_mi_legajo(
 
     return legajo
 
+@enrutador.patch(
+    "/mi-legajo",
+    response_model=LegajoRespuesta,
+)
+async def actualizar_mi_legajo(
+    datos: LegajoActualizarPerfil,
+    db: AsyncSession = Depends(get_db),
+    usuario: UsuarioORM = Depends(usuario_actual),
+):
+    repositorio = LegajoRepositorioPostgres(db)
+    legajo_entidad = await repositorio.obtener_por_email_o_dni(
+        email=usuario.correo_electronico,
+        dni=usuario.dni,
+    )
+    if legajo_entidad is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró el legajo.",
+        )
+
+    legajo_orm = await db.get(LegajoORM, legajo_entidad.id)
+    for campo, valor in datos.model_dump(exclude_unset=True).items():
+        if valor is not None:
+            setattr(legajo_orm, campo, valor)
+
+    await db.commit()
+    await db.refresh(legajo_orm)
+    return legajo_orm
+
+
 @enrutador.get(
     "/{legajo_id}",
     response_model=LegajoRespuesta,
@@ -262,7 +294,6 @@ async def obtener_detalle_legajo(
         )
 
     return legajo
-
 
 @enrutador.get(
     "/{legajo_id}/documentos",

@@ -95,3 +95,12 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     rol: str
+
+class LegajoActualizarPerfil(BaseModel):
+    telefono_movil: Optional[str] = None
+    correo_alternativo: Optional[str] = None
+    domicilio: Optional[str] = None
+    ciudad: Optional[str] = None
+    provincia: Optional[str] = None
+    pais: Optional[str] = None
+    nacionalidad: Optional[str] = None
