@@ -1,5 +1,3 @@
-# Contiene la lógica de autenticación y administración de usuarios.
-
 import os
 
 from datetime import (
