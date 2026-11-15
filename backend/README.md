@@ -1,4 +1,4 @@
-# Backend Legajos — instalación, ejecución y pruebas
+# Backend — instalación, ejecución y pruebas
 
 La implementación entregada utiliza **FastAPI, SQLAlchemy 2 async, PostgreSQL y Alembic**, manteniendo la separación Controller → Service → Repository.
 
@@ -21,6 +21,14 @@ uv run alembic upgrade head # Aplicar migraciones
 uv run python -m scripts.seed # Corre seed.py para insertar datos de prueba
 uv run uvicorn app.main:app --reload --reload-exclude '.venv' --host 0.0.0.0 --port 8000
 ```
+
+| Variable | Configuración |
+| --- | --- |
+| `DATABASE_URL` | Conexión al PostgreSQL local. Si usás Docker, debe coincidir con la base, el usuario y la contraseña configurados. |
+| `DB_SCHEMA` | Esquema de la aplicación. El valor predeterminado es `postgrados`. |
+| `JWT_SECRET` | Secreto para firmar el JWT, de al menos 32 bytes. |
+| `JWT_EXPIRATION` | Duración del token de acceso en horas. El valor predeterminado es `8h`. |
+| `JWT_REFRESH_EXPIRATION` | Duración del token de renovación en días. El valor predeterminado es `7d`. |
 
 >IMPORTANTE: es necesario añadir la extensión de unaccent a la BD local. Se puede correr manualmente con `CREATE EXTENSION unaccent;` en el entorno local de postgresql, o bien corriendo el script disponible en scripts/db/01-extensions.sql.
 
@@ -48,16 +56,18 @@ Prefijo: `/api/v1`.
 | PATCH | `/legajos/{legajo_id}/estado` | COORDINADOR |
 | GET | `/legajos/exportar` | COORDINADOR |
 | POST | `/auth/activar-cuenta` | Invitación de activación |
-| POST | `/auth/login` | Público |
-| GET | `/auth/me` | Cookie `sesion_estudiante` |
-| POST | `/auth/logout` | Cookie `sesion_estudiante` |
+| POST | `/auth/login` | JSON con `email` y `password` |
+| GET | `/auth/me` | Header `Authorization: Bearer <access_token>` |
+| POST | `/auth/refresh` | JSON con `refresh_token` |
+| POST | `/auth/logout` | JSON con `refresh_token` |
 
-## 4. Autenticación y cookies
+## 4. Sesiones y roles
 
-- Personal (COORDINADOR, CPR, DOCENTE, ADMIN): la dependencia consulta `request.state.usuario`, que debe ser establecido por el middleware institucional existente. El código mostrado no implementa un login de personal ni interpreta por sí mismo `Authorization: Bearer`.
-- Aspirante: usa un enlace temporal `INSCRIPCION` o `SEGUIMIENTO`; al intercambiar el token se establece `acceso_aspirante` (HttpOnly).
-- Estudiante: activa la cuenta mediante invitación y contraseña; el login establece `sesion_estudiante` (HttpOnly).
-- Postman conserva automáticamente las cookies por host. No copiar ni exponer manualmente valores HttpOnly.
+El token de acceso es un JWT firmado con HS256. En cada solicitud protegida se valida el token y se consulta que el usuario siga activo. Los tokens de renovación se guardan como hashes SHA-256 en `sesiones_refresh`. Una renovación revoca el token anterior y registra uno nuevo. Al cerrar sesión, el JWT de acceso ya emitido conserva su validez hasta el vencimiento, siempre que el usuario siga activo.
+
+Una ruta que requiera el rol de coordinador puede usar `Depends(require_role("coordinador"))`. La dependencia devuelve `401` cuando falta una sesión válida y `403` cuando el usuario autenticado carece del rol requerido.
+
+Para ejecutar las pruebas, consultá el [README de tests de autenticación](../../tests/auth/README.md).
 
 ## 5. Pruebas con Postman
 
