@@ -82,7 +82,7 @@ npm run dev
 O con Docker, como ya está documentado en el punto 7:
 
 ```bash
-docker-compose up -d
+docker-compose up --build
 ```
 
 ### Paso 6: Probar la conexión
