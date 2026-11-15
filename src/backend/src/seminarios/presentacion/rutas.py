@@ -36,7 +36,7 @@ from src.seminarios.presentacion.esquema import (
     InscripcionSeminarioCrear,
     AsistenciaClaseRegistrar,
     CursadaEstudianteRespuesta,
-    LegajoActualizarPerfil,
+   
 )
 
 
