@@ -195,6 +195,22 @@ export const PanelConduccionInscripciones = () => {
     }
   };
 
+  const handleRechazar = async (row) => {
+    const nombre = formatearNombreAlumno(row);
+    if (!window.confirm(`¿Está seguro de RECHAZAR la preinscripción de ${nombre}? Esta acción cerrará el trámite.`)) {
+      return;
+    }
+
+    try {
+      const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'RECHAZADO');
+      setInscripciones((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'RECHAZADO' } : item))
+      );
+    } catch (err) {
+      alert(`Error al rechazar legajo: ${err.message}`);
+    }
+  };
+
   return (
     <div className="panel-container">
       <header className="panel-header">
@@ -311,31 +327,57 @@ export const PanelConduccionInscripciones = () => {
                   <td>{formatearFecha(row.fecha_inscripcion || row.created_at)}</td>
                   <td>{renderBadgeEstado(row.estado)}</td>
                   <td style={{ textAlign: 'center' }}>
-                    {row.estado !== 'APROBADO' ? (
-                      <button
-                        type="button"
-                        style={{
-                          backgroundColor: '#198754',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '5px 10px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          fontWeight: '500',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
-                        onClick={() => handleAprobar(row)}
-                        title="Aprobar legajo y emitir número oficial"
-                      >
-                        ✓ Aprobar
-                      </button>
-                    ) : (
+                    {row.estado === 'APROBADO' ? (
                       <span style={{ color: '#198754', fontSize: '12px', fontWeight: 'bold' }}>
                         ✓ Aprobado
                       </span>
+                    ) : row.estado === 'RECHAZADO' ? (
+                      <span style={{ color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
+                        ✕ Rechazado
+                      </span>
+                    ) : (
+                      <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
+                        <button
+                          type="button"
+                          style={{
+                            backgroundColor: '#198754',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          onClick={() => handleAprobar(row)}
+                          title="Aprobar legajo y emitir número oficial"
+                        >
+                          ✓ Aprobar
+                        </button>
+                        <button
+                          type="button"
+                          style={{
+                            backgroundColor: '#dc3545',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          onClick={() => handleRechazar(row)}
+                          title="Rechazar trámite de legajo"
+                        >
+                          ✕ Rechazar
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
