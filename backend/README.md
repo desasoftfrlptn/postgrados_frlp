@@ -46,6 +46,9 @@ con el Módulo B cuando exista el modelo de seminarios.
 JWT válido con rol `COORDINADOR`. Incluye los datos de identificación del legajo,
 `solicita_beca`, `tipo_beca` y, si existe, el tipo del documento `FORM_BECA`;
 nunca expone rutas de almacenamiento ni URLs de archivos.
+Admite combinar los filtros opcionales `estado`, `cohorte_id` (UUID), `carrera`
+y `tiene_beca` (booleano, `true`/`false`); este último filtra por
+`solicita_beca` y, si se omite, no limita los resultados.
 
 En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
 desde `backend` para crear cuentas locales:

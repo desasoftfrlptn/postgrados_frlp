@@ -110,11 +110,13 @@ def create_legajo(
     apellido: str,
     solicita_beca: bool,
     tipo_beca: str | None,
+    estado: str = "Pendiente",
+    carreras: list[str] | None = None,
 ) -> Legajo:
     return Legajo(
         cohorte_id=cohorte_id,
-        estado="Pendiente",
-        carreras=["Especialización"],
+        estado=estado,
+        carreras=carreras if carreras is not None else ["Especialización"],
         dni=dni,
         apellido=apellido,
         nombre="Ana",
@@ -483,3 +485,131 @@ def test_coordinator_can_see_scholarship_types_and_form_presence(
     assert "checksum_sha256" not in response.text
     assert "privado-30.pdf" not in response.text
     assert "privado-100.pdf" not in response.text
+
+
+def test_legajo_list_combines_documented_filters(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte = client
+    otra_cohorte = Cohorte(
+        anio=2025,
+        nombre="Cohorte 2025",
+        inscripcion_abierta=False,
+    )
+    session.add(otra_cohorte)
+    session.flush()
+
+    registros = {
+        "30123461": create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123461",
+            apellido="Aspirante",
+            solicita_beca=False,
+            tipo_beca=None,
+            carreras=["Especialización"],
+        ),
+        "30123462": create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123462",
+            apellido="Becaria",
+            solicita_beca=True,
+            tipo_beca="30%",
+            carreras=["Maestría"],
+        ),
+        "30123463": create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123463",
+            apellido="Becario",
+            solicita_beca=True,
+            tipo_beca="100%",
+            estado="En Revisión",
+            carreras=["Especialización", "Doctorado"],
+        ),
+        "30123464": create_legajo(
+            cohorte_id=otra_cohorte.id,
+            dni="30123464",
+            apellido="Otra cohorte",
+            solicita_beca=True,
+            tipo_beca="100%",
+            carreras=["Especialización"],
+        ),
+        "30123465": create_legajo(
+            cohorte_id=otra_cohorte.id,
+            dni="30123465",
+            apellido="Sin beca",
+            solicita_beca=False,
+            tipo_beca=None,
+            estado="En Revisión",
+            carreras=["Maestría"],
+        ),
+        "30123466": create_legajo(
+            cohorte_id=otra_cohorte.id,
+            dni="30123466",
+            apellido="Dato legado",
+            solicita_beca=False,
+            tipo_beca="30%",
+            carreras=["Doctorado"],
+        ),
+    }
+    session.add_all(registros.values())
+    session.flush()
+    session.add(
+        DocumentoInscripcion(
+            legajo_id=registros["30123466"].id,
+            tipo="FORM_BECA",
+            path_storage="inscripciones/legado-beca.pdf",
+            checksum_sha256="c" * 64,
+        )
+    )
+    headers = create_auth_headers(session, "COORDINADOR")
+
+    def consultar(params: dict[str, str]) -> list[dict[str, object]]:
+        response = test_client.get(
+            "/api/v1/legajos",
+            params=params,
+            headers=headers,
+        )
+        assert response.status_code == 200
+        return response.json()
+
+    def dni_resultados(params: dict[str, str]) -> set[str]:
+        return {str(legajo["dni"]) for legajo in consultar(params)}
+
+    todos = set(registros)
+    assert dni_resultados({}) == todos
+    assert dni_resultados({"estado": "Pendiente"}) == {
+        "30123461",
+        "30123462",
+        "30123464",
+        "30123466",
+    }
+    assert dni_resultados({"cohorte_id": str(cohorte.id)}) == {
+        "30123461",
+        "30123462",
+        "30123463",
+    }
+    assert dni_resultados({"carrera": "Doctorado"}) == {
+        "30123463",
+        "30123466",
+    }
+
+    becados = consultar({"tiene_beca": "true"})
+    assert {str(legajo["dni"]) for legajo in becados} == {
+        "30123462",
+        "30123463",
+        "30123464",
+    }
+    assert {str(legajo["tipo_beca"]) for legajo in becados} == {"30%", "100%"}
+    assert dni_resultados({"tiene_beca": "false"}) == {
+        "30123461",
+        "30123465",
+        "30123466",
+    }
+    assert dni_resultados(
+        {
+            "estado": "Pendiente",
+            "cohorte_id": str(cohorte.id),
+            "carrera": "Maestría",
+            "tiene_beca": "true",
+        }
+    ) == {"30123462"}

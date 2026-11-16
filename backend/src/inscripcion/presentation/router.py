@@ -1,6 +1,7 @@
 from http import HTTPStatus
 import json
 from json import JSONDecodeError
+from uuid import UUID
 
 from fastapi import (
     APIRouter,
@@ -9,12 +10,13 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Query,
     UploadFile,
     status,
 )
 from pydantic import ValidationError
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session, load_only, selectinload
 
 from src.authentication.infrastructure.models import User
 from src.core.config import settings
@@ -26,8 +28,9 @@ from src.inscripcion.application.inscribir_aspirante import (
     inscribir_aspirante,
 )
 from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
-from src.inscripcion.infrastructure.models import Legajo
+from src.inscripcion.infrastructure.models import DocumentoInscripcion, Legajo
 from src.inscripcion.presentation.schemas import (
+    Carrera,
     DocumentoBecaResumen,
     InscripcionCreate,
     InscripcionResponse,
@@ -41,12 +44,45 @@ legajos_router = APIRouter(prefix="/api/v1/legajos", tags=["legajos"])
 
 @legajos_router.get("", response_model=list[LegajoCoordinacionResponse])
 def listar_legajos(
+    estado: str | None = Query(default=None),
+    cohorte_id: UUID | None = Query(default=None),
+    carrera: Carrera | None = Query(default=None),
+    tiene_beca: bool | None = Query(default=None),
     session: Session = Depends(get_db),
     _usuario: User = Depends(requerir_roles("COORDINADOR")),
 ) -> list[LegajoCoordinacionResponse]:
+    consulta = select(Legajo).options(
+        load_only(
+            Legajo.id,
+            Legajo.numero_legajo,
+            Legajo.apellido,
+            Legajo.nombre,
+            Legajo.dni,
+            Legajo.estado,
+            Legajo.carreras,
+            Legajo.solicita_beca,
+            Legajo.tipo_beca,
+        ),
+        selectinload(
+            Legajo.documentos.and_(DocumentoInscripcion.tipo == "FORM_BECA")
+        ).load_only(DocumentoInscripcion.tipo),
+    )
+    if estado is not None:
+        consulta = consulta.where(Legajo.estado == estado)
+    if cohorte_id is not None:
+        consulta = consulta.where(Legajo.cohorte_id == cohorte_id)
+    if carrera is not None:
+        consulta = consulta.where(
+            or_(
+                Legajo.carreras[0].as_string() == carrera,
+                Legajo.carreras[1].as_string() == carrera,
+            )
+        )
+    if tiene_beca is not None:
+        consulta = consulta.where(Legajo.solicita_beca.is_(tiene_beca))
+
     legajos = session.scalars(
-        select(Legajo)
-        .options(selectinload(Legajo.documentos))
+        consulta
         .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
     ).all()
 
