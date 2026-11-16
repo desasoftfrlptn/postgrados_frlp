@@ -75,8 +75,11 @@ def do_run_migrations(connection: Connection) -> None:
         include_name=lambda name, type_, parents: type_ != "schema" or name in (DB_SCHEMA, None), # fix para que no detecte tablas existentes como nuevas
         version_table_schema=DB_SCHEMA,  # alembic_version también va en postgrados
     )
-
     with context.begin_transaction():
+        connection.execute(
+            text("SELECT set_config('search_path', quote_ident(:schema) || ', public', true)"),
+            {"schema": DB_SCHEMA},
+        )
         context.run_migrations()
 
 
