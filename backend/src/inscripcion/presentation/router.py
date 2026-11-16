@@ -1,11 +1,15 @@
 from http import HTTPStatus
 import json
 from json import JSONDecodeError
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from src.autenticacion.aplicacion.seguridad import requerir_roles
+from src.autenticacion.infraestructura.modelos import Usuario
 from src.core.config import settings
 from src.db.session import get_db
 from src.inscripcion.application.inscribir_aspirante import (
@@ -14,9 +18,45 @@ from src.inscripcion.application.inscribir_aspirante import (
     InscripcionNoDisponible,
     inscribir_aspirante,
 )
-from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
+from src.inscripcion.infrastructure.models import DocumentoInscripcion, Legajo
+from src.inscripcion.presentation.schemas import (
+    DocumentoInscripcionRespuesta,
+    InscripcionCreate,
+    InscripcionResponse,
+)
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
+documentos_router = APIRouter(prefix="/api/v1/legajos", tags=["documentos"])
+
+
+@documentos_router.get(
+    "/{legajo_id}/documentos",
+    response_model=list[DocumentoInscripcionRespuesta],
+)
+def listar_documentos_legajo(
+    legajo_id: UUID,
+    sesion: Session = Depends(get_db),
+    _usuario: Usuario = Depends(requerir_roles("COORDINADOR")),
+) -> list[DocumentoInscripcionRespuesta]:
+    if sesion.get(Legajo, legajo_id) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el legajo solicitado",
+        )
+
+    documentos = sesion.scalars(
+        select(DocumentoInscripcion)
+        .where(DocumentoInscripcion.legajo_id == legajo_id)
+        .order_by(DocumentoInscripcion.tipo, DocumentoInscripcion.id)
+    ).all()
+    return [
+        DocumentoInscripcionRespuesta(
+            id=documento.id,
+            tipo=documento.tipo,
+            fecha_subida=documento.fecha_subida,
+        )
+        for documento in documentos
+    ]
 
 TIPOS_DOCUMENTO = {
     "archivo_preinscripcion": ("FORM_INSCRIPCION", True),

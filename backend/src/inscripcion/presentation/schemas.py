@@ -1,4 +1,6 @@
+from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
@@ -81,3 +83,9 @@ class InscripcionResponse(BaseModel):
     codigo_seguimiento: str
     estado: str
     mensaje: str
+
+
+class DocumentoInscripcionRespuesta(BaseModel):
+    id: UUID
+    tipo: str
+    fecha_subida: datetime
