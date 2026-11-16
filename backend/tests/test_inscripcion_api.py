@@ -205,21 +205,120 @@ def test_invalid_email_is_rejected_before_persistence(
     assert session.scalar(select(Legajo)) is None
 
 
-def test_beca_requires_percentage_and_signed_document(
+@pytest.mark.parametrize("tipo_beca", ["30%", "100%"])
+def test_scholarship_request_saves_type_and_private_form(
     client: tuple[TestClient, Session, Cohorte],
+    tipo_beca: str,
 ) -> None:
     test_client, session, _ = client
-    form = valid_form(solicita_beca="true")
 
     response = test_client.post(
         "/api/v1/inscripciones",
-        data=form,
+        data=valid_form(solicita_beca="true", tipo_beca=tipo_beca),
+        files=valid_files(archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")),
+    )
+
+    assert response.status_code == 201
+    legajo = session.scalar(select(Legajo))
+    assert legajo is not None
+    assert legajo.solicita_beca is True
+    assert legajo.tipo_beca == tipo_beca
+    documents = list(
+        session.scalars(
+            select(DocumentoInscripcion).where(
+                DocumentoInscripcion.legajo_id == legajo.id
+            )
+        )
+    )
+    form_beca = next(
+        documento for documento in documents if documento.tipo == "FORM_BECA"
+    )
+    assert len(documents) == len(DOCUMENT_FIELDS) + 1
+    assert form_beca.checksum_sha256 == hashlib.sha256(PDF).hexdigest()
+    assert (settings.storage_path / form_beca.path_storage).is_file()
+
+
+def test_scholarship_request_without_form_is_rejected_without_partial_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(solicita_beca="true", tipo_beca="30%"),
         files=valid_files(),
     )
 
     assert response.status_code == 422
-    assert "porcentaje de beca" in str(response.json()["detail"])
+    assert response.json()["detail"] == (
+        "Falta adjuntar el documento obligatorio: FORM_BECA"
+    )
     assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_scholarship_request_without_percentage_is_rejected_without_partial_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(solicita_beca="true"),
+        files=valid_files(
+            archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
+        ),
+    )
+
+    assert response.status_code == 422
+    assert "Debe seleccionar el porcentaje de beca solicitado" in str(
+        response.json()["detail"]
+    )
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_scholarship_type_without_request_is_rejected_without_partial_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(tipo_beca="30%"),
+        files=valid_files(),
+    )
+
+    assert response.status_code == 422
+    assert "No puede indicar un tipo de beca si no la solicita" in str(
+        response.json()["detail"]
+    )
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_scholarship_request_rejects_unsupported_percentage(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(solicita_beca="true", tipo_beca="50%"),
+        files=valid_files(
+            archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
+        ),
+    )
+
+    assert response.status_code == 422
+    assert "30%" in str(response.json()["detail"])
+    assert "100%" in str(response.json()["detail"])
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
 
 
 def test_enrollment_requires_an_open_cohort(
