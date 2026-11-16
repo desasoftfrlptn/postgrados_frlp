@@ -111,6 +111,15 @@ export const PanelConduccionInscripciones = () => {
   const [filtroPosgrado, setFiltroPosgrado] = useState('Todos');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
 
+  // Estado del modal de observación de legajo
+  const [modalObservar, setModalObservar] = useState({
+    open: false,
+    legajo: null,
+    motivo: '',
+    submitting: false,
+    error: null,
+  });
+
   // ---------------------------------------------------------------------------
   // FUNCIÓN DE CARGA ASÍNCRONA (Reutilizable para reintentos)
   // ---------------------------------------------------------------------------
@@ -208,6 +217,62 @@ export const PanelConduccionInscripciones = () => {
       );
     } catch (err) {
       alert(`Error al rechazar legajo: ${err.message}`);
+    }
+  };
+
+  const handleAbrirModalObservar = (row) => {
+    setModalObservar({
+      open: true,
+      legajo: row,
+      motivo: row.motivo_observacion || '',
+      submitting: false,
+      error: null,
+    });
+  };
+
+  const handleCerrarModalObservar = () => {
+    if (modalObservar.submitting) return;
+    setModalObservar({
+      open: false,
+      legajo: null,
+      motivo: '',
+      submitting: false,
+      error: null,
+    });
+  };
+
+  const handleGuardarObservacion = async (e) => {
+    if (e) e.preventDefault();
+    const motivoLimpio = modalObservar.motivo.trim();
+    if (!motivoLimpio) {
+      setModalObservar((prev) => ({
+        ...prev,
+        error: 'El motivo de la observación es obligatorio.',
+      }));
+      return;
+    }
+
+    try {
+      setModalObservar((prev) => ({ ...prev, submitting: true, error: null }));
+      const legajoActualizado = await legajoService.actualizarEstadoLegajo(
+        modalObservar.legajo.id,
+        'OBSERVADO',
+        motivoLimpio
+      );
+      setInscripciones((prev) =>
+        prev.map((item) =>
+          item.id === modalObservar.legajo.id
+            ? { ...item, ...legajoActualizado, estado: 'OBSERVADO', motivo_observacion: motivoLimpio }
+            : item
+        )
+      );
+      handleCerrarModalObservar();
+    } catch (err) {
+      setModalObservar((prev) => ({
+        ...prev,
+        submitting: false,
+        error: err.message || 'Error al registrar la observación del legajo.',
+      }));
     }
   };
 
@@ -360,6 +425,26 @@ export const PanelConduccionInscripciones = () => {
                         <button
                           type="button"
                           style={{
+                            backgroundColor: '#ffc107',
+                            color: '#212529',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          onClick={() => handleAbrirModalObservar(row)}
+                          title="Observar legajo requiriendo corrección de documentación"
+                        >
+                          ⚠ Observar
+                        </button>
+                        <button
+                          type="button"
+                          style={{
                             backgroundColor: '#dc3545',
                             color: '#fff',
                             border: 'none',
@@ -394,6 +479,183 @@ export const PanelConduccionInscripciones = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Modal accesible de Observación de Legajo */}
+      {modalObservar.open && modalObservar.legajo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-observar-titulo"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1050,
+            padding: '16px',
+            backdropFilter: 'blur(2px)',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCerrarModalObservar();
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              maxWidth: '520px',
+              width: '100%',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #e9ecef',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <h3 id="modal-observar-titulo" style={{ margin: 0, fontSize: '18px', color: '#856404', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚠</span> Observar Preinscripción
+              </h3>
+              <button
+                type="button"
+                onClick={handleCerrarModalObservar}
+                disabled={modalObservar.submitting}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '22px',
+                  cursor: modalObservar.submitting ? 'not-allowed' : 'pointer',
+                  color: '#6c757d',
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleGuardarObservacion}>
+              <div style={{ padding: '20px' }}>
+                <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#495057', lineHeight: '1.4' }}>
+                  Indique los motivos por los cuales se observa el legajo de{' '}
+                  <strong>{formatearNombreAlumno(modalObservar.legajo)}</strong> ({formatearPosgrado(modalObservar.legajo.cohorte)}).
+                  El alumno deberá subsanar las observaciones indicadas.
+                </p>
+
+                {modalObservar.error && (
+                  <div
+                    role="alert"
+                    style={{
+                      backgroundColor: '#f8d7da',
+                      color: '#842029',
+                      border: '1px solid #f5c2c7',
+                      borderRadius: '4px',
+                      padding: '10px 14px',
+                      marginBottom: '14px',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {modalObservar.error}
+                  </div>
+                )}
+
+                <label
+                  htmlFor="motivo-observacion"
+                  style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px', color: '#212529' }}
+                >
+                  Motivo de la observación <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <textarea
+                  id="motivo-observacion"
+                  rows={4}
+                  maxLength={2000}
+                  required
+                  value={modalObservar.motivo}
+                  onChange={(e) =>
+                    setModalObservar((prev) => ({ ...prev, motivo: e.target.value, error: null }))
+                  }
+                  placeholder="Ej: El archivo del título no es legible / Falta adjuntar frente y dorso del DNI..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ced4da',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    fontFamily: 'inherit',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                  disabled={modalObservar.submitting}
+                  autoFocus
+                />
+                <div style={{ textAlign: 'right', fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+                  {modalObservar.motivo.length} / 2000 caracteres
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 20px',
+                  backgroundColor: '#f8f9fa',
+                  borderTop: '1px solid #e9ecef',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '10px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={handleCerrarModalObservar}
+                  disabled={modalObservar.submitting}
+                  style={{
+                    padding: '8px 16px',
+                    border: '1px solid #ced4da',
+                    backgroundColor: '#fff',
+                    borderRadius: '4px',
+                    cursor: modalObservar.submitting ? 'not-allowed' : 'pointer',
+                    fontSize: '13px',
+                    color: '#495057',
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalObservar.submitting || !modalObservar.motivo.trim()}
+                  style={{
+                    padding: '8px 18px',
+                    border: 'none',
+                    backgroundColor: modalObservar.submitting || !modalObservar.motivo.trim() ? '#ffd868' : '#ffc107',
+                    color: '#212529',
+                    fontWeight: '600',
+                    borderRadius: '4px',
+                    cursor: modalObservar.submitting || !modalObservar.motivo.trim() ? 'not-allowed' : 'pointer',
+                    fontSize: '13px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  {modalObservar.submitting ? 'Guardando...' : 'Guardar Observación'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
