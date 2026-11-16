@@ -57,7 +57,6 @@ async def obtener_admin(
 )
 async def obtener_carreras(
     db: AsyncSession = Depends(get_db),
-    administrador=Depends(obtener_admin),
 ):
     return await listar_carreras(db)
 

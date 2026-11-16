@@ -250,23 +250,28 @@ export default function FormularioInscripcion() {
     }
 
     // El endpoint actual acepta JSON de legajo, no archivos PDF.
-    const datosFormulario = {
-      cohorte_id: cohorteSeleccionada,
-      carrera_elegida: datos.tipo_carrera,
-      apellido: datos.apellido,
-      nombre: datos.nombre,
-      nacionalidad: datos.nacionalidad,
-      dni_pasaporte: datos.dni,
-      telefono_movil: datos.telefono,
-      correo_electronico: datos.email,
-      correo_alternativo: datos.correo_alternativo,
-      domicilio: datos.domicilio,
-      pais: datos.pais === "Otro" ? otroPais : datos.pais,
-      provincia: datos.provincia,
-      ciudad: datos.ciudad,
-      titulo_anterior: datos.titulo_anterior,
-      universidad_anterior: datos.universidad_anterior,
-    };
+   const datosFormulario = {
+    cohorte_id: cohorteSeleccionada,
+    carrera_elegida: datos.tipo_carrera,
+    apellido: datos.apellido,
+    nombre: datos.nombre,
+    nacionalidad: datos.nacionalidad,
+    dni_pasaporte: datos.dni,
+    telefono_movil: datos.telefono,
+    correo_electronico: datos.email,
+    correo_alternativo: datos.correo_alternativo,
+    domicilio: datos.domicilio,
+    pais: datos.pais === "Otro" ? otroPais : datos.pais,
+    provincia: datos.provincia,
+    ciudad: datos.ciudad,
+    titulo_anterior: datos.titulo_anterior,
+    universidad_anterior: datos.universidad_anterior,
+    forma_conocio_ofertas: datos.forma_conocio_ofertas,
+    motivos_cursar: datos.motivos_cursar,
+    solicitud_beca: datos.solicitud_beca
+      ? Number(datos.solicitud_beca)
+      : null,
+  };
 
     try {
       const respuesta = await fetch(
