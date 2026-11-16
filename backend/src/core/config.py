@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     secret_key: str = "dev-only-change-this-secret"
     jwt_secret: str = "development-only-secret-change-before-deploying"
     jwt_issuer: str = "postgrados-frlp"
+    jwt_expiration: str = "8h"
+    jwt_refresh_expiration: str = "7d"
     environment: str = "development"
     cors_origin: str = "http://localhost:3000"
     storage_path: Path = Path(__file__).resolve().parents[2] / "storage"
@@ -23,15 +25,6 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_starttls: bool = False
     email_from: str = "noreply@posgrado.frlp.utn.edu.ar"
-
-    @model_validator(mode="after")
-    def validate_jwt_configuration(self) -> "Settings":
-        if self.environment.lower() == "production" and (
-            len(self.jwt_secret) < 32
-            or self.jwt_secret.startswith(("cambiar_en_produccion", "development-only-"))
-        ):
-            raise ValueError("JWT_SECRET debe tener al menos 32 caracteres y no ser un valor de ejemplo")
-        return self
 
     @model_validator(mode="after")
     def validar_secreto_jwt(self) -> "Settings":

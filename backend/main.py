@@ -1,9 +1,11 @@
 import os
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.authentication.application.security import get_current_user
+from src.authentication.presentation.router import router as autenticacion_router
 from src.core.config import settings
 from src.inscripcion.presentation.router import (
     documentos_router,
@@ -27,9 +29,10 @@ app.add_middleware(
 
 app.include_router(inscripcion_router)
 app.include_router(documentos_router)
+app.include_router(autenticacion_router)
 
 
-@app.get("/health", tags=["health"])
+@app.get("/health", tags=["health"], dependencies=[Depends(get_current_user)])
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
 

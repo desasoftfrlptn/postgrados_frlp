@@ -1,15 +1,17 @@
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from pathlib import Path
 from uuid import uuid4
 
 import jwt
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from main import app
+from src.authentication.infrastructure.models import AuthRefreshSession, User
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db
@@ -54,6 +56,18 @@ def documentos_api(
     )
     sesion.add(legajo)
     sesion.flush()
+    coordinador = User(
+        email="coordinador@example.com",
+        password_hash="test-password-hash",
+        role="COORDINADOR",
+    )
+    cpr = User(
+        email="cpr@example.com",
+        password_hash="test-password-hash",
+        role="CPR",
+    )
+    sesion.add_all((coordinador, cpr))
+    sesion.flush()
 
     raiz_almacenamiento = tmp_path / "archivos_privados"
     monkeypatch.setattr(settings, "storage_path", raiz_almacenamiento)
@@ -82,14 +96,32 @@ def documentos_api(
     motor.dispose()
 
 
-def crear_token(rol: str, *, expira_en: datetime | None = None) -> str:
+def crear_token(
+    sesion: Session,
+    rol: str,
+    *,
+    expira_en: datetime | None = None,
+) -> str:
     ahora = datetime.now(timezone.utc)
+    usuario = sesion.scalar(select(User).where(User.role == rol))
+    assert usuario is not None
+    id_sesion = uuid4()
+    sesion.add(
+        AuthRefreshSession(
+            id=id_sesion,
+            family_id=uuid4(),
+            user_id=usuario.id,
+            token_hash=sha256(uuid4().bytes).hexdigest(),
+            expires_at=ahora + timedelta(days=7),
+        )
+    )
+    sesion.commit()
     return jwt.encode(
         {
-            "sub": str(uuid4()),
-            "sid": str(uuid4()),
-            "rol": rol,
-            "tipo": "acceso",
+            "sub": str(usuario.id),
+            "sid": str(id_sesion),
+            "role": rol,
+            "type": "access",
             "iss": settings.jwt_issuer,
             "iat": int(ahora.timestamp()),
             "exp": int((expira_en or ahora + timedelta(minutes=5)).timestamp()),
@@ -99,18 +131,21 @@ def crear_token(rol: str, *, expira_en: datetime | None = None) -> str:
     )
 
 
-def encabezados_autorizacion(rol: str = "COORDINADOR") -> dict[str, str]:
-    return {"Authorization": f"Bearer {crear_token(rol)}"}
+def encabezados_autorizacion(
+    sesion: Session,
+    rol: str = "COORDINADOR",
+) -> dict[str, str]:
+    return {"Authorization": f"Bearer {crear_token(sesion, rol)}"}
 
 
 def test_coordinador_descarga_pdf_en_linea_sin_exponer_ruta(
     documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
 ) -> None:
-    cliente, _, documento, raiz_almacenamiento = documentos_api
+    cliente, sesion, documento, raiz_almacenamiento = documentos_api
 
     respuesta = cliente.get(
         f"/api/v1/documentos/{documento.id}/download",
-        headers=encabezados_autorizacion(),
+        headers=encabezados_autorizacion(sesion),
     )
 
     assert respuesta.status_code == 200
@@ -138,8 +173,9 @@ def test_descarga_requiere_token(
 def test_descarga_rechaza_token_invalido_o_vencido(
     documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
 ) -> None:
-    cliente, _, documento, _ = documentos_api
+    cliente, sesion, documento, _ = documentos_api
     token_vencido = crear_token(
+        sesion,
         "COORDINADOR",
         expira_en=datetime.now(timezone.utc) - timedelta(minutes=1),
     )
@@ -161,11 +197,11 @@ def test_descarga_rechaza_token_invalido_o_vencido(
 def test_descarga_rechaza_rol_sin_permiso(
     documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
 ) -> None:
-    cliente, _, documento, _ = documentos_api
+    cliente, sesion, documento, _ = documentos_api
 
     respuesta = cliente.get(
         f"/api/v1/documentos/{documento.id}/download",
-        headers=encabezados_autorizacion("CPR"),
+        headers=encabezados_autorizacion(sesion, "CPR"),
     )
 
     assert respuesta.status_code == 403
@@ -174,12 +210,12 @@ def test_descarga_rechaza_rol_sin_permiso(
 def test_descarga_no_revela_existencia_de_documento_ni_ruta(
     documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
 ) -> None:
-    cliente, _, documento, raiz_almacenamiento = documentos_api
+    cliente, sesion, documento, raiz_almacenamiento = documentos_api
     documento.path_storage = "../archivo-fuera.pdf"
 
     respuesta = cliente.get(
         f"/api/v1/documentos/{documento.id}/download",
-        headers=encabezados_autorizacion(),
+        headers=encabezados_autorizacion(sesion),
     )
 
     assert respuesta.status_code == 404
@@ -189,12 +225,12 @@ def test_descarga_no_revela_existencia_de_documento_ni_ruta(
 def test_descarga_retorna_404_si_falta_el_archivo(
     documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
 ) -> None:
-    cliente, _, documento, _ = documentos_api
+    cliente, sesion, documento, _ = documentos_api
     documento.path_storage = "inscripciones/ausente.pdf"
 
     respuesta = cliente.get(
         f"/api/v1/documentos/{documento.id}/download",
-        headers=encabezados_autorizacion(),
+        headers=encabezados_autorizacion(sesion),
     )
 
     assert respuesta.status_code == 404
