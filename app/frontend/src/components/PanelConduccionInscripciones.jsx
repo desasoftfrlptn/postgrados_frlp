@@ -148,6 +148,24 @@ export const PanelConduccionInscripciones = () => {
     descargandoId: null,
   });
 
+  // Estado para prevenir doble clic y mostrar feedback de procesamiento en filas
+  const [procesandoId, setProcesandoId] = useState(null);
+
+  // Notificación tipo toast temporal para confirmar acciones realizadas
+  const [toast, setToast] = useState(null);
+
+  const mostrarToast = useCallback((mensaje, tipo = 'success') => {
+    setToast({ mensaje, tipo });
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
   // ---------------------------------------------------------------------------
   // FUNCIÓN DE CARGA ASÍNCRONA (Reutilizable para reintentos)
   // ---------------------------------------------------------------------------
@@ -223,12 +241,16 @@ export const PanelConduccionInscripciones = () => {
     }
 
     try {
+      setProcesandoId(row.id);
       const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'APROBADO');
       setInscripciones((prev) =>
         prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'APROBADO' } : item))
       );
+      mostrarToast(`✓ Legajo de ${nombre} aprobado exitosamente. N° de legajo: ${legajoActualizado.numero_legajo || 'Asignado'}`, 'success');
     } catch (err) {
       alert(`Error al aprobar legajo: ${err.message}`);
+    } finally {
+      setProcesandoId(null);
     }
   };
 
@@ -239,12 +261,16 @@ export const PanelConduccionInscripciones = () => {
     }
 
     try {
+      setProcesandoId(row.id);
       const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'RECHAZADO');
       setInscripciones((prev) =>
         prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'RECHAZADO' } : item))
       );
+      mostrarToast(`✕ Se rechazó la preinscripción de ${nombre}.`, 'info');
     } catch (err) {
       alert(`Error al rechazar legajo: ${err.message}`);
+    } finally {
+      setProcesandoId(null);
     }
   };
 
@@ -294,7 +320,9 @@ export const PanelConduccionInscripciones = () => {
             : item
         )
       );
+      const nombreObs = formatearNombreAlumno(modalObservar.legajo);
       handleCerrarModalObservar();
+      mostrarToast(`⚠ Preinscripción de ${nombreObs} observada correctamente.`, 'warning');
     } catch (err) {
       setModalObservar((prev) => ({
         ...prev,
@@ -366,6 +394,72 @@ export const PanelConduccionInscripciones = () => {
 
   return (
     <div className="panel-container">
+      {/* Toast flotante de notificación de éxito/acción */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            top: '20px',
+            right: '20px',
+            zIndex: 2000,
+            backgroundColor:
+              toast.tipo === 'success'
+                ? '#d1e7dd'
+                : toast.tipo === 'warning'
+                ? '#fff3cd'
+                : toast.tipo === 'info'
+                ? '#cff4fc'
+                : '#f8d7da',
+            color:
+              toast.tipo === 'success'
+                ? '#0f5132'
+                : toast.tipo === 'warning'
+                ? '#664d03'
+                : toast.tipo === 'info'
+                ? '#055160'
+                : '#842029',
+            border: `1px solid ${
+              toast.tipo === 'success'
+                ? '#badbcc'
+                : toast.tipo === 'warning'
+                ? '#ffecb5'
+                : toast.tipo === 'info'
+                ? '#b6effb'
+                : '#f5c2c7'
+            }`,
+            borderRadius: '6px',
+            padding: '12px 18px',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            maxWidth: '450px',
+            fontSize: '14px',
+            fontWeight: '500',
+          }}
+        >
+          <span>{toast.mensaje}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '16px',
+              cursor: 'pointer',
+              color: 'inherit',
+              padding: '0 4px',
+              lineHeight: 1,
+            }}
+            aria-label="Cerrar notificación"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <header className="panel-header">
         <h2>Gestión de Inscripciones - Conducción</h2>
         <span className="badge-count" aria-live="polite">
@@ -490,19 +584,25 @@ export const PanelConduccionInscripciones = () => {
                           borderRadius: '4px',
                           padding: '5px 9px',
                           fontSize: '12px',
-                          cursor: 'pointer',
+                          cursor: procesandoId === row.id ? 'not-allowed' : 'pointer',
                           fontWeight: '500',
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px',
+                          opacity: procesandoId === row.id ? 0.6 : 1,
                         }}
+                        disabled={procesandoId === row.id}
                         onClick={() => handleAbrirModalDocs(row)}
                         title="Ver y auditar documentos PDF adjuntos"
                       >
                         📄 Docs
                       </button>
 
-                      {row.estado === 'APROBADO' ? (
+                      {procesandoId === row.id ? (
+                        <span style={{ color: '#0d6efd', fontSize: '12px', fontWeight: '600', padding: '5px 8px' }}>
+                          ⏳ Procesando...
+                        </span>
+                      ) : row.estado === 'APROBADO' ? (
                         <span style={{ color: '#198754', fontSize: '12px', fontWeight: 'bold' }}>
                           ✓ Aprobado
                         </span>
