@@ -38,3 +38,45 @@ def enviar_confirmacion_inscripcion(destinatario: str, nombre: str, codigo: str)
         enviar_mensaje_correo(mensaje)
     except (OSError, smtplib.SMTPException):
         logger.exception("No se pudo enviar una confirmación de inscripción")
+
+
+def enviar_email_observacion(
+    destinatario: str,
+    nombre: str,
+    comentario: str,
+    legajo_id: str,
+    token_correccion: str,
+) -> None:
+    mensaje = EmailMessage()
+    mensaje["Subject"] = "Tu legajo requiere una corrección - Posgrado UTN FRLP"
+    mensaje["From"] = settings.email_from
+    mensaje["To"] = destinatario
+    mensaje.set_content(
+        f"Hola {nombre},\n\n"
+        f"Tu legajo fue observado: {comentario}\n\n"
+        "Después de corregirlo, enviá una solicitud POST al endpoint "
+        f"/api/v1/legajos/{legajo_id}/correccion con el token de un solo uso "
+        f"{token_correccion}.\n"
+        "El token vence en 72 horas.\n"
+    )
+    mensaje.add_alternative(
+        f"""\
+        <html>
+          <body>
+            <p>Hola {escape(nombre)},</p>
+            <p>Tu legajo fue observado: {escape(comentario)}</p>
+            <p>Después de corregirlo, enviá una solicitud POST al endpoint
+            <code>/api/v1/legajos/{escape(legajo_id)}/correccion</code>
+            con el token de un solo uso:</p>
+            <p><code>{escape(token_correccion)}</code></p>
+            <p>El token vence en 72 horas.</p>
+          </body>
+        </html>
+        """,
+        subtype="html",
+    )
+
+    try:
+        enviar_mensaje_correo(mensaje)
+    except (OSError, smtplib.SMTPException):
+        logger.exception("No se pudo enviar el aviso de observación del legajo")

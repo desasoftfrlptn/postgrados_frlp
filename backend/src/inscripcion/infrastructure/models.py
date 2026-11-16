@@ -68,6 +68,10 @@ class Legajo(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
     tipo_beca: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    token_correccion_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    token_correccion_expira_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     fecha_inscripcion: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

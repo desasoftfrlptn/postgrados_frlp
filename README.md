@@ -3,7 +3,6 @@
 
 [![Estado](https://img.shields.io/badge/estado-En%20Desarrollo-yellow)](#)
 [![Cobertura objetivo](https://img.shields.io/badge/cobertura-≥70%25-green)](#)
-[![Semana actual](https://img.shields.io/badge/semana-1%20de%2032-blue)](#)
 
 > **Proyecto integrador** de la cátedra **Desarrollo de Software** — 3° año · Turno NOche · Ingeniería en Sistemas de Información · UTN FRLP · 2026
 
@@ -68,10 +67,16 @@ Lee en este orden antes de escribir código:
 
 | Módulo | Descripción | Estado |
 |--------|-------------|--------|
-| **CORE** *(todos los equipos)* | Inscripción, legajo digital, workflow de estados, gestión documental | 🟡 En kickoff |
-| **MOD-B** | Gestión Docente: asistencia digital, calificaciones, recordatorios automáticos | 🔴 Pendiente |
-| **MOD-C** | Seguimiento de Graduación: TFI/Tesis, semáforo de riesgo académico | 🔴 Pendiente |
-| **MOD-D** | Analytics & Reporting: dashboards, estadísticas por cohorte, exportación | 🔴 Pendiente |
+| **CORE** *(todos los equipos)* | Inscripción, legajo digital, workflow de estados, gestión documental | 🟡 En desarrollo: API de inscripción, autenticación, becas y acceso protegido a PDFs. El workflow está implementado en backend; la vista de legajos continúa con datos simulados. |
+| **MOD-B** | Gestión Docente: asistencia digital, calificaciones, recordatorios automáticos | 🟡 Prototipo de interfaz con datos locales; backend del módulo pendiente. |
+| **MOD-C** | Seguimiento de Graduación: TFI/Tesis, semáforo de riesgo académico | 🔴 Pendiente de implementación. |
+| **MOD-D** | Analytics & Reporting: dashboards, estadísticas por cohorte, exportación | 🟡 Prototipo de interfaz con métricas simuladas; backend del módulo pendiente. |
+
+**Revisión del avance:** 16/11/2026. El estado distingue prototipos de interfaz de
+funcionalidades conectadas al backend; no implica que todos los criterios de
+aceptación del Core estén completos. La validación de documentos obligatorios
+ocurre al enviar la inscripción; aún no hay endpoint de listado de legajos ni de
+consulta individual del estado de cada documento.
 
 ---
 
@@ -149,6 +154,10 @@ postgrado-[equipo]/
 ---
 
 ## Calendario de Entregas 2026
+
+> Fechas e hitos planificados originalmente; no representan por sí solos el
+> estado real de cumplimiento. Consultá la tabla de estado de módulos y el
+> [CHANGELOG](CHANGELOG.md) para el avance registrado.
 
 | Hito | Semana | Fecha | Entregable obligatorio |
 |------|--------|-------|------------------------|

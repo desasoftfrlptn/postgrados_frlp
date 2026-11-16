@@ -11,6 +11,7 @@ from src.inscripcion.presentation.router import (
     documentos_router,
     router as inscripcion_router,
 )
+from src.inscripcion.presentation.workflow_router import router as workflow_router
 
 app = FastAPI(
     title="Sistema de Gestión de Posgrado UTN FRLP",
@@ -29,6 +30,7 @@ app.add_middleware(
 
 app.include_router(inscripcion_router)
 app.include_router(documentos_router)
+app.include_router(workflow_router)
 app.include_router(autenticacion_router)
 
 
