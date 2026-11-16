@@ -42,31 +42,13 @@ todavía no está disponible. Las rutas API pueden exigir roles con
 `requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
 con el Módulo B cuando exista el modelo de seminarios.
 
-**Estado del listado de legajos:** `GET /api/v1/legajos` y sus filtros todavía no
-están implementados en la API activa. La pantalla de gestión correspondiente
-usa datos locales de ejemplo; no debe tomarse como un listado conectado a la
-base de datos. El contrato funcional previsto está descrito en el PRD, pero aún
-no está disponible para consumidores de la API.
-
-## Workflow del legajo
-
-Las transiciones administrativas requieren JWT con rol `COORDINADOR`:
-
-- `POST /api/v1/legajos/{id}/transiciones` acepta `REVISAR`,
-  `OBSERVAR`, `APROBAR`, `RECHAZAR`, `MATRICULAR` o `DAR_DE_BAJA`.
-- `OBSERVAR` exige `comentario`; el sistema envía ese motivo al email del
-  aspirante y genera un token de corrección aleatorio, de un solo uso y válido
-  por 72 horas. Solo se almacena el hash del token.
-- `POST /api/v1/legajos/{id}/correccion` acepta `{"token": "..."}` sin JWT y
-  permite únicamente la transición `Observado` → `Pendiente`. Al usarlo, el
-  token se invalida.
-- `APROBAR` realiza `En Revisión` → `Completado` según RF-CORE-003 y genera el
-  número de legajo `AA-CCC-NNN`. Como el modelo admite una cohorte por año, el
-  componente de cohorte es `001`.
-
-Cada transición registra actor/rol, estado anterior y nuevo y acción en
-`eventos_auditoria`, dentro de la misma transacción del cambio. Aplicar
-`alembic upgrade head` para crear las columnas de vigencia y hash del token.
+`GET /api/v1/legajos` devuelve el listado básico para coordinación y requiere un
+JWT válido con rol `COORDINADOR`. Incluye los datos de identificación del legajo,
+`solicita_beca`, `tipo_beca` y, si existe, el tipo del documento `FORM_BECA`;
+nunca expone rutas de almacenamiento ni URLs de archivos.
+Admite combinar los filtros opcionales `estado`, `cohorte_id` (UUID), `carrera`
+y `tiene_beca` (booleano, `true`/`false`); este último filtra por
+`solicita_beca` y, si se omite, no limita los resultados.
 
 En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
 desde `backend` para crear cuentas locales:
@@ -104,6 +86,20 @@ email principal usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
 `SMTP_PASSWORD`, `SMTP_STARTTLS` y `EMAIL_FROM`). En Docker, MailHog captura los
 mensajes de desarrollo en `http://localhost:8025`. Los errores de entrega quedan
 registrados en el log del backend.
+
+## Notificaciones por cambios de estado
+
+`POST /api/v1/legajos/{legajo_id}/transiciones` requiere el rol
+`COORDINADOR`. Al ejecutar `OBSERVAR`, envía al aspirante el motivo registrado;
+al ejecutar `APROBAR`, cambia el estado a `Completado`, asigna el número de
+legajo y envía el aviso de aprobación. La confirmación de inscripción se envía
+al crear el legajo en estado `Pendiente`.
+
+Los tres correos comparten una plantilla HTML con el logo público de UTN FRLP y
+una alternativa de texto para clientes de correo que no renderizan HTML. Se
+envían mediante `BackgroundTasks` y el cliente SMTP compartido; los errores se
+registran sin bloquear la operación. Como documenta ADR-006, estas tareas no
+son una cola durable y no tienen reintentos persistentes.
 
 ## Servicios compartidos
 

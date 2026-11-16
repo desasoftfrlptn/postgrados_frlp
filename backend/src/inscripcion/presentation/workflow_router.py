@@ -13,7 +13,10 @@ from src.inscripcion.application.workflow_estados import (
     corregir_legajo,
     transicionar_legajo,
 )
-from src.inscripcion.infrastructure.email import enviar_email_observacion
+from src.inscripcion.infrastructure.email import (
+    enviar_email_aprobacion,
+    enviar_email_observacion,
+)
 from src.inscripcion.presentation.schemas import (
     CorreccionLegajoRequest,
     LegajoEstadoResponse,
@@ -60,6 +63,15 @@ def cambiar_estado_legajo(
             solicitud.comentario or "",
             str(legajo.id),
             resultado.token_correccion,
+        )
+    elif solicitud.accion == "APROBAR":
+        if legajo.numero_legajo is None:
+            raise RuntimeError("Un legajo aprobado debe tener número asignado")
+        tareas_fondo.add_task(
+            enviar_email_aprobacion,
+            legajo.email,
+            legajo.nombre,
+            legajo.numero_legajo,
         )
 
     mensajes = {
