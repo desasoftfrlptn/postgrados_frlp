@@ -108,4 +108,14 @@ export const inscripcionService = {
       body: formData,
     });
   },
+
+  /**
+   * Envía formalmente el legajo para pasar de BORRADOR/OBSERVADO a ENVIADO
+   * Endpoint: POST /api/v1/legajos/{id}/enviar
+   */
+  enviarLegajo: async (legajoId) => {
+    return await request(`${API_URL}/legajos/${legajoId}/enviar`, {
+      method: 'POST',
+    });
+  },
 };

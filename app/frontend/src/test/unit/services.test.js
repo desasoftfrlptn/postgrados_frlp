@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { cohorteService } from '../../services/cohorteService';
 import { legajoService } from '../../services/legajoService';
+import { inscripcionService } from '../../services/inscripcionService';
+import { authService } from '../../services/authService';
 
 describe('cohorteService', () => {
   beforeEach(() => {
@@ -127,5 +129,51 @@ describe('legajoService', () => {
       expect.objectContaining({ method: 'GET' })
     );
     expect(docs).toHaveLength(1);
+  });
+});
+
+describe('inscripcionService y authService', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('enviarLegajo invoca POST /legajos/{id}/enviar con token bearer', async () => {
+    localStorage.setItem('access_token', 'jwt-demo');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'l-1', estado: 'ENVIADO' }),
+    });
+
+    const res = await inscripcionService.enviarLegajo('l-1');
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/legajos/l-1/enviar'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer jwt-demo' }),
+      })
+    );
+    expect(res.estado).toBe('ENVIADO');
+  });
+
+  it('registroAspirante invoca POST /auth/registro-aspirante', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ id: 'u-1', email: 'asp@utn.edu.ar', rol: 'ASPIRANTE' }),
+    });
+
+    const user = await authService.registroAspirante({
+      email: ' asp@utn.edu.ar ',
+      password: 'PasswordSegura123',
+      nombre: 'Ana',
+      apellido: 'Lopez',
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/registro-aspirante'),
+      expect.objectContaining({ method: 'POST' })
+    );
+    expect(user.rol).toBe('ASPIRANTE');
   });
 });

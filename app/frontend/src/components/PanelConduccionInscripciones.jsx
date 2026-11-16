@@ -151,10 +151,11 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
   const [filtroPosgrado, setFiltroPosgrado] = useState('Todos');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
 
-  // Estado del modal de observación de legajo
+  // Estado del modal de observación / rechazo de legajo (motivo obligatorio)
   const [modalObservar, setModalObservar] = useState({
     open: false,
     legajo: null,
+    estadoDestino: 'OBSERVADO',
     motivo: '',
     submitting: false,
     error: null,
@@ -256,6 +257,22 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
   // ---------------------------------------------------------------------------
   // ACCIONES DE COORDINACIÓN (Módulo Core)
   // ---------------------------------------------------------------------------
+  const handleIniciarRevision = async (row) => {
+    const nombre = formatearNombreAlumno(row);
+    try {
+      setProcesandoId(row.id);
+      const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'EN_REVISION');
+      setInscripciones((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'EN_REVISION' } : item))
+      );
+      mostrarToast(`🔍 Legajo de ${nombre} pasado a En Revisión.`, 'info');
+    } catch (err) {
+      alert(`Error al iniciar revisión del legajo: ${err.message}`);
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
   const handleAprobar = async (row) => {
     const nombre = formatearNombreAlumno(row);
     if (!window.confirm(`¿Está seguro de APROBAR el legajo de ${nombre}? Se emitirá el número de legajo definitivo.`)) {
@@ -276,31 +293,12 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
     }
   };
 
-  const handleRechazar = async (row) => {
-    const nombre = formatearNombreAlumno(row);
-    if (!window.confirm(`¿Está seguro de RECHAZAR la preinscripción de ${nombre}? Esta acción cerrará el trámite.`)) {
-      return;
-    }
-
-    try {
-      setProcesandoId(row.id);
-      const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'RECHAZADO');
-      setInscripciones((prev) =>
-        prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'RECHAZADO' } : item))
-      );
-      mostrarToast(`✕ Se rechazó la preinscripción de ${nombre}.`, 'info');
-    } catch (err) {
-      alert(`Error al rechazar legajo: ${err.message}`);
-    } finally {
-      setProcesandoId(null);
-    }
-  };
-
-  const handleAbrirModalObservar = (row) => {
+  const handleAbrirModalMotivo = (row, estadoDestino = 'OBSERVADO') => {
     setModalObservar({
       open: true,
       legajo: row,
-      motivo: row.motivo_observacion || '',
+      estadoDestino,
+      motivo: estadoDestino === 'OBSERVADO' ? (row.motivo_observacion || '') : '',
       submitting: false,
       error: null,
     });
@@ -311,6 +309,7 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
     setModalObservar({
       open: false,
       legajo: null,
+      estadoDestino: 'OBSERVADO',
       motivo: '',
       submitting: false,
       error: null,
@@ -319,11 +318,15 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
 
   const handleGuardarObservacion = async (e) => {
     if (e) e.preventDefault();
+    const estadoDestino = modalObservar.estadoDestino || 'OBSERVADO';
+    const esRechazo = estadoDestino === 'RECHAZADO';
     const motivoLimpio = modalObservar.motivo.trim();
     if (!motivoLimpio) {
       setModalObservar((prev) => ({
         ...prev,
-        error: 'El motivo de la observación es obligatorio.',
+        error: esRechazo
+          ? 'El motivo del rechazo es obligatorio.'
+          : 'El motivo de la observación es obligatorio.',
       }));
       return;
     }
@@ -332,24 +335,29 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
       setModalObservar((prev) => ({ ...prev, submitting: true, error: null }));
       const legajoActualizado = await legajoService.actualizarEstadoLegajo(
         modalObservar.legajo.id,
-        'OBSERVADO',
+        estadoDestino,
         motivoLimpio
       );
       setInscripciones((prev) =>
         prev.map((item) =>
           item.id === modalObservar.legajo.id
-            ? { ...item, ...legajoActualizado, estado: 'OBSERVADO', motivo_observacion: motivoLimpio }
+            ? { ...item, ...legajoActualizado, estado: estadoDestino, motivo_observacion: motivoLimpio }
             : item
         )
       );
       const nombreObs = formatearNombreAlumno(modalObservar.legajo);
       handleCerrarModalObservar();
-      mostrarToast(`⚠ Preinscripción de ${nombreObs} observada correctamente.`, 'warning');
+      mostrarToast(
+        esRechazo
+          ? `✕ Preinscripción de ${nombreObs} rechazada correctamente.`
+          : `⚠ Preinscripción de ${nombreObs} observada correctamente.`,
+        esRechazo ? 'info' : 'warning'
+      );
     } catch (err) {
       setModalObservar((prev) => ({
         ...prev,
         submitting: false,
-        error: err.message || 'Error al registrar la observación del legajo.',
+        error: err.message || 'Error al registrar el dictamen del legajo.',
       }));
     }
   };
@@ -632,6 +640,35 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                         <span style={{ color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
                           ✕ Rechazado
                         </span>
+                      ) : row.estado === 'OBSERVADO' ? (
+                        <span style={{ color: '#856404', fontSize: '12px', fontWeight: 'bold' }}>
+                          ⚠ Esperando subsanación
+                        </span>
+                      ) : row.estado === 'BORRADOR' ? (
+                        <span style={{ color: '#6c757d', fontSize: '12px', fontStyle: 'italic' }}>
+                          En borrador
+                        </span>
+                      ) : row.estado === 'ENVIADO' ? (
+                        <button
+                          type="button"
+                          style={{
+                            backgroundColor: '#0dcaf0',
+                            color: '#052c65',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          onClick={() => handleIniciarRevision(row)}
+                          title="Pasar legajo enviado a estado En Revisión para poder dictaminar"
+                        >
+                          🔍 Iniciar Revisión
+                        </button>
                       ) : (
                         <>
                           <button
@@ -669,7 +706,7 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                               alignItems: 'center',
                               gap: '4px',
                             }}
-                            onClick={() => handleAbrirModalObservar(row)}
+                            onClick={() => handleAbrirModalMotivo(row, 'OBSERVADO')}
                             title="Observar legajo requiriendo corrección de documentación"
                           >
                             ⚠ Observar
@@ -689,8 +726,8 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                               alignItems: 'center',
                               gap: '4px',
                             }}
-                            onClick={() => handleRechazar(row)}
-                            title="Rechazar trámite de legajo"
+                            onClick={() => handleAbrirModalMotivo(row, 'RECHAZADO')}
+                            title="Rechazar trámite de legajo con motivo obligatorio"
                           >
                             ✕ Rechazar
                           </button>
@@ -758,8 +795,19 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                 alignItems: 'center',
               }}
             >
-              <h3 id="modal-observar-titulo" style={{ margin: 0, fontSize: '18px', color: '#856404', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚠</span> Observar Preinscripción
+              <h3
+                id="modal-observar-titulo"
+                style={{
+                  margin: 0,
+                  fontSize: '18px',
+                  color: modalObservar.estadoDestino === 'RECHAZADO' ? '#842029' : '#856404',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span>{modalObservar.estadoDestino === 'RECHAZADO' ? '✕' : '⚠'}</span>
+                {modalObservar.estadoDestino === 'RECHAZADO' ? 'Rechazar Preinscripción' : 'Observar Preinscripción'}
               </h3>
               <button
                 type="button"
@@ -783,9 +831,19 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
             <form onSubmit={handleGuardarObservacion}>
               <div style={{ padding: '20px' }}>
                 <p style={{ margin: '0 0 14px 0', fontSize: '14px', color: '#495057', lineHeight: '1.4' }}>
-                  Indique los motivos por los cuales se observa el legajo de{' '}
-                  <strong>{formatearNombreAlumno(modalObservar.legajo)}</strong> ({formatearPosgrado(modalObservar.legajo.cohorte)}).
-                  El alumno deberá subsanar las observaciones indicadas.
+                  {modalObservar.estadoDestino === 'RECHAZADO' ? (
+                    <>
+                      Indique los motivos por los cuales se rechaza definitivamente el legajo de{' '}
+                      <strong>{formatearNombreAlumno(modalObservar.legajo)}</strong> ({formatearPosgrado(modalObservar.legajo.cohorte)}).
+                      Esta acción cerrará el trámite.
+                    </>
+                  ) : (
+                    <>
+                      Indique los motivos por los cuales se observa el legajo de{' '}
+                      <strong>{formatearNombreAlumno(modalObservar.legajo)}</strong> ({formatearPosgrado(modalObservar.legajo.cohorte)}).
+                      El alumno deberá subsanar las observaciones indicadas.
+                    </>
+                  )}
                 </p>
 
                 {modalObservar.error && (
@@ -809,7 +867,8 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                   htmlFor="motivo-observacion"
                   style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px', color: '#212529' }}
                 >
-                  Motivo de la observación <span style={{ color: '#dc3545' }}>*</span>
+                  {modalObservar.estadoDestino === 'RECHAZADO' ? 'Motivo del rechazo' : 'Motivo de la observación'}{' '}
+                  <span style={{ color: '#dc3545' }}>*</span>
                 </label>
                 <textarea
                   id="motivo-observacion"
@@ -871,8 +930,11 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                   style={{
                     padding: '8px 18px',
                     border: 'none',
-                    backgroundColor: modalObservar.submitting || !modalObservar.motivo.trim() ? '#ffd868' : '#ffc107',
-                    color: '#212529',
+                    backgroundColor:
+                      modalObservar.estadoDestino === 'RECHAZADO'
+                        ? (modalObservar.submitting || !modalObservar.motivo.trim() ? '#ea868f' : '#dc3545')
+                        : (modalObservar.submitting || !modalObservar.motivo.trim() ? '#ffd868' : '#ffc107'),
+                    color: modalObservar.estadoDestino === 'RECHAZADO' ? '#fff' : '#212529',
                     fontWeight: '600',
                     borderRadius: '4px',
                     cursor: modalObservar.submitting || !modalObservar.motivo.trim() ? 'not-allowed' : 'pointer',
@@ -882,7 +944,11 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                     gap: '6px',
                   }}
                 >
-                  {modalObservar.submitting ? 'Guardando...' : 'Guardar Observación'}
+                  {modalObservar.submitting
+                    ? 'Guardando...'
+                    : modalObservar.estadoDestino === 'RECHAZADO'
+                    ? 'Confirmar Rechazo'
+                    : 'Guardar Observación'}
                 </button>
               </div>
             </form>
