@@ -42,13 +42,11 @@ todavía no está disponible. Las rutas API pueden exigir roles con
 `requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
 con el Módulo B cuando exista el modelo de seminarios.
 
-`GET /api/v1/legajos` devuelve el listado básico para coordinación y requiere un
-JWT válido con rol `COORDINADOR`. Incluye los datos de identificación del legajo,
-`solicita_beca`, `tipo_beca` y, si existe, el tipo del documento `FORM_BECA`;
-nunca expone rutas de almacenamiento ni URLs de archivos.
-Admite combinar los filtros opcionales `estado`, `cohorte_id` (UUID), `carrera`
-y `tiene_beca` (booleano, `true`/`false`); este último filtra por
-`solicita_beca` y, si se omite, no limita los resultados.
+**Estado del listado de legajos:** `GET /api/v1/legajos` y sus filtros todavía no
+están implementados en la API activa. La pantalla de gestión correspondiente
+usa datos locales de ejemplo; no debe tomarse como un listado conectado a la
+base de datos. El contrato funcional previsto está descrito en el PRD, pero aún
+no está disponible para consumidores de la API.
 
 ## Workflow del legajo
 
