@@ -1,238 +1,574 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { cohorteService } from '../services/cohorteService';
 
+/**
+ * Vista de Gestión de Posgrados y Cohortes (Equipo de Conducción)
+ * Conectado con los endpoints oficiales de FastAPI (/api/v1/cohortes).
+ */
 export default function VistaPostgrados() {
-  const [programas, setProgramas] = useState([
-    {
-      id: 1, nombre: 'Especialización en Sistemas', desc: 'Profundización en desarrollo y arquitecturas de software.',
-      cohortes: [
-        { id: 'es-2024', nombre: 'Cohorte 2024 - Especialización', abierta: true },
-        { id: 'es-2025', nombre: 'Cohorte 2025 - Especialización', abierta: true }
-      ]
-    },
-    {
-      id: 2, nombre: 'Maestría en Ingeniería', desc: 'Formación avanzada en investigación y gestión tecnológica.',
-      cohortes: [
-        { id: 'm-2024', nombre: 'Cohorte 2024 - Maestría', abierta: true },
-        { id: 'm-2025', nombre: 'Cohorte 2025 - Maestría', abierta: true }
-      ]
+  const [cohortes, setCohortes] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState(null);
+  const [procesandoId, setProcesandoId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+
+  // Estados para creación rápida de cohortes (usado en Commit 10)
+  const [nuevaCohorte, setNuevaCohorte] = useState({
+    anio: new Date().getFullYear(),
+    nombre: '',
+    carrera: '',
+    codigo_carrera: '',
+    numero_cohorte: 1,
+    tipo_carrera: 'Maestria',
+    abierta: true,
+    fecha_inicio: '',
+  });
+  const [errorCreacion, setErrorCreacion] = useState('');
+  const [creando, setCreando] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+
+  // Carga inicial de cohortes desde FastAPI
+  const cargarCohortes = useCallback(async () => {
+    try {
+      setCargando(true);
+      setError(null);
+      const data = await cohorteService.obtenerCohortes();
+      setCohortes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(err.message || 'Error al conectar con el servicio de cohortes.');
+    } finally {
+      setCargando(false);
     }
-  ]);
+  }, []);
 
-  const [nuevoProg, setNuevoProg] = useState({ nombre: '', desc: '' });
-  const [errorProg, setErrorProg] = useState('');
+  useEffect(() => {
+    cargarCohortes();
+  }, [cargarCohortes]);
 
-  // Estados de Edicion de Programa
-  const [editProgId, setEditProgId] = useState(null);
-  const [editProgData, setEditProgData] = useState({ nombre: '', desc: '' });
+  // Limpiar mensaje de feedback tras 4 segundos
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => setFeedback(null), 4000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
 
-  // Estados de Edicion de Cohorte
-  const [editCohorteId, setEditCohorteId] = useState(null);
-  const [editCohorteData, setEditCohorteData] = useState({ id: '', nombre: '', abierta: true });
+  // Agrupación dinámica de cohortes por carrera / programa académico
+  const carrerasAgrupadas = useMemo(() => {
+    const mapa = new Map();
+    cohortes.forEach((cohorte) => {
+      const carreraKey = cohorte.carrera || cohorte.nombre || 'Posgrados UTN FRLP';
+      if (!mapa.has(carreraKey)) {
+        mapa.set(carreraKey, {
+          nombre: carreraKey,
+          tipo: cohorte.tipo_carrera || 'Posgrado',
+          codigo: cohorte.codigo_carrera || '',
+          cohortes: [],
+        });
+      }
+      mapa.get(carreraKey).cohortes.push(cohorte);
+    });
+    return Array.from(mapa.values());
+  }, [cohortes]);
 
-  const [nuevasCohortes, setNuevasCohortes] = useState({});
-  const [erroresCohorte, setErroresCohorte] = useState({});
+  // Alternar apertura / cierre del período de inscripción (PATCH /api/v1/cohortes/{id}/estado)
+  const handleToggleEstado = async (cohorte) => {
+    const nuevoEstado = !cohorte.abierta;
+    const accionTexto = nuevoEstado ? 'ABRIR' : 'CERRAR';
 
-  // NUEVO: Estados aislados para la confirmación en línea (Solo afecta a Lautaro)
-  const [confirmDeleteProg, setConfirmDeleteProg] = useState(null);
-  const [confirmDeleteCohorte, setConfirmDeleteCohorte] = useState(null);
-
-  const handleAgregarPrograma = () => {
-    if (!nuevoProg.nombre) {
-      setErrorProg('El nombre del programa es obligatorio');
+    if (!window.confirm(`¿Está seguro de ${accionTexto} el período de inscripción para "${cohorte.nombre}"?`)) {
       return;
     }
-    setProgramas([...programas, { id: Date.now(), nombre: nuevoProg.nombre, desc: nuevoProg.desc, cohortes: [] }]);
-    setNuevoProg({ nombre: '', desc: '' });
-    setErrorProg('');
+
+    try {
+      setProcesandoId(cohorte.id);
+      const cohorteActualizada = await cohorteService.actualizarEstado(cohorte.id, nuevoEstado);
+      setCohortes((prev) =>
+        prev.map((c) => (c.id === cohorte.id ? { ...c, abierta: cohorteActualizada.abierta } : c))
+      );
+      setFeedback({
+        tipo: 'success',
+        mensaje: `Período de inscripción para "${cohorte.nombre}" ahora está ${cohorteActualizada.abierta ? 'ABIERTO' : 'CERRADO'}.`,
+      });
+    } catch (err) {
+      alert(`Error al actualizar estado de la cohorte: ${err.message}`);
+    } finally {
+      setProcesandoId(null);
+    }
   };
 
-  const handleBorrarPrograma = (id) => {
-    setProgramas(programas.filter((p) => p.id !== id));
-    setConfirmDeleteProg(null);
-  };
+  // Crear nueva cohorte oficial en FastAPI (POST /api/v1/cohortes)
+  const handleCrearCohorte = async (e) => {
+    e.preventDefault();
+    setErrorCreacion('');
 
-  const guardarEdicionProg = (id) => {
-    setProgramas(programas.map((p) => (p.id === id ? { ...p, nombre: editProgData.nombre, desc: editProgData.desc } : p)));
-    setEditProgId(null);
-  };
-
-  const handleAddCohorte = (progId) => {
-    const nc = nuevasCohortes[progId];
-    if (!nc || !nc.nombre) {
-      setErroresCohorte({ ...erroresCohorte, [progId]: 'El nombre de la cohorte es obligatorio' });
+    const carreraLimpia = nuevaCohorte.carrera.trim();
+    if (!carreraLimpia) {
+      setErrorCreacion('El nombre de la carrera o posgrado es obligatorio.');
       return;
     }
-    setProgramas(programas.map((p) => {
-      if (p.id === progId) {
-        return {
-          ...p,
-          cohortes: [...p.cohortes, { id: nc.id || `c-${Date.now()}`, nombre: nc.nombre, abierta: nc.abierta !== false }]
-        };
-      }
-      return p;
-    }));
-    setNuevasCohortes({ ...nuevasCohortes, [progId]: { id: '', nombre: '', abierta: true } });
-    setErroresCohorte({ ...erroresCohorte, [progId]: '' });
-  };
 
-  const handleBorrarCohorte = (progId, cohorteId) => {
-    setProgramas(programas.map((p) => {
-      if (p.id === progId) {
-        return { ...p, cohortes: p.cohortes.filter((c) => c.id !== cohorteId) };
-      }
-      return p;
-    }));
-    setConfirmDeleteCohorte(null);
-  };
+    const codigoLimpio = nuevaCohorte.codigo_carrera.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4}$/.test(codigoLimpio)) {
+      setErrorCreacion('El código de carrera debe tener exactamente 4 caracteres alfanuméricos en mayúsculas (ej: MISI, DISO).');
+      return;
+    }
 
-  const iniciarEdicionCohorte = (cohorte) => {
-    setEditCohorteId(cohorte.id);
-    setEditCohorteData({ id: cohorte.id, nombre: cohorte.nombre, abierta: cohorte.abierta });
-  };
+    const anioNum = parseInt(nuevaCohorte.anio, 10);
+    if (!anioNum || anioNum < 2020 || anioNum > 2100) {
+      setErrorCreacion('El año de la cohorte debe ser un año válido (ej: 2026).');
+      return;
+    }
 
-  const guardarEdicionCohorte = (progId, oldCohorteId) => {
-    setProgramas(programas.map((p) => {
-      if (p.id === progId) {
-        return {
-          ...p,
-          cohortes: p.cohortes.map((c) => (c.id === oldCohorteId ? { ...c, id: editCohorteData.id, nombre: editCohorteData.nombre, abierta: editCohorteData.abierta } : c))
-        };
-      }
-      return p;
-    }));
-    setEditCohorteId(null);
-  };
+    const numeroNum = parseInt(nuevaCohorte.numero_cohorte, 10);
+    if (!numeroNum || numeroNum < 1 || numeroNum > 99) {
+      setErrorCreacion('El número de cohorte debe ser un valor ordinal entre 1 y 99.');
+      return;
+    }
 
-  const toggleCohorteAbierta = (progId, cohorteId) => {
-    setProgramas(programas.map((p) => {
-      if (p.id === progId) {
-        return {
-          ...p,
-          cohortes: p.cohortes.map((c) => (c.id === cohorteId ? { ...c, abierta: !c.abierta } : c))
-        };
-      }
-      return p;
-    }));
+    const nombreLimpio = nuevaCohorte.nombre.trim() || `Cohorte ${anioNum} - ${carreraLimpia}`;
+
+    const payload = {
+      anio: anioNum,
+      nombre: nombreLimpio,
+      carrera: carreraLimpia,
+      codigo_carrera: codigoLimpio,
+      numero_cohorte: numeroNum,
+      tipo_carrera: nuevaCohorte.tipo_carrera,
+      abierta: Boolean(nuevaCohorte.abierta),
+      fecha_inicio: nuevaCohorte.fecha_inicio ? nuevaCohorte.fecha_inicio : null,
+    };
+
+    try {
+      setCreando(true);
+      const cohorteCreada = await cohorteService.crearCohorte(payload);
+      setCohortes((prev) => [cohorteCreada, ...prev]);
+      setFeedback({
+        tipo: 'success',
+        mensaje: `Cohorte "${cohorteCreada.nombre}" registrada exitosamente con código ${cohorteCreada.codigo_carrera}-${String(cohorteCreada.numero_cohorte).padStart(2, '0')}.`,
+      });
+      // Reset del formulario
+      setNuevaCohorte({
+        anio: new Date().getFullYear(),
+        nombre: '',
+        carrera: '',
+        codigo_carrera: '',
+        numero_cohorte: 1,
+        tipo_carrera: 'Maestria',
+        abierta: true,
+        fecha_inicio: '',
+      });
+      setMostrarFormulario(false);
+    } catch (err) {
+      setErrorCreacion(err.message || 'Error al registrar la nueva cohorte en FastAPI.');
+    } finally {
+      setCreando(false);
+    }
   };
 
   return (
-    <div style={{ maxWidth: '1000px' }}>
-      <h3 style={{ margin: '0 0 20px 0', fontSize: '1.5rem' }}>Gestión de Posgrados y Cohortes</h3>
-
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ccc', marginBottom: '30px' }}>
-        <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Agregar Posgrado</p>
-        <div style={{ display: 'flex', gap: '15px' }}>
-          <div style={{ flex: 1 }}>
-            <input type="text" placeholder="Nombre" className={`form-control ${errorProg ? 'error' : ''}`} value={nuevoProg.nombre} onChange={(e) => { setNuevoProg({ ...nuevoProg, nombre: e.target.value }); setErrorProg(''); }} />
-            {errorProg && <div className="error-text">{errorProg}</div>}
-          </div>
-          <input type="text" placeholder="Descripción" className="form-control" style={{ flex: 2 }} value={nuevoProg.desc} onChange={(e) => setNuevoProg({ ...nuevoProg, desc: e.target.value })} />
-          <button className="btn-primary" style={{ width: 'auto', height: 'fit-content' }} onClick={handleAgregarPrograma}>AGREGAR PROGRAMA</button>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '40px' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.6rem', color: '#002B49' }}>Gestión de Posgrados y Cohortes</h2>
+          <p style={{ margin: '4px 0 0', color: '#6c757d', fontSize: '14px' }}>
+            Control de carreras, períodos de preinscripción y cohortes académicas activas.
+          </p>
         </div>
-      </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setMostrarFormulario((prev) => !prev)}
+            style={{ padding: '8px 16px', fontSize: '13px' }}
+          >
+            {mostrarFormulario ? '✕ Cancelar' : '➕ Registrar Nueva Cohorte'}
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={cargarCohortes}
+            disabled={cargando}
+            style={{ padding: '8px 14px', fontSize: '13px' }}
+          >
+            {cargando ? 'Actualizando...' : '🔄 Actualizar'}
+          </button>
+        </div>
+      </header>
 
-      {programas.map((prog) => (
-        <div key={prog.id} className="posgrado-card">
-          <div className="posgrado-header">
-            {editProgId === prog.id ? (
-              <div style={{ display: 'flex', gap: '10px', width: '100%', alignItems: 'center' }}>
-                <input className="form-control" value={editProgData.nombre} onChange={(e) => setEditProgData({ ...editProgData, nombre: e.target.value })} />
-                <input className="form-control" value={editProgData.desc} onChange={(e) => setEditProgData({ ...editProgData, desc: e.target.value })} />
-                <button className="btn-primary" style={{ padding: '8px 15px' }} onClick={() => guardarEdicionProg(prog.id)}>Guardar</button>
-                <button className="btn-secondary" style={{ padding: '8px 15px' }} onClick={() => setEditProgId(null)}>Cancelar</button>
+      {/* Formulario de Creación de Cohortes Oficiales */}
+      {mostrarFormulario && (
+        <div
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            border: '1px solid #ced4da',
+            padding: '24px',
+            marginBottom: '30px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          }}
+        >
+          <h3 style={{ margin: '0 0 6px 0', fontSize: '1.2rem', color: '#002B49' }}>
+            Registrar Nueva Cohorte Oficial
+          </h3>
+          <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#6c757d' }}>
+            Los campos marcados con asterisco (*) son obligatorios según el modelo de datos de la UTN.
+          </p>
+
+          {errorCreacion && (
+            <div
+              role="alert"
+              style={{
+                backgroundColor: '#f8d7da',
+                color: '#842029',
+                border: '1px solid #f5c2c7',
+                borderRadius: '4px',
+                padding: '10px 14px',
+                fontSize: '13px',
+                marginBottom: '16px',
+              }}
+            >
+              ⚠️ {errorCreacion}
+            </div>
+          )}
+
+          <form onSubmit={handleCrearCohorte}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Carrera / Programa <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="form-control"
+                  placeholder="Ej: Maestría en Ingeniería en Sistemas"
+                  value={nuevaCohorte.carrera}
+                  onChange={(e) => {
+                    const carrera = e.target.value;
+                    setNuevaCohorte((prev) => ({
+                      ...prev,
+                      carrera,
+                      nombre: prev.nombre || (carrera ? `Cohorte ${prev.anio} - ${carrera}` : ''),
+                    }));
+                    setErrorCreacion('');
+                  }}
+                  disabled={creando}
+                />
               </div>
-            ) : (
-              <>
-                <div>
-                  <h3>{prog.nombre}</h3>
-                  <p style={{ color: '#666', fontSize: '14px', marginTop: '5px' }}>{prog.desc}</p>
-                </div>
-                <div className="posgrado-actions">
-                  {confirmDeleteProg === prog.id ? (
-                    <div className="confirm-delete-box">
-                      <span style={{ color: '#dc3545', fontWeight: 'bold' }}>¿Desea eliminarlo?</span>
-                      <button className="btn-danger-sm" onClick={() => handleBorrarPrograma(prog.id)}>Aceptar</button>
-                      <button className="btn-cancel-sm" onClick={() => setConfirmDeleteProg(null)}>Cancelar</button>
-                    </div>
-                  ) : (
-                    <>
-                      <span title="Editar Programa" onClick={() => { setEditProgId(prog.id); setEditProgData({ nombre: prog.nombre, desc: prog.desc }); }}>✏️ EDITAR</span>
-                      <span title="Eliminar Programa" onClick={() => setConfirmDeleteProg(prog.id)}>🗑️ ELIMINAR</span>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
 
-          <table style={{ width: '100%', marginBottom: '10px', fontSize: '14px' }}>
-            <thead style={{ color: '#666' }}>
-              <tr><th style={{ padding: '5px 0' }}>Cohortes</th><th>ID</th><th>Abierta</th><th style={{ textAlign: 'right' }}>Acciones</th></tr>
-            </thead>
-            <tbody>
-              {prog.cohortes.map((c, i) => (
-                editCohorteId === c.id ? (
-                  <tr key={i} style={{ borderBottom: '1px solid #eee', background: '#f0f8ff' }}>
-                    <td style={{ padding: '5px 0' }}><input className="form-control" style={{ padding: '5px' }} value={editCohorteData.nombre} onChange={(e) => setEditCohorteData({ ...editCohorteData, nombre: e.target.value })} /></td>
-                    <td><input className="form-control" style={{ padding: '5px', width: '100px' }} value={editCohorteData.id} onChange={(e) => setEditCohorteData({ ...editCohorteData, id: e.target.value })} /></td>
-                    <td><input type="checkbox" checked={editCohorteData.abierta} onChange={(e) => setEditCohorteData({ ...editCohorteData, abierta: e.target.checked })} /></td>
-                    <td style={{ textAlign: 'right' }}>
-                      <span style={{ color: '#28a745', fontWeight: 'bold', cursor: 'pointer', marginRight: '15px' }} onClick={() => guardarEdicionCohorte(prog.id, c.id)}>GUARDAR</span>
-                      <span style={{ color: '#dc3545', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setEditCohorteId(null)}>CANCELAR</span>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={i} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '10px 0' }}>{c.nombre}</td>
-                    <td>{c.id}</td>
-                    <td><input type="checkbox" checked={c.abierta} onChange={() => toggleCohorteAbierta(prog.id, c.id)} /></td>
-                    <td style={{ textAlign: 'right' }}>
-                      {confirmDeleteCohorte === c.id ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                          <span style={{ color: '#dc3545', fontWeight: 'bold' }}>¿Eliminar?</span>
-                          <button className="btn-danger-sm" onClick={() => handleBorrarCohorte(prog.id, c.id)}>Aceptar</button>
-                          <button className="btn-cancel-sm" onClick={() => setConfirmDeleteCohorte(null)}>Cancelar</button>
-                        </div>
-                      ) : (
-                        <>
-                          <span style={{ color: '#00539C', fontWeight: 'bold', cursor: 'pointer', marginRight: '15px' }} onClick={() => iniciarEdicionCohorte(c)}>✏️ EDITAR</span>
-                          <span style={{ cursor: 'pointer', color: '#666' }} onClick={() => setConfirmDeleteCohorte(c.id)}>🗑️ ELIMINAR</span>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                )
-              ))}
-            </tbody>
-          </table>
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Tipo de Carrera <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <select
+                  className="form-control"
+                  style={{ background: '#fff' }}
+                  value={nuevaCohorte.tipo_carrera}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, tipo_carrera: e.target.value }))}
+                  disabled={creando}
+                >
+                  <option value="Maestria">Maestría</option>
+                  <option value="Especializacion">Especialización</option>
+                  <option value="Doctorado">Doctorado</option>
+                </select>
+              </div>
 
-          <div className="add-cohorte-row" style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              <input type="text" placeholder="ID (opcional)" className="form-control"
-                value={nuevasCohortes[prog.id]?.id || ''}
-                onChange={(e) => setNuevasCohortes({ ...nuevasCohortes, [prog.id]: { ...nuevasCohortes[prog.id], id: e.target.value } })} />
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Código de Carrera (4 letras) <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={4}
+                  className="form-control"
+                  placeholder="MISI"
+                  style={{ textTransform: 'uppercase', fontFamily: 'monospace', fontWeight: 'bold' }}
+                  value={nuevaCohorte.codigo_carrera}
+                  onChange={(e) => {
+                    setNuevaCohorte((prev) => ({ ...prev, codigo_carrera: e.target.value.toUpperCase() }));
+                    setErrorCreacion('');
+                  }}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Año <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={2020}
+                  max={2100}
+                  className="form-control"
+                  value={nuevaCohorte.anio}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, anio: parseInt(e.target.value, 10) || '' }))}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Número de Cohorte (Ordinal) <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  max={99}
+                  className="form-control"
+                  value={nuevaCohorte.numero_cohorte}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, numero_cohorte: parseInt(e.target.value, 10) || 1 }))}
+                  disabled={creando}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Fecha de Inicio de Cursada
+                </label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={nuevaCohorte.fecha_inicio}
+                  onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, fecha_inicio: e.target.value }))}
+                  disabled={creando}
+                />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>
+                  Nombre Descriptivo de la Cohorte <span style={{ color: '#dc3545' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="form-control"
+                  placeholder="Ej: Cohorte 2026 - Maestría en Ingeniería en Sistemas"
+                  value={nuevaCohorte.nombre}
+                  onChange={(e) => {
+                    setNuevaCohorte((prev) => ({ ...prev, nombre: e.target.value }));
+                    setErrorCreacion('');
+                  }}
+                  disabled={creando}
+                />
+              </div>
             </div>
-            <div style={{ flex: 2 }}>
-              <input type="text" placeholder="Nombre de la nueva cohorte" className={`form-control ${erroresCohorte[prog.id] ? 'error' : ''}`}
-                value={nuevasCohortes[prog.id]?.nombre || ''}
-                onChange={(e) => {
-                  setNuevasCohortes({ ...nuevasCohortes, [prog.id]: { ...nuevasCohortes[prog.id], nombre: e.target.value } });
-                  setErroresCohorte({ ...erroresCohorte, [prog.id]: '' });
-                }} />
-              {erroresCohorte[prog.id] && <div className="error-text">{erroresCohorte[prog.id]}</div>}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+              <input
+                type="checkbox"
+                id="check-abierta"
+                checked={nuevaCohorte.abierta}
+                onChange={(e) => setNuevaCohorte((prev) => ({ ...prev, abierta: e.target.checked }))}
+                disabled={creando}
+                style={{ width: '16px', height: '16px' }}
+              />
+              <label htmlFor="check-abierta" style={{ fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+                Abrir período de preinscripción inmediatamente al crear
+              </label>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold', color: '#666', marginTop: '10px' }}>
-              <input type="checkbox"
-                checked={nuevasCohortes[prog.id]?.abierta !== false}
-                onChange={(e) => setNuevasCohortes({ ...nuevasCohortes, [prog.id]: { ...nuevasCohortes[prog.id], abierta: e.target.checked } })} /> Abierta
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setMostrarFormulario(false)}
+                disabled={creando}
+                style={{ padding: '8px 16px', fontSize: '13px' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={creando}
+                style={{ padding: '8px 20px', fontSize: '13px' }}
+              >
+                {creando ? 'Registrando en FastAPI...' : 'Guardar y Publicar Cohorte'}
+              </button>
             </div>
-            <button style={{ background: 'none', border: 'none', color: '#00539C', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px' }}
-              onClick={() => handleAddCohorte(prog.id)}>
-              AGREGAR COHORTE
-            </button>
-          </div>
+          </form>
         </div>
-      ))}
+      )}
+
+      {/* Banner de Feedback de Éxito */}
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            backgroundColor: feedback.tipo === 'success' ? '#d1e7dd' : '#cff4fc',
+            color: feedback.tipo === 'success' ? '#0f5132' : '#055160',
+            border: `1px solid ${feedback.tipo === 'success' ? '#badbcc' : '#b6effb'}`,
+            borderRadius: '6px',
+            padding: '12px 16px',
+            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            fontSize: '14px',
+            fontWeight: '500',
+          }}
+        >
+          <span>✓ {feedback.mensaje}</span>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: '16px' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Banner de Error con Reintento */}
+      {error && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: '#f8d7da',
+            color: '#842029',
+            border: '1px solid #f5c2c7',
+            borderRadius: '6px',
+            padding: '14px 18px',
+            marginBottom: '25px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <strong>Error al comunicar con FastAPI:</strong>
+            <p style={{ margin: '4px 0 0', fontSize: '13px' }}>{error}</p>
+          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ padding: '6px 14px', fontSize: '13px' }}
+            onClick={cargarCohortes}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      {/* Listado dinámico de Posgrados y Cohortes */}
+      {cargando ? (
+        <div style={{ textAlign: 'center', padding: '50px 20px', backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e9ecef' }}>
+          <p style={{ margin: 0, color: '#6c757d', fontSize: '15px' }}>Cargando carreras y cohortes desde el servidor...</p>
+        </div>
+      ) : carrerasAgrupadas.length === 0 ? (
+        <div style={{ backgroundColor: '#fff', padding: '40px 20px', textAlign: 'center', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+          <h4 style={{ margin: '0 0 10px', color: '#495057' }}>No hay cohortes registradas en la base de datos</h4>
+          <p style={{ margin: 0, color: '#6c757d', fontSize: '14px' }}>
+            Puede registrar una nueva cohorte oficial mediante el formulario a continuación.
+          </p>
+        </div>
+      ) : (
+        carrerasAgrupadas.map((carrera) => (
+          <div key={carrera.nombre} className="posgrado-card" style={{ marginBottom: '25px' }}>
+            <div className="posgrado-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#002B49' }}>{carrera.nombre}</h3>
+                <p style={{ color: '#6c757d', fontSize: '13px', margin: '4px 0 0' }}>
+                  Tipo de Carrera: <strong>{carrera.tipo}</strong> {carrera.codigo ? `· Código: ${carrera.codigo}` : ''}
+                </p>
+              </div>
+              <span className="badge" style={{ backgroundColor: '#e9ecef', color: '#495057', fontSize: '12px' }}>
+                {carrera.cohortes.length} {carrera.cohortes.length === 1 ? 'cohorte' : 'cohortes'}
+              </span>
+            </div>
+
+            <div className="table-responsive">
+              <table style={{ width: '100%', marginBottom: '10px', fontSize: '13px', borderCollapse: 'collapse' }}>
+                <thead style={{ color: '#6c757d', borderBottom: '2px solid #dee2e6' }}>
+                  <tr>
+                    <th style={{ padding: '8px 10px', textAlign: 'left' }}>Nombre de Cohorte</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Identificador</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Año</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Inicio</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Inscripción</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'center' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {carrera.cohortes.map((c) => {
+                    const ident = c.codigo_carrera && c.numero_cohorte
+                      ? `${c.codigo_carrera}-${String(c.numero_cohorte).padStart(2, '0')}`
+                      : 'Heredada';
+                    const estaProcesando = procesandoId === c.id;
+
+                    return (
+                      <tr key={c.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '10px', fontWeight: '500' }}>{c.nombre}</td>
+                        <td style={{ padding: '10px', textAlign: 'center', fontFamily: 'monospace', color: '#495057' }}>
+                          {ident}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>{c.anio}</td>
+                        <td style={{ padding: '10px', textAlign: 'center', color: '#6c757d' }}>
+                          {c.fecha_inicio || '-'}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          {c.abierta ? (
+                            <span style={{
+                              backgroundColor: '#d1e7dd',
+                              color: '#0f5132',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                            }}>
+                              Abierta
+                            </span>
+                          ) : (
+                            <span style={{
+                              backgroundColor: '#f8d7da',
+                              color: '#842029',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                            }}>
+                              Cerrada
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleEstado(c)}
+                            disabled={estaProcesando}
+                            style={{
+                              backgroundColor: c.abierta ? '#dc3545' : '#198754',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '5px 12px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                              cursor: estaProcesando ? 'not-allowed' : 'pointer',
+                              opacity: estaProcesando ? 0.6 : 1,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                            title={c.abierta ? 'Cerrar período de preinscripción' : 'Abrir período de preinscripción'}
+                          >
+                            {estaProcesando ? '⏳...' : c.abierta ? '🔒 Cerrar' : '🔓 Abrir'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 }
