@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm, useWatch, type FieldPath } from 'react-hook-form';
 
 type InscripcionValues = {
@@ -36,7 +36,63 @@ type InscripcionResponse = {
     mensaje: string;
 };
 
+type DraftValues = Partial<Omit<InscripcionValues,
+    | 'archivo_preinscripcion'
+    | 'archivo_dni'
+    | 'archivo_titulo'
+    | 'archivo_partida'
+    | 'archivo_cuit'
+    | 'archivo_posgrado'
+    | 'archivo_beca'
+>>;
+
+type InscripcionDraft = {
+    values: DraftValues;
+    pasoActual: number;
+    updatedAt: number;
+};
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const DRAFT_KEY_PREFIX = 'inscripcion-borrador:';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function esInscripcionDraft(value: unknown): value is InscripcionDraft {
+    if (typeof value !== 'object' || value === null || !('values' in value) || typeof value.values !== 'object' || value.values === null) {
+        return false;
+    }
+
+    return (
+        'email' in value.values &&
+        typeof value.values.email === 'string' &&
+        'pasoActual' in value &&
+        typeof value.pasoActual === 'number' &&
+        'updatedAt' in value &&
+        typeof value.updatedAt === 'number'
+    );
+}
+
+function normalizarEmail(email: string): string {
+    return email.trim().toLowerCase();
+}
+
+function leerBorrador(email: string): InscripcionDraft | null {
+    const stored = localStorage.getItem(`${DRAFT_KEY_PREFIX}${encodeURIComponent(email)}`);
+    if (!stored) {
+        return null;
+    }
+
+    const parsed: unknown = JSON.parse(stored);
+    if (!esInscripcionDraft(parsed) || parsed.values.email !== email) {
+        throw new Error('El borrador guardado no tiene un formato válido.');
+    }
+
+    if (Date.now() - parsed.updatedAt > 30 * 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(`${DRAFT_KEY_PREFIX}${encodeURIComponent(email)}`);
+        return null;
+    }
+
+    return parsed;
+}
 
 function getApiError(payload: unknown): string {
     if (typeof payload !== 'object' || payload === null || !('detail' in payload)) {
@@ -64,19 +120,128 @@ function getApiError(payload: unknown): string {
 export default function InscripcionAspirante() {
     const [pasoActual, setPasoActual] = useState(1);
     const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
+    const [errorBorrador, setErrorBorrador] = useState<string | null>(null);
+    const [emailParaBorrador, setEmailParaBorrador] = useState<string | null>(null);
+    const [borradorDisponible, setBorradorDisponible] = useState<InscripcionDraft | null>(null);
     const [inscripcionEnviada, setInscripcionEnviada] = useState<InscripcionResponse | null>(null);
 
     useEffect(() => {
         document.title = "Preinscripción 2026 | Sistema de Posgrado";
     }, []);
 
-    const { control, register, handleSubmit, trigger, formState: { errors, isSubmitting } } = useForm<InscripcionValues>({
-        mode: 'onTouched',
+    const { control, register, handleSubmit, trigger, getValues, reset, subscribe, formState: { errors, isSubmitting } } = useForm<InscripcionValues>({
+        mode: 'onChange',
+        reValidateMode: 'onChange',
         defaultValues: { carreras: [], solicita_beca: false },
         shouldUnregister: true
     });
 
     const valoresFormulario = useWatch({ control });
+    const emailField = register('email', {
+        required: 'El email es obligatorio',
+        pattern: { value: EMAIL_PATTERN, message: 'Ingresá un email válido' },
+    });
+
+    const guardarBorrador = useCallback((email: string, values: Partial<InscripcionValues>, step = pasoActual) => {
+        try {
+            localStorage.setItem(
+                `${DRAFT_KEY_PREFIX}${encodeURIComponent(email)}`,
+                JSON.stringify({
+                    values: {
+                        carreras: values.carreras,
+                        dni: values.dni,
+                        nombre: values.nombre,
+                        apellido: values.apellido,
+                        nacionalidad: values.nacionalidad,
+                        email: values.email,
+                        email_alternativo: values.email_alternativo,
+                        telefono_movil: values.telefono_movil,
+                        telefono_fijo: values.telefono_fijo,
+                        domicilio: values.domicilio,
+                        ciudad: values.ciudad,
+                        provincia: values.provincia,
+                        pais: values.pais,
+                        titulo_grado: values.titulo_grado,
+                        titulo_posgrado: values.titulo_posgrado,
+                        como_conocio: values.como_conocio,
+                        motivacion: values.motivacion,
+                        solicita_beca: values.solicita_beca,
+                        tipo_beca: values.tipo_beca,
+                    } satisfies DraftValues,
+                    pasoActual: step,
+                    updatedAt: Date.now(),
+                } satisfies InscripcionDraft),
+            );
+            setErrorBorrador(null);
+        } catch {
+            setErrorBorrador('No se pudo guardar el borrador en este dispositivo.');
+        }
+    }, [pasoActual]);
+
+    useEffect(() => {
+        if (!emailParaBorrador || borradorDisponible || inscripcionEnviada) {
+            return;
+        }
+
+        return subscribe({
+            formState: { values: true },
+            callback: ({ values }) => {
+                if (normalizarEmail(values.email ?? '') === emailParaBorrador) {
+                    guardarBorrador(emailParaBorrador, values);
+                }
+            },
+        });
+    }, [borradorDisponible, emailParaBorrador, guardarBorrador, inscripcionEnviada, subscribe]);
+
+    const buscarBorrador = (emailIngresado: string) => {
+        const email = normalizarEmail(emailIngresado);
+        if (!EMAIL_PATTERN.test(email)) {
+            return;
+        }
+
+        try {
+            const borrador = leerBorrador(email);
+            setBorradorDisponible(borrador);
+            setEmailParaBorrador(borrador ? null : email);
+            setErrorBorrador(null);
+            if (!borrador) {
+                guardarBorrador(email, getValues());
+            }
+        } catch {
+            setBorradorDisponible(null);
+            setEmailParaBorrador(null);
+            setErrorBorrador('No se pudo leer el borrador guardado. Podés continuar con una inscripción nueva.');
+        }
+    };
+
+    const recuperarBorrador = () => {
+        if (!borradorDisponible) {
+            return;
+        }
+        reset({
+            carreras: [],
+            solicita_beca: false,
+            ...borradorDisponible.values,
+        });
+        setPasoActual(Math.max(1, Math.min(3, borradorDisponible.pasoActual)));
+        setEmailParaBorrador(normalizarEmail(borradorDisponible.values.email ?? ''));
+        setBorradorDisponible(null);
+        setErrorBorrador(null);
+    };
+
+    const descartarBorrador = () => {
+        const email = normalizarEmail(getValues('email') ?? '');
+        try {
+            localStorage.removeItem(`${DRAFT_KEY_PREFIX}${encodeURIComponent(email)}`);
+            setEmailParaBorrador(email);
+            setBorradorDisponible(null);
+            setErrorBorrador(null);
+            guardarBorrador(email, getValues());
+        } catch {
+            setErrorBorrador('No se pudo eliminar el borrador guardado.');
+        }
+    };
+
     const archivoDni = valoresFormulario.archivo_dni;
     const archivoTitulo = valoresFormulario.archivo_titulo;
     const archivoPartida = valoresFormulario.archivo_partida;
@@ -121,11 +286,21 @@ export default function InscripcionAspirante() {
 
         const esValido = await trigger(camposAValidar);
         if (esValido) {
-            setPasoActual(prev => Math.min(prev + 1, 3));
+            const siguientePaso = Math.min(pasoActual + 1, 3);
+            if (emailParaBorrador) {
+                guardarBorrador(emailParaBorrador, getValues(), siguientePaso);
+            }
+            setPasoActual(siguientePaso);
         }
     };
 
-    const retrocederPaso = () => setPasoActual(prev => Math.max(prev - 1, 1));
+    const retrocederPaso = () => {
+        const pasoPrevio = Math.max(pasoActual - 1, 1);
+        if (emailParaBorrador) {
+            guardarBorrador(emailParaBorrador, getValues(), pasoPrevio);
+        }
+        setPasoActual(pasoPrevio);
+    };
 
     const onSubmit = async (data: InscripcionValues) => {
         setErrorEnvio(null);
@@ -189,6 +364,13 @@ export default function InscripcionAspirante() {
                 setErrorEnvio('El servidor respondió con un formato inesperado. Contactá a Posgrado.');
                 return;
             }
+            try {
+                localStorage.removeItem(`${DRAFT_KEY_PREFIX}${encodeURIComponent(normalizarEmail(data.email))}`);
+            } catch {
+                setErrorBorrador('La inscripción se envió, pero no se pudo borrar el borrador de este dispositivo.');
+            }
+            setBorradorDisponible(null);
+            setEmailParaBorrador(null);
             setInscripcionEnviada({
                 codigo_seguimiento: payload.codigo_seguimiento,
                 estado: payload.estado,
@@ -235,6 +417,27 @@ export default function InscripcionAspirante() {
                         <div role="alert" className="mb-5 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
                             {errorEnvio}
                         </div>
+                    )}
+                    {errorBorrador && (
+                        <div role="alert" className="mb-5 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                            {errorBorrador}
+                        </div>
+                    )}
+                    {borradorDisponible && (
+                        <section className="mb-5 rounded border border-blue-300 bg-blue-50 p-4" aria-live="polite">
+                            <p className="text-sm">
+                                Encontramos un borrador guardado para <strong>{borradorDisponible.values.email}</strong>.
+                                ¿Querés recuperar tus datos?
+                            </p>
+                            <div className="mt-3 flex gap-3">
+                                <button type="button" onClick={recuperarBorrador} className="rounded bg-slate-800 px-4 py-2 text-sm font-semibold text-white">
+                                    Recuperar borrador
+                                </button>
+                                <button type="button" onClick={descartarBorrador} className="rounded border border-slate-400 px-4 py-2 text-sm font-semibold">
+                                    Empezar de nuevo
+                                </button>
+                            </div>
+                        </section>
                     )}
                     <form onSubmit={handleSubmit(onSubmit)} onKeyDown={handleKeyDown} noValidate className="space-y-5">
 
@@ -319,7 +522,11 @@ export default function InscripcionAspirante() {
                                 <input
                                     id="email"
                                     type="email"
-                                    {...register('email', { required: 'El email es obligatorio' })}
+                                    {...emailField}
+                                    onBlur={(event) => {
+                                        emailField.onBlur(event);
+                                        buscarBorrador(event.currentTarget.value);
+                                    }}
                                     className="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-slate-500 outline-none"
                                 />
                                 {errors.email && <span className="text-red-500 text-xs">{errors.email.message as string}</span>}
@@ -329,7 +536,10 @@ export default function InscripcionAspirante() {
                                 <input
                                     id="email_alternativo"
                                     type="email"
-                                    {...register('email_alternativo', { required: 'El email alternativo es obligatorio' })}
+                                    {...register('email_alternativo', {
+                                        required: 'El email alternativo es obligatorio',
+                                        pattern: { value: EMAIL_PATTERN, message: 'Ingresá un email válido' },
+                                    })}
                                     className="w-full border border-slate-300 rounded p-2 focus:ring-2 focus:ring-slate-500 outline-none"
                                 />
                                 {errors.email_alternativo && <span className="text-red-500 text-xs">{errors.email_alternativo.message as string}</span>}
@@ -641,6 +851,10 @@ export default function InscripcionAspirante() {
                             </button>
                         )}
                     </div>
+                    <p className="text-xs text-slate-500">
+                        Tus datos se guardan en este dispositivo para recuperar el borrador con el mismo email.
+                        Los documentos adjuntos deberán cargarse nuevamente. Evitá guardar el borrador en equipos compartidos.
+                    </p>
                     </form>
                     </>
                 )}

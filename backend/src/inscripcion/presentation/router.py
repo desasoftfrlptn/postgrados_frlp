@@ -1,11 +1,24 @@
 from http import HTTPStatus
 import json
 from json import JSONDecodeError
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session, load_only, selectinload
 
+from src.authentication.infrastructure.models import User
 from src.core.config import settings
 from src.db.session import get_db
 from src.inscripcion.application.inscribir_aspirante import (
@@ -14,9 +27,84 @@ from src.inscripcion.application.inscribir_aspirante import (
     InscripcionNoDisponible,
     inscribir_aspirante,
 )
-from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
+from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
+from src.inscripcion.infrastructure.models import DocumentoInscripcion, Legajo
+from src.inscripcion.presentation.schemas import (
+    Carrera,
+    DocumentoBecaResumen,
+    InscripcionCreate,
+    InscripcionResponse,
+    LegajoCoordinacionResponse,
+)
+from src.shared.autorizacion.permisos import requerir_roles
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
+legajos_router = APIRouter(prefix="/api/v1/legajos", tags=["legajos"])
+
+
+@legajos_router.get("", response_model=list[LegajoCoordinacionResponse])
+def listar_legajos(
+    estado: str | None = Query(default=None),
+    cohorte_id: UUID | None = Query(default=None),
+    carrera: Carrera | None = Query(default=None),
+    tiene_beca: bool | None = Query(default=None),
+    session: Session = Depends(get_db),
+    _usuario: User = Depends(requerir_roles("COORDINADOR")),
+) -> list[LegajoCoordinacionResponse]:
+    consulta = select(Legajo).options(
+        load_only(
+            Legajo.id,
+            Legajo.numero_legajo,
+            Legajo.apellido,
+            Legajo.nombre,
+            Legajo.dni,
+            Legajo.estado,
+            Legajo.carreras,
+            Legajo.solicita_beca,
+            Legajo.tipo_beca,
+        ),
+        selectinload(
+            Legajo.documentos.and_(DocumentoInscripcion.tipo == "FORM_BECA")
+        ).load_only(DocumentoInscripcion.tipo),
+    )
+    if estado is not None:
+        consulta = consulta.where(Legajo.estado == estado)
+    if cohorte_id is not None:
+        consulta = consulta.where(Legajo.cohorte_id == cohorte_id)
+    if carrera is not None:
+        consulta = consulta.where(
+            or_(
+                Legajo.carreras[0].as_string() == carrera,
+                Legajo.carreras[1].as_string() == carrera,
+            )
+        )
+    if tiene_beca is not None:
+        consulta = consulta.where(Legajo.solicita_beca.is_(tiene_beca))
+
+    legajos = session.scalars(
+        consulta
+        .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
+    ).all()
+
+    return [
+        LegajoCoordinacionResponse(
+            id=legajo.id,
+            numero_legajo=legajo.numero_legajo,
+            apellido=legajo.apellido,
+            nombre=legajo.nombre,
+            dni=legajo.dni,
+            estado=legajo.estado,
+            carreras=legajo.carreras,
+            solicita_beca=legajo.solicita_beca,
+            tipo_beca=legajo.tipo_beca,
+            documento_beca=(
+                DocumentoBecaResumen(tipo="FORM_BECA")
+                if any(documento.tipo == "FORM_BECA" for documento in legajo.documentos)
+                else None
+            ),
+        )
+        for legajo in legajos
+    ]
 
 TIPOS_DOCUMENTO = {
     "archivo_preinscripcion": ("FORM_INSCRIPCION", True),
@@ -64,6 +152,7 @@ async def _validar_documento(
 
 @router.post("", response_model=InscripcionResponse, status_code=status.HTTP_201_CREATED)
 async def crear_inscripcion(
+    background_tasks: BackgroundTasks,
     carreras: str = Form(...),
     dni: str = Form(...),
     nombre: str = Form(...),
@@ -171,8 +260,15 @@ async def crear_inscripcion(
             detail=messages[error.field],
         ) from error
 
+    background_tasks.add_task(
+        enviar_confirmacion_inscripcion,
+        str(legajo.email),
+        legajo.nombre,
+        str(legajo.id),
+    )
+
     return InscripcionResponse(
         codigo_seguimiento=str(legajo.id),
         estado=legajo.estado,
-        mensaje="La inscripción fue recibida correctamente",
+        mensaje="La inscripción fue recibida correctamente. Enviamos una confirmación a tu email",
     )

@@ -1,4 +1,5 @@
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
@@ -81,3 +82,20 @@ class InscripcionResponse(BaseModel):
     codigo_seguimiento: str
     estado: str
     mensaje: str
+
+
+class DocumentoBecaResumen(BaseModel):
+    tipo: Literal["FORM_BECA"]
+
+
+class LegajoCoordinacionResponse(BaseModel):
+    id: UUID
+    numero_legajo: str | None
+    apellido: str
+    nombre: str
+    dni: str
+    estado: str
+    carreras: list[Carrera]
+    solicita_beca: bool
+    tipo_beca: TipoBeca | None
+    documento_beca: DocumentoBecaResumen | None

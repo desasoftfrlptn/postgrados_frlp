@@ -3,7 +3,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import CoordinadorLayout from './layouts/CoordinadorLayout';
+import RequireRole from './auth/RequireRole';
 import InscripcionAspirante from './pages/InscripcionAspirante';
+import Login from './pages/Login';
+import AuthLanding from './pages/AuthLanding';
 import PanelConduccion from './pages/PanelConduccion';
 import GestionDocente from './pages/GestionDocente';
 import GestionLegajos from './pages/GestionLegajos';
@@ -18,14 +21,18 @@ function App() {
           {/* Vistas Públicas */}
           <Route path="/" element={<Navigate to="/inscripcion" replace />} />
           <Route path="/inscripcion" element={<InscripcionAspirante />} />
-          {/* Vistas Privadas (Coordinador) anidadas en su propio Layout */}
-          <Route path="/coordinador" element={<CoordinadorLayout />}>
-            <Route index element={<Navigate to="legajos" replace />} />
-            <Route path="legajos" element={<GestionLegajos />} />
-            <Route path="panel" element={<PanelConduccion />} />
-            <Route path="gestion-docente" element={<GestionDocente />} />
+          <Route path="/login" element={<Login />} />
+          <Route element={<RequireRole roles={['COORDINADOR', 'CPR', 'ADMIN']} />}>
+            <Route path="/acceso" element={<AuthLanding />} />
           </Route>
-
+          <Route element={<RequireRole roles={['COORDINADOR']} />}>
+            <Route path="/coordinador" element={<CoordinadorLayout />}>
+              <Route index element={<Navigate to="legajos" replace />} />
+              <Route path="legajos" element={<GestionLegajos />} />
+              <Route path="panel" element={<PanelConduccion />} />
+              <Route path="gestion-docente" element={<GestionDocente />} />
+            </Route>
+          </Route>
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

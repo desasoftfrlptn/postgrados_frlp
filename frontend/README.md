@@ -1,5 +1,12 @@
 # React + TypeScript + Vite
 
+## Cliente API autenticado
+
+`src/shared/api/cliente.ts` exporta `crearClienteApi` para llamadas autenticadas
+desde módulos. El cliente agrega el bearer token, reintenta una respuesta `401`
+después de renovar la sesión y llama `alNoAutorizado` si la renovación falla.
+Cada módulo mantiene sus propias rutas y lógica de negocio.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
