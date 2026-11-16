@@ -9,7 +9,7 @@ import { VistaEstadisticas } from './components/VistaEstadisticas.jsx';
 import { authService } from './services/authService';
 
 // --- LOGIN ---
-function Login({ onLogin }) {
+function Login({ onLogin, onIrAPreinscripcion }) {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [error, setError] = useState('');
@@ -111,6 +111,20 @@ function Login({ onLogin }) {
         <p style={{marginTop: '20px', fontSize: '12px', color: '#666'}}>
           ¿Olvidó su contraseña? Contacte a soporte de Conducción.
         </p>
+
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e9ecef', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#495057' }}>
+            ¿Querés postularte a una carrera de posgrado?
+          </p>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onIrAPreinscripcion}
+            style={{ width: '100%', padding: '10px 14px', fontSize: '13px', fontWeight: '600' }}
+          >
+            📝 Preinscribite acá como aspirante
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -119,6 +133,7 @@ function Login({ onLogin }) {
 // --- CONTENEDOR PRINCIPAL ---
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => authService.isAuthenticated());
+  const [mostrarPreinscripcionPublica, setMostrarPreinscripcionPublica] = useState(false);
 
   // Control de acceso según RBAC: sólo ADMIN_POSGRADO y SUPERADMIN acceden a conducción
   const usuarioActivo = authService.getUser();
@@ -137,7 +152,18 @@ export default function App() {
   };
 
   if (!isLoggedIn) {
-    return <Login onLogin={() => setIsLoggedIn(true)} />;
+    if (mostrarPreinscripcionPublica) {
+      return <Preinscripcion onVolverAlLogin={() => setMostrarPreinscripcionPublica(false)} />;
+    }
+    return (
+      <Login 
+        onLogin={() => {
+          setIsLoggedIn(true);
+          setMostrarPreinscripcionPublica(false);
+        }} 
+        onIrAPreinscripcion={() => setMostrarPreinscripcionPublica(true)} 
+      />
+    );
   }
 
   // Barra de navegación con control de permisos RBAC
