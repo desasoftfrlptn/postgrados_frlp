@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { inscripcionService } from '../services/inscripcionService';
+import { authService } from '../services/authService';
 
-const Paso1DatosPersonales = ({ formData, handleChange, errores, onNext }) => (
+const Paso1DatosPersonales = ({ formData, handleChange, errores, requiereCuenta, onNext }) => (
   <>
     <div className="form-grid">
       <div className="form-group">
@@ -32,6 +33,20 @@ const Paso1DatosPersonales = ({ formData, handleChange, errores, onNext }) => (
         <label>Domicilio</label>
         <input type="text" name="domicilio" value={formData.domicilio} onChange={handleChange} className="form-control" />
       </div>
+      {requiereCuenta && (
+        <div className="form-group full-width">
+          <label>Crear Contraseña de Acceso (mín. 12 caracteres) <span style={{color: 'red'}}>*</span></label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            placeholder="Mínimo 12 caracteres para acceder a tu legajo"
+            className={`form-control ${errores.password ? 'error' : ''}`}
+          />
+          {errores.password && <span className="error-text">{errores.password}</span>}
+        </div>
+      )}
     </div>
     <button className="btn-primary" style={{marginTop: '20px'}} onClick={onNext}>
       Continuar a Datos Académicos
@@ -341,10 +356,11 @@ export default function Preinscripcion({ onVolverAlLogin }) {
   const [errorCohortes, setErrorCohortes] = useState(null);
 
   const [formData, setFormData] = useState({
-    nombre: '', apellido: '', nacionalidad: '', dni: '', email: '', domicilio: '',
+    nombre: '', apellido: '', nacionalidad: '', dni: '', email: '', domicilio: '', password: '',
     titulo: '', universidad: '', anioEgreso: '',
     cohorte_id: '', posgrado: '', nombreCohorte: '',
   });
+  const requiereCuenta = !authService.isAuthenticated();
 
   const cargarCohortes = useCallback(async () => {
     try {
@@ -439,6 +455,9 @@ export default function Preinscripcion({ onVolverAlLogin }) {
     if(!formData.nombre) nuevosErrores.nombre = 'El nombre es obligatorio';
     if(!formData.dni) nuevosErrores.dni = 'El DNI es obligatorio';
     if(!formData.email) nuevosErrores.email = 'El email es obligatorio';
+    if(requiereCuenta && (!formData.password || formData.password.length < 12)) {
+      nuevosErrores.password = 'La contraseña debe tener al menos 12 caracteres';
+    }
 
     if(Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
@@ -480,6 +499,17 @@ export default function Preinscripcion({ onVolverAlLogin }) {
     setCargando(true);
     setErrorEnvio(null);
     try {
+      // 0. Si el aspirante ingresó desde el acceso público sin sesión, registrarlo y autenticarlo
+      if (!authService.isAuthenticated()) {
+        await authService.registroAspirante({
+          email: formData.email,
+          password: formData.password,
+          nombre: formData.nombre,
+          apellido: formData.apellido,
+        });
+        await authService.login(formData.email, formData.password);
+      }
+
       // 1. Crear el legajo en el backend con los datos del aspirante
       const legajo = await inscripcionService.crearPreinscripcion(formData);
       const legajoId = legajo?.id || legajo?.legajo_id;
@@ -524,7 +554,7 @@ export default function Preinscripcion({ onVolverAlLogin }) {
     setErrorEnvio(null);
     const primera = cohortes[0];
     setFormData({
-      nombre: '', apellido: '', nacionalidad: '', dni: '', email: '', domicilio: '',
+      nombre: '', apellido: '', nacionalidad: '', dni: '', email: '', domicilio: '', password: '',
       titulo: '', universidad: '', anioEgreso: '',
       cohorte_id: primera?.id || '',
       posgrado: primera ? (primera.carrera || primera.nombre) : '',
@@ -578,6 +608,7 @@ export default function Preinscripcion({ onVolverAlLogin }) {
             formData={formData}
             handleChange={handleChange}
             errores={errores}
+            requiereCuenta={requiereCuenta}
             onNext={validatePaso1}
           />
         )}

@@ -165,6 +165,9 @@ export default function App() {
     return (
       <Login 
         onLogin={() => {
+          const userLogueado = authService.getUser();
+          const esConduccion = ['ADMIN_POSGRADO', 'SUPERADMIN'].includes(userLogueado?.rol);
+          setVista(esConduccion ? 'inscripciones' : (userLogueado?.rol === 'DOCENTE' ? 'docente' : 'preinscripcion'));
           setIsLoggedIn(true);
           setMostrarPreinscripcionPublica(false);
         }} 
