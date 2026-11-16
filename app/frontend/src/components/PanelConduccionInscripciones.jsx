@@ -256,6 +256,22 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
   // ---------------------------------------------------------------------------
   // ACCIONES DE COORDINACIÓN (Módulo Core)
   // ---------------------------------------------------------------------------
+  const handleIniciarRevision = async (row) => {
+    const nombre = formatearNombreAlumno(row);
+    try {
+      setProcesandoId(row.id);
+      const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'EN_REVISION');
+      setInscripciones((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'EN_REVISION' } : item))
+      );
+      mostrarToast(`🔍 Legajo de ${nombre} pasado a En Revisión.`, 'info');
+    } catch (err) {
+      alert(`Error al iniciar revisión del legajo: ${err.message}`);
+    } finally {
+      setProcesandoId(null);
+    }
+  };
+
   const handleAprobar = async (row) => {
     const nombre = formatearNombreAlumno(row);
     if (!window.confirm(`¿Está seguro de APROBAR el legajo de ${nombre}? Se emitirá el número de legajo definitivo.`)) {
@@ -632,6 +648,35 @@ export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
                         <span style={{ color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
                           ✕ Rechazado
                         </span>
+                      ) : row.estado === 'OBSERVADO' ? (
+                        <span style={{ color: '#856404', fontSize: '12px', fontWeight: 'bold' }}>
+                          ⚠ Esperando subsanación
+                        </span>
+                      ) : row.estado === 'BORRADOR' ? (
+                        <span style={{ color: '#6c757d', fontSize: '12px', fontStyle: 'italic' }}>
+                          En borrador
+                        </span>
+                      ) : row.estado === 'ENVIADO' ? (
+                        <button
+                          type="button"
+                          style={{
+                            backgroundColor: '#0dcaf0',
+                            color: '#052c65',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '5px 10px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                          onClick={() => handleIniciarRevision(row)}
+                          title="Pasar legajo enviado a estado En Revisión para poder dictaminar"
+                        >
+                          🔍 Iniciar Revisión
+                        </button>
                       ) : (
                         <>
                           <button
