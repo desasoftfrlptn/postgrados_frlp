@@ -53,7 +53,7 @@ export const VistaEstadisticas = () => {
     ).length;
 
     const enRevision = legajos.filter((l) =>
-      ['EN_REVISION', 'PENDIENTE', 'BORRADOR'].includes(l.estado)
+      ['EN_REVISION', 'ENVIADO', 'PENDIENTE', 'BORRADOR'].includes(l.estado)
     ).length;
 
     const observados = legajos.filter((l) => l.estado === 'OBSERVADO').length;
