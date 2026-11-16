@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from src.autenticacion.aplicacion.seguridad import UsuarioAutenticado, requerir_roles
 from src.core.config import settings
 from src.db.session import get_db
+from src.inscripcion.application.estado_documental import calcular_estado_documental
 from src.inscripcion.application.inscribir_aspirante import (
     DocumentoValidado,
     InscripcionDuplicada,
@@ -80,27 +81,21 @@ def descargar_documento(
     )
 
 TIPOS_DOCUMENTO = {
-    "archivo_preinscripcion": ("FORM_INSCRIPCION", True),
-    "archivo_dni": ("DNI", True),
-    "archivo_titulo": ("TITULO", True),
-    "archivo_partida": ("PARTIDA", True),
-    "archivo_cuit": ("CUIT", True),
-    "archivo_posgrado": ("TITULO_POSGRADO", False),
-    "archivo_beca": ("FORM_BECA", False),
+    "archivo_preinscripcion": "FORM_INSCRIPCION",
+    "archivo_dni": "DNI",
+    "archivo_titulo": "TITULO",
+    "archivo_partida": "PARTIDA",
+    "archivo_cuit": "CUIT",
+    "archivo_posgrado": "TITULO_POSGRADO",
+    "archivo_beca": "FORM_BECA",
 }
 
 
 async def _validar_documento(
     archivo: UploadFile | None,
     tipo: str,
-    requerido: bool,
 ) -> DocumentoValidado | None:
     if archivo is None:
-        if requerido:
-            raise HTTPException(
-                status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail=f"Falta adjuntar el documento obligatorio: {tipo}",
-            )
         return None
 
     max_bytes = settings.max_file_size_mb * 1024 * 1024
@@ -125,7 +120,6 @@ async def _validar_documento(
 
 @router.post("", response_model=InscripcionResponse, status_code=status.HTTP_201_CREATED)
 async def crear_inscripcion(
-    background_tasks: BackgroundTasks,
     carreras: str = Form(...),
     dni: str = Form(...),
     nombre: str = Form(...),
@@ -206,12 +200,39 @@ async def crear_inscripcion(
         "archivo_posgrado": archivo_posgrado,
         "archivo_beca": archivo_beca,
     }
+    tipos_cargados = {
+        tipo
+        for campo, tipo in TIPOS_DOCUMENTO.items()
+        if uploads[campo] is not None
+    }
+    estado_documental = calcular_estado_documental(
+        solicita_beca=data.solicita_beca,
+        titulo_posgrado=data.titulo_posgrado,
+        tipos_cargados=tipos_cargados,
+    )
+    campos_por_tipo = {
+        tipo: campo for campo, tipo in TIPOS_DOCUMENTO.items()
+    }
+    documentos_faltantes = [
+        {
+            "loc": ["body", campos_por_tipo[requisito.tipo]],
+            "msg": f"Falta adjuntar el documento obligatorio: {requisito.descripcion}",
+            "type": "missing_document",
+            "tipo": requisito.tipo,
+            "descripcion": requisito.descripcion,
+        }
+        for requisito in estado_documental
+        if requisito.obligatorio and requisito.estado == "PENDIENTE"
+    ]
+    if documentos_faltantes:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail=documentos_faltantes,
+        )
+
     documentos: list[DocumentoValidado] = []
-    for field, (tipo, required) in TIPOS_DOCUMENTO.items():
-        is_required = required or (
-            field == "archivo_posgrado" and bool(data.titulo_posgrado)
-        ) or (field == "archivo_beca" and data.solicita_beca)
-        documento = await _validar_documento(uploads[field], tipo, is_required)
+    for campo, tipo in TIPOS_DOCUMENTO.items():
+        documento = await _validar_documento(uploads[campo], tipo)
         if documento is not None:
             documentos.append(documento)
 
@@ -233,15 +254,8 @@ async def crear_inscripcion(
             detail=messages[error.field],
         ) from error
 
-    background_tasks.add_task(
-        enviar_confirmacion_inscripcion,
-        str(legajo.email),
-        legajo.nombre,
-        str(legajo.id),
-    )
-
     return InscripcionResponse(
         codigo_seguimiento=str(legajo.id),
         estado=legajo.estado,
-        mensaje="La inscripción fue recibida correctamente. Enviamos una confirmación a tu email",
+        mensaje="La inscripción fue recibida correctamente",
     )

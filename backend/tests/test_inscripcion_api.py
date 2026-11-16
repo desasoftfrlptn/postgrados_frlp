@@ -342,7 +342,47 @@ def test_requiere_cada_documento_obligatorio(
     )
 
     assert response.status_code == 422
-    assert f"documento obligatorio: {tipo}" in response.json()["detail"]
+    faltantes = response.json()["detail"]
+    assert len(faltantes) == 1
+    assert faltantes[0]["tipo"] == tipo
+    assert faltantes[0]["loc"] == ["body", campo]
+    assert "documento obligatorio" in faltantes[0]["msg"]
+    assert faltantes[0]["descripcion"]
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_envio_incompleto_informa_todos_los_documentos_faltantes(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+    files = valid_files()
+    files.pop("archivo_preinscripcion")
+    files.pop("archivo_titulo")
+    files.pop("archivo_cuit")
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(),
+        files=files,
+    )
+
+    assert response.status_code == 422
+    faltantes = response.json()["detail"]
+    assert [documento["tipo"] for documento in faltantes] == [
+        "FORM_INSCRIPCION",
+        "TITULO",
+        "CUIT",
+    ]
+    assert [documento["loc"][1] for documento in faltantes] == [
+        "archivo_preinscripcion",
+        "archivo_titulo",
+        "archivo_cuit",
+    ]
+    assert all(documento["type"] == "missing_document" for documento in faltantes)
+    assert all(documento["descripcion"] for documento in faltantes)
+    assert all(documento["loc"][0:1] == ["body"] for documento in faltantes)
     assert session.scalar(select(Legajo)) is None
     assert list(session.scalars(select(DocumentoInscripcion))) == []
     assert not (settings.storage_path / "inscripciones").exists()
@@ -376,7 +416,12 @@ def test_requiere_documentos_segun_condiciones_de_inscripcion(
     )
 
     assert response.status_code == 422
-    assert f"documento obligatorio: {tipo}" in response.json()["detail"]
+    faltantes = response.json()["detail"]
+    assert len(faltantes) == 1
+    assert faltantes[0]["tipo"] == tipo
+    assert faltantes[0]["loc"] == ["body", campo_archivo]
+    assert "documento obligatorio" in faltantes[0]["msg"]
+    assert faltantes[0]["descripcion"]
     assert session.scalar(select(Legajo)) is None
     assert list(session.scalars(select(DocumentoInscripcion))) == []
     assert not (settings.storage_path / "inscripciones").exists()
@@ -449,9 +494,10 @@ def test_scholarship_request_without_form_is_rejected_without_partial_persistenc
     )
 
     assert response.status_code == 422
-    assert response.json()["detail"] == (
-        "Falta adjuntar el documento obligatorio: FORM_BECA"
-    )
+    faltantes = response.json()["detail"]
+    assert len(faltantes) == 1
+    assert faltantes[0]["tipo"] == "FORM_BECA"
+    assert faltantes[0]["descripcion"] == "Formulario de beca firmado"
     assert session.scalar(select(Legajo)) is None
     assert list(session.scalars(select(DocumentoInscripcion))) == []
     assert not (settings.storage_path / "inscripciones").exists()
