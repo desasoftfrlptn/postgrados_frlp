@@ -13,8 +13,10 @@ from fastapi import (
     status,
 )
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
 
+from src.authentication.infrastructure.models import User
 from src.core.config import settings
 from src.db.session import get_db
 from src.inscripcion.application.inscribir_aspirante import (
@@ -24,9 +26,49 @@ from src.inscripcion.application.inscribir_aspirante import (
     inscribir_aspirante,
 )
 from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
-from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
+from src.inscripcion.infrastructure.models import Legajo
+from src.inscripcion.presentation.schemas import (
+    DocumentoBecaResumen,
+    InscripcionCreate,
+    InscripcionResponse,
+    LegajoCoordinacionResponse,
+)
+from src.shared.autorizacion.permisos import requerir_roles
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
+legajos_router = APIRouter(prefix="/api/v1/legajos", tags=["legajos"])
+
+
+@legajos_router.get("", response_model=list[LegajoCoordinacionResponse])
+def listar_legajos(
+    session: Session = Depends(get_db),
+    _usuario: User = Depends(requerir_roles("COORDINADOR")),
+) -> list[LegajoCoordinacionResponse]:
+    legajos = session.scalars(
+        select(Legajo)
+        .options(selectinload(Legajo.documentos))
+        .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
+    ).all()
+
+    return [
+        LegajoCoordinacionResponse(
+            id=legajo.id,
+            numero_legajo=legajo.numero_legajo,
+            apellido=legajo.apellido,
+            nombre=legajo.nombre,
+            dni=legajo.dni,
+            estado=legajo.estado,
+            carreras=legajo.carreras,
+            solicita_beca=legajo.solicita_beca,
+            tipo_beca=legajo.tipo_beca,
+            documento_beca=(
+                DocumentoBecaResumen(tipo="FORM_BECA")
+                if any(documento.tipo == "FORM_BECA" for documento in legajo.documentos)
+                else None
+            ),
+        )
+        for legajo in legajos
+    ]
 
 TIPOS_DOCUMENTO = {
     "archivo_preinscripcion": ("FORM_INSCRIPCION", True),

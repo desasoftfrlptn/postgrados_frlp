@@ -2,12 +2,15 @@ import hashlib
 import json
 from collections.abc import Generator
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
+from src.authentication.application.security import create_token_pair
+from src.authentication.infrastructure.models import User
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db
@@ -85,6 +88,50 @@ def valid_files(**overrides: tuple[str, bytes, str]) -> dict[str, tuple[str, byt
     }
     files.update(overrides)
     return files
+
+
+def create_auth_headers(session: Session, role: str) -> dict[str, str]:
+    user = User(
+        email=f"{role.lower()}@example.com",
+        password_hash="x" * 60,
+        role=role,
+    )
+    session.add(user)
+    session.flush()
+    access_token, _, _ = create_token_pair(session, user)
+    session.commit()
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+def create_legajo(
+    *,
+    cohorte_id: UUID,
+    dni: str,
+    apellido: str,
+    solicita_beca: bool,
+    tipo_beca: str | None,
+) -> Legajo:
+    return Legajo(
+        cohorte_id=cohorte_id,
+        estado="Pendiente",
+        carreras=["Especialización"],
+        dni=dni,
+        apellido=apellido,
+        nombre="Ana",
+        nacionalidad="Argentina",
+        email=f"{dni}@example.com",
+        email_alternativo=f"{dni}.alt@example.com",
+        telefono_movil="2215551234",
+        domicilio="Calle 1",
+        ciudad="La Plata",
+        provincia="Buenos Aires",
+        pais="Argentina",
+        titulo_grado="Ingeniería",
+        como_conocio="web",
+        motivacion="Quiero profundizar mis conocimientos en esta disciplina.",
+        solicita_beca=solicita_beca,
+        tipo_beca=tipo_beca,
+    )
 
 
 def test_public_enrollment_saves_legajo_and_private_documents(
@@ -337,3 +384,102 @@ def test_enrollment_requires_an_open_cohort(
     assert response.status_code == 409
     assert response.json()["detail"] == "No hay una cohorte con inscripción abierta"
     assert session.scalar(select(Legajo)) is None
+
+
+def test_legajo_list_requires_authentication(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, _, _ = client
+
+    response = test_client.get("/api/v1/legajos")
+
+    assert response.status_code == 401
+
+
+def test_legajo_list_rejects_non_coordinator_roles(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+    headers = create_auth_headers(session, "CPR")
+
+    response = test_client.get("/api/v1/legajos", headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tenés permisos para acceder a este recurso"
+
+
+def test_coordinator_can_see_scholarship_types_and_form_presence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte = client
+    without_scholarship = create_legajo(
+        cohorte_id=cohorte.id,
+        dni="30123456",
+        apellido="Aspirante",
+        solicita_beca=False,
+        tipo_beca=None,
+    )
+    scholarship_30 = create_legajo(
+        cohorte_id=cohorte.id,
+        dni="30123457",
+        apellido="Becaria",
+        solicita_beca=True,
+        tipo_beca="30%",
+    )
+    scholarship_100 = create_legajo(
+        cohorte_id=cohorte.id,
+        dni="30123458",
+        apellido="Becario",
+        solicita_beca=True,
+        tipo_beca="100%",
+    )
+    session.add_all((without_scholarship, scholarship_30, scholarship_100))
+    session.flush()
+    session.add_all(
+        (
+            DocumentoInscripcion(
+                legajo_id=scholarship_30.id,
+                tipo="FORM_BECA",
+                path_storage="inscripciones/privado-30.pdf",
+                checksum_sha256="a" * 64,
+            ),
+            DocumentoInscripcion(
+                legajo_id=scholarship_100.id,
+                tipo="FORM_BECA",
+                path_storage="inscripciones/privado-100.pdf",
+                checksum_sha256="b" * 64,
+            ),
+        )
+    )
+    headers = create_auth_headers(session, "COORDINADOR")
+
+    response = test_client.get("/api/v1/legajos", headers=headers)
+
+    assert response.status_code == 200
+    by_dni = {legajo["dni"]: legajo for legajo in response.json()}
+    assert set(by_dni["30123457"]) == {
+        "id",
+        "numero_legajo",
+        "apellido",
+        "nombre",
+        "dni",
+        "estado",
+        "carreras",
+        "solicita_beca",
+        "tipo_beca",
+        "documento_beca",
+    }
+    assert by_dni["30123456"]["solicita_beca"] is False
+    assert by_dni["30123456"]["tipo_beca"] is None
+    assert by_dni["30123456"]["documento_beca"] is None
+    assert by_dni["30123457"]["solicita_beca"] is True
+    assert by_dni["30123457"]["tipo_beca"] == "30%"
+    assert by_dni["30123457"]["documento_beca"] == {"tipo": "FORM_BECA"}
+    assert set(by_dni["30123457"]["documento_beca"]) == {"tipo"}
+    assert by_dni["30123458"]["solicita_beca"] is True
+    assert by_dni["30123458"]["tipo_beca"] == "100%"
+    assert by_dni["30123458"]["documento_beca"] == {"tipo": "FORM_BECA"}
+    assert "path_storage" not in response.text
+    assert "checksum_sha256" not in response.text
+    assert "privado-30.pdf" not in response.text
+    assert "privado-100.pdf" not in response.text

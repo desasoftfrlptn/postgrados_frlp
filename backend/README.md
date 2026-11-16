@@ -42,6 +42,11 @@ todavía no está disponible. Las rutas API pueden exigir roles con
 `requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
 con el Módulo B cuando exista el modelo de seminarios.
 
+`GET /api/v1/legajos` devuelve el listado básico para coordinación y requiere un
+JWT válido con rol `COORDINADOR`. Incluye los datos de identificación del legajo,
+`solicita_beca`, `tipo_beca` y, si existe, el tipo del documento `FORM_BECA`;
+nunca expone rutas de almacenamiento ni URLs de archivos.
+
 En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
 desde `backend` para crear cuentas locales:
 

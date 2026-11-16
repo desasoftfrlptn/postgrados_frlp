@@ -7,7 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.authentication.presentation.router import router as auth_router
 from src.authentication.application.security import get_current_user
 from src.core.config import settings
-from src.inscripcion.presentation.router import router as inscripcion_router
+from src.inscripcion.presentation.router import (
+    legajos_router,
+    router as inscripcion_router,
+)
 from src.shared.http.errores import registrar_manejador_error_aplicacion
 from src.shared.http.encabezados import MiddlewareEncabezadosSeguridad
 
@@ -29,6 +32,7 @@ app.add_middleware(MiddlewareEncabezadosSeguridad)
 registrar_manejador_error_aplicacion(app)
 
 app.include_router(inscripcion_router)
+app.include_router(legajos_router)
 app.include_router(auth_router)
 
 
