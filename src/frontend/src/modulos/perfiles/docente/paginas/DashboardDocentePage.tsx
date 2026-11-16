@@ -1,7 +1,16 @@
 // Página principal de inicio (Dashboard) para el perfil Docente.
 
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
+
+interface SeminarioDocente {
+  id: string;
+  nombre: string;
+  carrera_nombre: string;
+  fecha_inicio: string;
+}
 
 interface TarjetaDocenteProps {
   titulo: string;
@@ -48,6 +57,35 @@ function TarjetaDocente({
 
 export default function DashboardDocentePage() {
   const { user } = useAuth();
+    const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
+  const [totalEstudiantes, setTotalEstudiantes] = useState<number>(0);
+
+  useEffect(() => {
+    async function cargarResumen() {
+      if (!user?.token) return;
+      try {
+        const lista = await api.get<SeminarioDocente[]>(
+          "/seminarios/mis-seminarios",
+          user.token
+        );
+        setSeminarios(lista);
+
+        let acumulado = 0;
+        for (const sem of lista) {
+          const alumnos = await api.get<unknown[]>(
+            `/seminarios/${sem.id}/estudiantes`,
+            user.token
+          );
+          acumulado += alumnos.length;
+        }
+        setTotalEstudiantes(acumulado);
+      } catch {
+        // Si aún no tiene seminarios asignados, mantiene 0
+      }
+    }
+    cargarResumen();
+  }, [user?.token]);
+
   return (
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
@@ -65,20 +103,20 @@ export default function DashboardDocentePage() {
       >
         <TarjetaDocente
           titulo="Seminarios Asignados"
-          valor="4"
+          valor={String(seminarios.length)}
           accionTexto="Ver detalle →"
           ruta="/dashboard/docente/seminarios"
         />
 
         <TarjetaDocente
           titulo="Estudiantes a Cargo"
-          valor="183"
+          valor={String(totalEstudiantes)}
           accionTexto="Sin acciones"
         />
 
         <TarjetaDocente
           titulo="Carga de Asistencias"
-          valor="2"
+          valor={String(seminarios.length)}
           accionTexto="Completar →"
           ruta="/dashboard/docente/asistencia"
         />
@@ -95,33 +133,28 @@ export default function DashboardDocentePage() {
           </header>
 
           <ul className="divide-y divide-gray-100 p-2">
-            <li className="p-4 flex justify-between items-center gap-4 text-sm">
-              <span className="font-semibold text-slate-700">
-                Metodología de la Investigación
-              </span>
-              <time dateTime="2026-05-17" className="text-slate-500 font-medium">
-                Jueves 17/05
-              </time>
-            </li>
-
-            <li className="p-4 flex justify-between items-center gap-4 text-sm">
-              <span className="font-semibold text-slate-700">
-                Gestión de Proyectos
-              </span>
-              <time dateTime="2026-05-31" className="text-slate-500 font-medium">
-                Martes 31/05
-              </time>
-            </li>
-
-            <li className="p-4 flex justify-between items-center gap-4 text-sm">
-              <span className="font-semibold text-slate-700">
-                Maestría de Sistemas
-              </span>
-              <time dateTime="2026-06-08" className="text-slate-500 font-medium">
-                Lunes 08/06
-              </time>
-            </li>
-          </ul>
+            {seminarios.length === 0 && (
+              <li className="p-4 text-sm text-slate-500">
+                No tenés seminarios asignados actualmente.
+              </li>
+            )}
+            {seminarios.map((sem) => (
+              <li
+                 key={sem.id}
+                 className="p-4 flex justify-between items-center gap-4 text-sm"
+              >
+                <span className="font-semibold text-slate-700">
+                  {sem.nombre} ({sem.carrera_nombre})
+                </span>
+                <time
+                  dateTime={sem.fecha_inicio}
+                  className="text-slate-500 font-medium"
+                 >
+                   {new Date(sem.fecha_inicio).toLocaleDateString("es-AR")}
+                 </time>
+              </li>
+             ))}
+           </ul>
         </article>
 
         <article className="bg-white rounded-xl shadow-sm border border-gray-100">
