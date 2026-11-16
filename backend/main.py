@@ -1,9 +1,11 @@
 import os
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.authentication.presentation.router import router as auth_router
+from src.authentication.application.security import get_current_user
 from src.core.config import settings
 from src.inscripcion.presentation.router import (
     documentos_router,
@@ -12,9 +14,9 @@ from src.inscripcion.presentation.router import (
 
 app = FastAPI(
     title="Sistema de Gestión de Posgrado UTN FRLP",
-    docs_url="/api/docs",
+    docs_url="/api/docs" if settings.environment.lower() == "development" else None,
     redoc_url=None,
-    openapi_url="/api/openapi.json",
+    openapi_url="/api/openapi.json" if settings.environment.lower() == "development" else None,
 )
 
 app.add_middleware(
@@ -24,13 +26,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(MiddlewareEncabezadosSeguridad)
+registrar_manejador_error_aplicacion(app)
 
 app.include_router(inscripcion_router)
 app.include_router(documentos_router)
 
 
 @app.get("/health", tags=["health"])
-def health_check() -> dict[str, str]:
+def health_check(_: object = Depends(get_current_user)) -> dict[str, str]:
     return {"status": "ok"}
 
 

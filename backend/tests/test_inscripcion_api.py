@@ -10,6 +10,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from src.authentication.application.security import create_token_pair
+from src.authentication.infrastructure.models import User
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db
@@ -43,6 +45,10 @@ def client(
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(
+        "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
+        lambda email, nombre, codigo: None,
+    )
     with TestClient(app) as test_client:
         yield test_client, session, cohorte
     app.dependency_overrides.clear()
@@ -85,6 +91,52 @@ def valid_files(**overrides: tuple[str, bytes, str]) -> dict[str, tuple[str, byt
     return files
 
 
+def create_auth_headers(session: Session, role: str) -> dict[str, str]:
+    user = User(
+        email=f"{role.lower()}@example.com",
+        password_hash="x" * 60,
+        role=role,
+    )
+    session.add(user)
+    session.flush()
+    access_token, _, _ = create_token_pair(session, user)
+    session.commit()
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+def create_legajo(
+    *,
+    cohorte_id: UUID,
+    dni: str,
+    apellido: str,
+    solicita_beca: bool,
+    tipo_beca: str | None,
+    estado: str = "Pendiente",
+    carreras: list[str] | None = None,
+) -> Legajo:
+    return Legajo(
+        cohorte_id=cohorte_id,
+        estado=estado,
+        carreras=carreras if carreras is not None else ["Especialización"],
+        dni=dni,
+        apellido=apellido,
+        nombre="Ana",
+        nacionalidad="Argentina",
+        email=f"{dni}@example.com",
+        email_alternativo=f"{dni}.alt@example.com",
+        telefono_movil="2215551234",
+        domicilio="Calle 1",
+        ciudad="La Plata",
+        provincia="Buenos Aires",
+        pais="Argentina",
+        titulo_grado="Ingeniería",
+        como_conocio="web",
+        motivacion="Quiero profundizar mis conocimientos en esta disciplina.",
+        solicita_beca=solicita_beca,
+        tipo_beca=tipo_beca,
+    )
+
+
 def test_public_enrollment_saves_legajo_and_private_documents(
     client: tuple[TestClient, Session, Cohorte],
 ) -> None:
@@ -124,6 +176,29 @@ def test_public_enrollment_saves_legajo_and_private_documents(
         (settings.storage_path / documento.path_storage).is_file()
         for documento in documents
     )
+
+
+def test_public_enrollment_sends_confirmation_email(
+    client: tuple[TestClient, Session, Cohorte],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, _, _ = client
+    sent: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
+        lambda email, nombre, codigo: sent.append((email, nombre, codigo)),
+    )
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(),
+        files=valid_files(),
+    )
+
+    assert response.status_code == 201
+    assert response.json()["estado"] == "Pendiente"
+    assert "confirmación a tu email" in response.json()["mensaje"]
+    assert sent == [("ana@example.com", "Ana", response.json()["codigo_seguimiento"])]
 
 
 @pytest.mark.parametrize(
@@ -332,19 +407,117 @@ def test_rechaza_falla_de_base_de_datos_sin_persistencia_parcial(
 
 def test_beca_requires_percentage_and_signed_document(
     client: tuple[TestClient, Session, Cohorte],
+    tipo_beca: str,
 ) -> None:
     test_client, session, _ = client
-    form = valid_form(solicita_beca="true")
 
     response = test_client.post(
         "/api/v1/inscripciones",
-        data=form,
+        data=valid_form(solicita_beca="true", tipo_beca=tipo_beca),
+        files=valid_files(archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")),
+    )
+
+    assert response.status_code == 201
+    legajo = session.scalar(select(Legajo))
+    assert legajo is not None
+    assert legajo.solicita_beca is True
+    assert legajo.tipo_beca == tipo_beca
+    documents = list(
+        session.scalars(
+            select(DocumentoInscripcion).where(
+                DocumentoInscripcion.legajo_id == legajo.id
+            )
+        )
+    )
+    form_beca = next(
+        documento for documento in documents if documento.tipo == "FORM_BECA"
+    )
+    assert len(documents) == len(DOCUMENT_FIELDS) + 1
+    assert form_beca.checksum_sha256 == hashlib.sha256(PDF).hexdigest()
+    assert (settings.storage_path / form_beca.path_storage).is_file()
+
+
+def test_scholarship_request_without_form_is_rejected_without_partial_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(solicita_beca="true", tipo_beca="30%"),
         files=valid_files(),
     )
 
     assert response.status_code == 422
-    assert "porcentaje de beca" in str(response.json()["detail"])
+    assert response.json()["detail"] == (
+        "Falta adjuntar el documento obligatorio: FORM_BECA"
+    )
     assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_scholarship_request_without_percentage_is_rejected_without_partial_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(solicita_beca="true"),
+        files=valid_files(
+            archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
+        ),
+    )
+
+    assert response.status_code == 422
+    assert "Debe seleccionar el porcentaje de beca solicitado" in str(
+        response.json()["detail"]
+    )
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_scholarship_type_without_request_is_rejected_without_partial_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(tipo_beca="30%"),
+        files=valid_files(),
+    )
+
+    assert response.status_code == 422
+    assert "No puede indicar un tipo de beca si no la solicita" in str(
+        response.json()["detail"]
+    )
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_scholarship_request_rejects_unsupported_percentage(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(solicita_beca="true", tipo_beca="50%"),
+        files=valid_files(
+            archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
+        ),
+    )
+
+    assert response.status_code == 422
+    assert "30%" in str(response.json()["detail"])
+    assert "100%" in str(response.json()["detail"])
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
 
 
 def test_enrollment_requires_an_open_cohort(
@@ -363,3 +536,230 @@ def test_enrollment_requires_an_open_cohort(
     assert response.status_code == 409
     assert response.json()["detail"] == "No hay una cohorte con inscripción abierta"
     assert session.scalar(select(Legajo)) is None
+
+
+def test_legajo_list_requires_authentication(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, _, _ = client
+
+    response = test_client.get("/api/v1/legajos")
+
+    assert response.status_code == 401
+
+
+def test_legajo_list_rejects_non_coordinator_roles(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+    headers = create_auth_headers(session, "CPR")
+
+    response = test_client.get("/api/v1/legajos", headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "No tenés permisos para acceder a este recurso"
+
+
+def test_coordinator_can_see_scholarship_types_and_form_presence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte = client
+    without_scholarship = create_legajo(
+        cohorte_id=cohorte.id,
+        dni="30123456",
+        apellido="Aspirante",
+        solicita_beca=False,
+        tipo_beca=None,
+    )
+    scholarship_30 = create_legajo(
+        cohorte_id=cohorte.id,
+        dni="30123457",
+        apellido="Becaria",
+        solicita_beca=True,
+        tipo_beca="30%",
+    )
+    scholarship_100 = create_legajo(
+        cohorte_id=cohorte.id,
+        dni="30123458",
+        apellido="Becario",
+        solicita_beca=True,
+        tipo_beca="100%",
+    )
+    session.add_all((without_scholarship, scholarship_30, scholarship_100))
+    session.flush()
+    session.add_all(
+        (
+            DocumentoInscripcion(
+                legajo_id=scholarship_30.id,
+                tipo="FORM_BECA",
+                path_storage="inscripciones/privado-30.pdf",
+                checksum_sha256="a" * 64,
+            ),
+            DocumentoInscripcion(
+                legajo_id=scholarship_100.id,
+                tipo="FORM_BECA",
+                path_storage="inscripciones/privado-100.pdf",
+                checksum_sha256="b" * 64,
+            ),
+        )
+    )
+    headers = create_auth_headers(session, "COORDINADOR")
+
+    response = test_client.get("/api/v1/legajos", headers=headers)
+
+    assert response.status_code == 200
+    by_dni = {legajo["dni"]: legajo for legajo in response.json()}
+    assert set(by_dni["30123457"]) == {
+        "id",
+        "numero_legajo",
+        "apellido",
+        "nombre",
+        "dni",
+        "estado",
+        "carreras",
+        "solicita_beca",
+        "tipo_beca",
+        "documento_beca",
+    }
+    assert by_dni["30123456"]["solicita_beca"] is False
+    assert by_dni["30123456"]["tipo_beca"] is None
+    assert by_dni["30123456"]["documento_beca"] is None
+    assert by_dni["30123457"]["solicita_beca"] is True
+    assert by_dni["30123457"]["tipo_beca"] == "30%"
+    assert by_dni["30123457"]["documento_beca"] == {"tipo": "FORM_BECA"}
+    assert set(by_dni["30123457"]["documento_beca"]) == {"tipo"}
+    assert by_dni["30123458"]["solicita_beca"] is True
+    assert by_dni["30123458"]["tipo_beca"] == "100%"
+    assert by_dni["30123458"]["documento_beca"] == {"tipo": "FORM_BECA"}
+    assert "path_storage" not in response.text
+    assert "checksum_sha256" not in response.text
+    assert "privado-30.pdf" not in response.text
+    assert "privado-100.pdf" not in response.text
+
+
+def test_legajo_list_combines_documented_filters(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte = client
+    otra_cohorte = Cohorte(
+        anio=2025,
+        nombre="Cohorte 2025",
+        inscripcion_abierta=False,
+    )
+    session.add(otra_cohorte)
+    session.flush()
+
+    registros = {
+        "30123461": create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123461",
+            apellido="Aspirante",
+            solicita_beca=False,
+            tipo_beca=None,
+            carreras=["Especialización"],
+        ),
+        "30123462": create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123462",
+            apellido="Becaria",
+            solicita_beca=True,
+            tipo_beca="30%",
+            carreras=["Maestría"],
+        ),
+        "30123463": create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123463",
+            apellido="Becario",
+            solicita_beca=True,
+            tipo_beca="100%",
+            estado="En Revisión",
+            carreras=["Especialización", "Doctorado"],
+        ),
+        "30123464": create_legajo(
+            cohorte_id=otra_cohorte.id,
+            dni="30123464",
+            apellido="Otra cohorte",
+            solicita_beca=True,
+            tipo_beca="100%",
+            carreras=["Especialización"],
+        ),
+        "30123465": create_legajo(
+            cohorte_id=otra_cohorte.id,
+            dni="30123465",
+            apellido="Sin beca",
+            solicita_beca=False,
+            tipo_beca=None,
+            estado="En Revisión",
+            carreras=["Maestría"],
+        ),
+        "30123466": create_legajo(
+            cohorte_id=otra_cohorte.id,
+            dni="30123466",
+            apellido="Dato legado",
+            solicita_beca=False,
+            tipo_beca="30%",
+            carreras=["Doctorado"],
+        ),
+    }
+    session.add_all(registros.values())
+    session.flush()
+    session.add(
+        DocumentoInscripcion(
+            legajo_id=registros["30123466"].id,
+            tipo="FORM_BECA",
+            path_storage="inscripciones/legado-beca.pdf",
+            checksum_sha256="c" * 64,
+        )
+    )
+    headers = create_auth_headers(session, "COORDINADOR")
+
+    def consultar(params: dict[str, str]) -> list[dict[str, object]]:
+        response = test_client.get(
+            "/api/v1/legajos",
+            params=params,
+            headers=headers,
+        )
+        assert response.status_code == 200
+        return response.json()
+
+    def dni_resultados(params: dict[str, str]) -> set[str]:
+        return {str(legajo["dni"]) for legajo in consultar(params)}
+
+    todos = set(registros)
+    assert dni_resultados({}) == todos
+    assert dni_resultados({"estado": "Pendiente"}) == {
+        "30123461",
+        "30123462",
+        "30123464",
+        "30123466",
+    }
+    assert dni_resultados({"cohorte_id": str(cohorte.id)}) == {
+        "30123461",
+        "30123462",
+        "30123463",
+    }
+    assert dni_resultados({"carrera": "Doctorado"}) == {
+        "30123463",
+        "30123466",
+    }
+
+    becados = consultar({"tiene_beca": "true"})
+    assert {str(legajo["dni"]) for legajo in becados} == {
+        "30123462",
+        "30123463",
+        "30123464",
+    }
+    assert {str(legajo["tipo_beca"]) for legajo in becados} == {"30%", "100%"}
+    assert dni_resultados({"tiene_beca": "false"}) == {
+        "30123461",
+        "30123465",
+        "30123466",
+    }
+    assert dni_resultados(
+        {
+            "estado": "Pendiente",
+            "cohorte_id": str(cohorte.id),
+            "carrera": "Maestría",
+            "tiene_beca": "true",
+        }
+    ) == {"30123462"}

@@ -168,7 +168,8 @@ Abrí estos URLs en tu navegador:
 
 | URL | Qué deberías ver |
 |-----|-----------------|
-| `http://localhost:3000` | Pantalla de login del sistema Fenix |
+| `http://localhost:3000` | Formulario público de inscripción |
+| `http://localhost:3000/login` | Pantalla de login de coordinación y CPR |
 | `http://localhost:3000/inscripcion` | Formulario público (sin login requerido) |
 | `http://localhost:8000/docs` | Swagger UI — **stack FastAPI** (generado automáticamente) |
 | `http://localhost:8000/api` | Swagger UI — **stack NestJS** |
@@ -181,9 +182,11 @@ Abrí estos URLs en tu navegador:
 
 | Rol | Email | Contraseña |
 |-----|-------|-----------|
-| Coordinador | `admin@fenix.test` | `Admin1234!` |
-| Docente | `docente@fenix.test` | `Docente1234!` |
+| COORDINADOR | `admin@fenix.test` | `Admin1234!` |
 | CPR | `cpr@fenix.test` | `Cpr1234!` |
+
+El acceso DOCENTE se realizará mediante link token de seminario cuando se
+implemente el Módulo B; el seed no crea usuarios DOCENTE.
 
 ---
 

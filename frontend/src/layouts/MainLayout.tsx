@@ -1,45 +1,50 @@
-// Layout principal de navegación (Iniciar Sesión y Cerrar Sesión)
-
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/useAuth';
 
 export default function MainLayout() {
+    const { authError, logout, session } = useAuth();
     const location = useLocation();
-
-    // Condición simple para saber si estamos en una vista protegida/interna
-    const isVistaInterna = location.pathname.includes('/coordinador');
+    const navigate = useNavigate();
 
     return (
         <div className="min-h-screen flex flex-col bg-white font-sans text-slate-800">
-            {/* Navegador temporal para alternar vistas */}
             <nav className="bg-blue-900 text-white p-4 flex gap-4 shadow-md">
-                <a href="/inscripcion" className="hover:underline">Vista Aspirante</a>
-                <a href="/coordinador" className="hover:underline">Vista Coordinador</a>
+                <Link to="/inscripcion" className="hover:underline">Formulario de inscripción</Link>
+                {session?.user.role === 'COORDINADOR' && (
+                    <Link to="/coordinador" className="hover:underline">Gestión de coordinación</Link>
+                )}
             </nav>
-            {/* Header */}
             <header className="flex justify-between items-center p-4 border-b-2 border-slate-800">
                 <Link to="/" className="w-12 h-12 border-2 border-slate-800 flex flex-col items-center justify-center font-bold text-xs leading-none hover:bg-slate-50 transition-colors">
                     <span>UTN</span>
                 </Link>
 
                 <div className="flex gap-4">
-                    {isVistaInterna ? (
-                        <Link to="/inscripcion" className="px-4 py-2 border-2 border-slate-800 rounded font-semibold hover:bg-slate-50 transition-colors">
-                            Cerrar sesión
-                        </Link>
-                    ) : (
+                    {session ? (
                         <>
-                            <button type="button" className="px-4 py-2 border-2 border-slate-800 rounded font-semibold hover:bg-slate-50 transition-colors">
-                                Registrarse
+                            <span className="hidden self-center text-sm sm:inline">{session.user.email}</span>
+                            <button
+                                type="button"
+                                onClick={() => void logout().then(() => navigate('/inscripcion', { replace: true }))}
+                                className="rounded border-2 border-slate-800 px-4 py-2 font-semibold transition-colors hover:bg-slate-50"
+                            >
+                                Cerrar sesión
                             </button>
-                            <Link to="/coordinador" className="px-4 py-2 bg-[#2a3441] text-white rounded font-semibold hover:bg-slate-700 transition-colors">
-                                Iniciar sesión
-                            </Link>
                         </>
+                    ) : (
+                        <Link to="/login" className="rounded bg-[#2a3441] px-4 py-2 font-semibold text-white transition-colors hover:bg-slate-700">
+                            Iniciar sesión
+                        </Link>
                     )}
                 </div>
             </header>
 
-            {/* Renderizado de Vistas (Inscripción y Coordinador) */}
+            {authError && location.pathname !== '/login' && (
+                <p className="mx-auto mt-4 w-full max-w-3xl rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+                    {authError}
+                </p>
+            )}
+
             <div className="flex-grow flex flex-col">
                 <Outlet />
             </div>
