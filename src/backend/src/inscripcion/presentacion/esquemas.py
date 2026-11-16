@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
+from typing import Optional, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -22,6 +22,10 @@ class LegajoCrear(BaseModel):
     titulo_anterior: str
     universidad_anterior: str
 
+    forma_conocio_ofertas: str
+    motivos_cursar: str
+    solicitud_beca: Optional[Literal[30, 100]] = None
+
 
 class LegajoRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -42,6 +46,10 @@ class LegajoRespuesta(BaseModel):
     ciudad: str
     titulo_anterior: str
     universidad_anterior: str
+    numero_seguimiento: str
+    forma_conocio_ofertas: str
+    motivos_cursar: str
+    solicitud_beca: Optional[int] = None
 
 
 class DocumentoLegajoRespuesta(BaseModel):

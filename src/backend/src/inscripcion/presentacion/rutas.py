@@ -5,9 +5,12 @@ from fastapi import (
     Depends,
     HTTPException,
 )
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from src.carreras.modelos import CarreraORM
 from src.inscripcion.infraestructura.cohortes_modelos import CohorteORM
@@ -160,8 +163,40 @@ async def inscribir_aspirante(
             detail="La cohorte alcanzó el cupo máximo de 500 aspirantes.",
         )
 
+    # Obtener el año actual de Argentina.
+    anio = datetime.now(
+        ZoneInfo("America/Argentina/Buenos_Aires")
+    ).year
+
+    # Generar el siguiente número correlativo de forma atómica.
+    resultado_contador = await db.execute(
+        text(
+            """
+            INSERT INTO contadores_inscripcion (
+                anio,
+                ultimo_numero
+            )
+            VALUES (:anio, 1)
+            ON CONFLICT (anio)
+            DO UPDATE SET
+                ultimo_numero =
+                    contadores_inscripcion.ultimo_numero + 1
+            RETURNING ultimo_numero
+            """
+        ),
+        {"anio": anio},
+    )
+
+    correlativo = resultado_contador.scalar_one()
+
+    numero_seguimiento = (
+        f"INS-{anio}-{correlativo}"
+    )
+
+    # Crear el legajo con su número de inscripción.
     nuevo_legajo = LegajoORM(
         **datos.model_dump(),
+        numero_seguimiento=numero_seguimiento,
         estado="PENDIENTE",
     )
 
