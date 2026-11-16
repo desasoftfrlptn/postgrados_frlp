@@ -50,6 +50,26 @@ Admite combinar los filtros opcionales `estado`, `cohorte_id` (UUID), `carrera`
 y `tiene_beca` (booleano, `true`/`false`); este último filtra por
 `solicita_beca` y, si se omite, no limita los resultados.
 
+## Workflow del legajo
+
+Las transiciones administrativas requieren JWT con rol `COORDINADOR`:
+
+- `POST /api/v1/legajos/{id}/transiciones` acepta `REVISAR`,
+  `OBSERVAR`, `APROBAR`, `RECHAZAR`, `MATRICULAR` o `DAR_DE_BAJA`.
+- `OBSERVAR` exige `comentario`; el sistema envía ese motivo al email del
+  aspirante y genera un token de corrección aleatorio, de un solo uso y válido
+  por 72 horas. Solo se almacena el hash del token.
+- `POST /api/v1/legajos/{id}/correccion` acepta `{"token": "..."}` sin JWT y
+  permite únicamente la transición `Observado` → `Pendiente`. Al usarlo, el
+  token se invalida.
+- `APROBAR` realiza `En Revisión` → `Completado` según RF-CORE-003 y genera el
+  número de legajo `AA-CCC-NNN`. Como el modelo admite una cohorte por año, el
+  componente de cohorte es `001`.
+
+Cada transición registra actor/rol, estado anterior y nuevo y acción en
+`eventos_auditoria`, dentro de la misma transacción del cambio. Aplicar
+`alembic upgrade head` para crear las columnas de vigencia y hash del token.
+
 En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
 desde `backend` para crear cuentas locales:
 

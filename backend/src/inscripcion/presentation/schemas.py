@@ -81,3 +81,39 @@ class InscripcionResponse(BaseModel):
     codigo_seguimiento: str
     estado: str
     mensaje: str
+
+
+class TransicionLegajoRequest(BaseModel):
+    accion: Literal[
+        "REVISAR",
+        "OBSERVAR",
+        "APROBAR",
+        "RECHAZAR",
+        "MATRICULAR",
+        "DAR_DE_BAJA",
+    ]
+    comentario: str | None = Field(default=None, min_length=1, max_length=2000)
+
+    @field_validator("comentario")
+    @classmethod
+    def limpiar_comentario(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
+
+    @model_validator(mode="after")
+    def validar_comentario_de_observacion(self) -> "TransicionLegajoRequest":
+        if self.accion == "OBSERVAR" and not self.comentario:
+            raise ValueError("Debe indicar el motivo de la observación")
+        if self.accion != "OBSERVAR" and self.comentario is not None:
+            raise ValueError("El comentario solo se admite al observar un legajo")
+        return self
+
+
+class CorreccionLegajoRequest(BaseModel):
+    token: str = Field(min_length=43, max_length=128)
+
+
+class LegajoEstadoResponse(BaseModel):
+    id: str
+    estado: str
+    numero_legajo: str | None
+    mensaje: str
