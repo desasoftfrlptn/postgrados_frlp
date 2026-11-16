@@ -6,15 +6,7 @@ from contextlib import asynccontextmanager
 from src.inscripcion.presentation.controller import router as inscripcion_router
 from src.acceso.controllers.controller import router as acceso_router
 from src.shared.auth.router import router as auth_router
-from src.gestion_documental.presentation.router import (
-    router as documentos_router,
-)
-
-app = FastAPI(title="Posgrados FRLP")
-
-app.include_router(auth_router, prefix="/api/v1")
-# Registrar las rutas de Gestión Documental bajo el prefijo común de la API.
-app.include_router(documentos_router, prefix="/api/v1")
+from src.gestion_documental.presentation.router import router as documentos_router
 from src.seguimiento_graduacion.presentation.router import router as graduacion_router
 from src.carga_academica.presentation.router import router as carga_academica_router
 from src.inscripcion.presentation.controller_periodos import router as periodos_router
@@ -41,7 +33,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 PREFIX="/api/v1"
-for r in (auth_router, acceso_router, inscripcion_router, periodos_router, carga_academica_router, graduacion_router, cohortes_router):
+for r in (auth_router, acceso_router, inscripcion_router, documentos_router, periodos_router, carga_academica_router, graduacion_router, cohortes_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:
