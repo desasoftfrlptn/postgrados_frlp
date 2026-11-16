@@ -176,6 +176,25 @@ export const PanelConduccionInscripciones = () => {
     setFiltroEstado('Todos');
   };
 
+  // ---------------------------------------------------------------------------
+  // ACCIONES DE COORDINACIÓN (Módulo Core)
+  // ---------------------------------------------------------------------------
+  const handleAprobar = async (row) => {
+    const nombre = formatearNombreAlumno(row);
+    if (!window.confirm(`¿Está seguro de APROBAR el legajo de ${nombre}? Se emitirá el número de legajo definitivo.`)) {
+      return;
+    }
+
+    try {
+      const legajoActualizado = await legajoService.actualizarEstadoLegajo(row.id, 'APROBADO');
+      setInscripciones((prev) =>
+        prev.map((item) => (item.id === row.id ? { ...item, ...legajoActualizado, estado: 'APROBADO' } : item))
+      );
+    } catch (err) {
+      alert(`Error al aprobar legajo: ${err.message}`);
+    }
+  };
+
   return (
     <div className="panel-container">
       <header className="panel-header">
@@ -272,12 +291,13 @@ export const PanelConduccionInscripciones = () => {
               <th scope="col">Cohorte</th>
               <th scope="col">Fecha</th>
               <th scope="col">Estado</th>
+              <th scope="col" style={{ textAlign: 'center' }}>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {cargando ? (
               <tr>
-                <td colSpan="6" className="text-center" style={{ padding: '30px', color: '#6c757d' }}>
+                <td colSpan="7" className="text-center" style={{ padding: '30px', color: '#6c757d' }}>
                   <p style={{ margin: 0, fontSize: '14px' }}>Cargando inscripciones desde el servidor...</p>
                 </td>
               </tr>
@@ -290,11 +310,39 @@ export const PanelConduccionInscripciones = () => {
                   <td>{formatearCohorte(row.cohorte)}</td>
                   <td>{formatearFecha(row.fecha_inscripcion || row.created_at)}</td>
                   <td>{renderBadgeEstado(row.estado)}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    {row.estado !== 'APROBADO' ? (
+                      <button
+                        type="button"
+                        style={{
+                          backgroundColor: '#198754',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '5px 10px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                        onClick={() => handleAprobar(row)}
+                        title="Aprobar legajo y emitir número oficial"
+                      >
+                        ✓ Aprobar
+                      </button>
+                    ) : (
+                      <span style={{ color: '#198754', fontSize: '12px', fontWeight: 'bold' }}>
+                        ✓ Aprobado
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="text-center empty-state">
+                <td colSpan="7" className="text-center empty-state">
                   {busqueda || filtroPosgrado !== 'Todos' || filtroEstado !== 'Todos'
                     ? 'No se encontraron inscripciones que coincidan con los filtros aplicados.'
                     : 'No hay inscripciones registradas en el sistema.'}
