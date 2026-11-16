@@ -500,6 +500,9 @@ export default function Preinscripcion({ onVolverAlLogin }) {
         }
       }
 
+      // 3. Enviar formalmente el legajo para que pase de BORRADOR a ENVIADO
+      await inscripcionService.enviarLegajo(legajoId);
+
       setLegajoConfirmado({
         id: legajoId,
         nombre: `${formData.nombre} ${formData.apellido}`,
