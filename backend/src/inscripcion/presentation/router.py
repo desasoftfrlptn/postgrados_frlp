@@ -1,15 +1,17 @@
 from http import HTTPStatus
 import json
+import logging
 from json import JSONDecodeError
+from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.autenticacion.aplicacion.seguridad import requerir_roles
-from src.autenticacion.infraestructura.modelos import Usuario
+from src.autenticacion.aplicacion.seguridad import UsuarioAutenticado, requerir_roles
 from src.core.config import settings
 from src.db.session import get_db
 from src.inscripcion.application.inscribir_aspirante import (
@@ -18,45 +20,64 @@ from src.inscripcion.application.inscribir_aspirante import (
     InscripcionNoDisponible,
     inscribir_aspirante,
 )
-from src.inscripcion.infrastructure.models import DocumentoInscripcion, Legajo
-from src.inscripcion.presentation.schemas import (
-    DocumentoInscripcionRespuesta,
-    InscripcionCreate,
-    InscripcionResponse,
-)
+from src.inscripcion.infrastructure.models import DocumentoInscripcion
+from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
-documentos_router = APIRouter(prefix="/api/v1/legajos", tags=["documentos"])
+documentos_router = APIRouter(prefix="/api/v1/documentos", tags=["documentos"])
+_LOGGER = logging.getLogger(__name__)
 
 
-@documentos_router.get(
-    "/{legajo_id}/documentos",
-    response_model=list[DocumentoInscripcionRespuesta],
-)
-def listar_documentos_legajo(
-    legajo_id: UUID,
+@documentos_router.get("/{documento_id}/download")
+def descargar_documento(
+    documento_id: UUID,
     sesion: Session = Depends(get_db),
-    _usuario: Usuario = Depends(requerir_roles("COORDINADOR")),
-) -> list[DocumentoInscripcionRespuesta]:
-    if sesion.get(Legajo, legajo_id) is None:
+    usuario: UsuarioAutenticado = Depends(requerir_roles("COORDINADOR")),
+) -> FileResponse:
+    documento = sesion.scalar(
+        select(DocumentoInscripcion).where(DocumentoInscripcion.id == documento_id)
+    )
+    if documento is None:
+        _LOGGER.warning("Documento no disponible documento_id=%s", documento_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No se encontro el legajo solicitado",
+            detail="No se encontro el documento solicitado",
         )
 
-    documentos = sesion.scalars(
-        select(DocumentoInscripcion)
-        .where(DocumentoInscripcion.legajo_id == legajo_id)
-        .order_by(DocumentoInscripcion.tipo, DocumentoInscripcion.id)
-    ).all()
-    return [
-        DocumentoInscripcionRespuesta(
-            id=documento.id,
-            tipo=documento.tipo,
-            fecha_subida=documento.fecha_subida,
+    try:
+        raiz_almacenamiento = settings.storage_path.resolve()
+        ruta_documento = (
+            raiz_almacenamiento / Path(documento.path_storage)
+        ).resolve()
+        ruta_documento.relative_to(raiz_almacenamiento)
+    except (OSError, RuntimeError, ValueError):
+        _LOGGER.warning("Ruta privada invalida documento_id=%s", documento_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el documento solicitado",
+        ) from None
+
+    if not ruta_documento.is_file():
+        _LOGGER.warning("Archivo privado ausente documento_id=%s", documento_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el documento solicitado",
         )
-        for documento in documentos
-    ]
+
+    _LOGGER.info(
+        "Acceso a documento permitido documento_id=%s usuario_id=%s",
+        documento_id,
+        usuario.id,
+    )
+    return FileResponse(
+        ruta_documento,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{documento.id}.pdf"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 TIPOS_DOCUMENTO = {
     "archivo_preinscripcion": ("FORM_INSCRIPCION", True),

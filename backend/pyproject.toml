@@ -18,7 +18,6 @@ dependencies = [
     "python-dotenv>=1.0",
     "python-multipart>=0.0.20",
     "email-validator>=2.2",
-    "bcrypt>=4.2",
     "PyJWT>=2.8",
 ]
 

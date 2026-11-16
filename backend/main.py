@@ -4,7 +4,6 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.autenticacion.presentacion.router import router as autenticacion_router
 from src.core.config import settings
 from src.inscripcion.presentation.router import (
     documentos_router,
@@ -26,7 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(autenticacion_router)
 app.include_router(inscripcion_router)
 app.include_router(documentos_router)
 

@@ -10,9 +10,8 @@ class Settings(BaseSettings):
         "postgresql+psycopg2://postgrado_user:cambiar_en_produccion"
         "@localhost:5432/postgrado_dev"
     )
+    secret_key: str = "dev-only-change-this-secret"
     jwt_secret: str = "development-only-secret-change-before-deploying"
-    jwt_expiration: str = "8h"
-    jwt_refresh_expiration: str = "7d"
     jwt_issuer: str = "postgrados-frlp"
     environment: str = "development"
     cors_origin: str = "http://localhost:3000"
@@ -23,7 +22,9 @@ class Settings(BaseSettings):
     def validar_secreto_jwt(self) -> "Settings":
         if self.environment.lower() == "production" and (
             len(self.jwt_secret) < 32
-            or self.jwt_secret.startswith(("cambiar_en_produccion", "development-only-"))
+            or self.jwt_secret.startswith(
+                ("cambiar_en_produccion", "development-only-")
+            )
         ):
             raise ValueError(
                 "JWT_SECRET debe tener al menos 32 caracteres y no ser un valor de ejemplo"
