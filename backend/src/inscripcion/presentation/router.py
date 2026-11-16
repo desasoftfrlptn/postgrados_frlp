@@ -1,24 +1,17 @@
 from http import HTTPStatus
 import json
+import logging
 from json import JSONDecodeError
+from pathlib import Path
 from uuid import UUID
 
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
-)
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import ValidationError
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session, load_only, selectinload
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import UsuarioAutenticado, requerir_roles
 from src.core.config import settings
 from src.db.session import get_db
 from src.inscripcion.application.inscribir_aspirante import (
@@ -27,84 +20,64 @@ from src.inscripcion.application.inscribir_aspirante import (
     InscripcionNoDisponible,
     inscribir_aspirante,
 )
-from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
-from src.inscripcion.infrastructure.models import DocumentoInscripcion, Legajo
-from src.inscripcion.presentation.schemas import (
-    Carrera,
-    DocumentoBecaResumen,
-    InscripcionCreate,
-    InscripcionResponse,
-    LegajoCoordinacionResponse,
-)
-from src.shared.autorizacion.permisos import requerir_roles
+from src.inscripcion.infrastructure.models import DocumentoInscripcion
+from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
-legajos_router = APIRouter(prefix="/api/v1/legajos", tags=["legajos"])
+documentos_router = APIRouter(prefix="/api/v1/documentos", tags=["documentos"])
+_LOGGER = logging.getLogger(__name__)
 
 
-@legajos_router.get("", response_model=list[LegajoCoordinacionResponse])
-def listar_legajos(
-    estado: str | None = Query(default=None),
-    cohorte_id: UUID | None = Query(default=None),
-    carrera: Carrera | None = Query(default=None),
-    tiene_beca: bool | None = Query(default=None),
-    session: Session = Depends(get_db),
-    _usuario: User = Depends(requerir_roles("COORDINADOR")),
-) -> list[LegajoCoordinacionResponse]:
-    consulta = select(Legajo).options(
-        load_only(
-            Legajo.id,
-            Legajo.numero_legajo,
-            Legajo.apellido,
-            Legajo.nombre,
-            Legajo.dni,
-            Legajo.estado,
-            Legajo.carreras,
-            Legajo.solicita_beca,
-            Legajo.tipo_beca,
-        ),
-        selectinload(
-            Legajo.documentos.and_(DocumentoInscripcion.tipo == "FORM_BECA")
-        ).load_only(DocumentoInscripcion.tipo),
+@documentos_router.get("/{documento_id}/download")
+def descargar_documento(
+    documento_id: UUID,
+    sesion: Session = Depends(get_db),
+    usuario: UsuarioAutenticado = Depends(requerir_roles("COORDINADOR")),
+) -> FileResponse:
+    documento = sesion.scalar(
+        select(DocumentoInscripcion).where(DocumentoInscripcion.id == documento_id)
     )
-    if estado is not None:
-        consulta = consulta.where(Legajo.estado == estado)
-    if cohorte_id is not None:
-        consulta = consulta.where(Legajo.cohorte_id == cohorte_id)
-    if carrera is not None:
-        consulta = consulta.where(
-            or_(
-                Legajo.carreras[0].as_string() == carrera,
-                Legajo.carreras[1].as_string() == carrera,
-            )
+    if documento is None:
+        _LOGGER.warning("Documento no disponible documento_id=%s", documento_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el documento solicitado",
         )
-    if tiene_beca is not None:
-        consulta = consulta.where(Legajo.solicita_beca.is_(tiene_beca))
 
-    legajos = session.scalars(
-        consulta
-        .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
-    ).all()
+    try:
+        raiz_almacenamiento = settings.storage_path.resolve()
+        ruta_documento = (
+            raiz_almacenamiento / Path(documento.path_storage)
+        ).resolve()
+        ruta_documento.relative_to(raiz_almacenamiento)
+    except (OSError, RuntimeError, ValueError):
+        _LOGGER.warning("Ruta privada invalida documento_id=%s", documento_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el documento solicitado",
+        ) from None
 
-    return [
-        LegajoCoordinacionResponse(
-            id=legajo.id,
-            numero_legajo=legajo.numero_legajo,
-            apellido=legajo.apellido,
-            nombre=legajo.nombre,
-            dni=legajo.dni,
-            estado=legajo.estado,
-            carreras=legajo.carreras,
-            solicita_beca=legajo.solicita_beca,
-            tipo_beca=legajo.tipo_beca,
-            documento_beca=(
-                DocumentoBecaResumen(tipo="FORM_BECA")
-                if any(documento.tipo == "FORM_BECA" for documento in legajo.documentos)
-                else None
-            ),
+    if not ruta_documento.is_file():
+        _LOGGER.warning("Archivo privado ausente documento_id=%s", documento_id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el documento solicitado",
         )
-        for legajo in legajos
-    ]
+
+    _LOGGER.info(
+        "Acceso a documento permitido documento_id=%s usuario_id=%s",
+        documento_id,
+        usuario.id,
+    )
+    return FileResponse(
+        ruta_documento,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{documento.id}.pdf"',
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 TIPOS_DOCUMENTO = {
     "archivo_preinscripcion": ("FORM_INSCRIPCION", True),

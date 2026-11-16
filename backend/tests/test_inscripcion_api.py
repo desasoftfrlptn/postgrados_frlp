@@ -7,6 +7,7 @@ from uuid import UUID
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from src.authentication.application.security import create_token_pair
@@ -156,10 +157,23 @@ def test_public_enrollment_saves_legajo_and_private_documents(
     assert legajo.dni == "30123456"
     assert legajo.email == "ana@example.com"
     assert {documento.tipo for documento in documents} == set(DOCUMENT_FIELDS.values())
-    assert all(len(documento.checksum_sha256) == 64 for documento in documents)
-    assert all((settings.storage_path / documento.path_storage).is_file() for documento in documents)
     assert all(
         documento.checksum_sha256 == hashlib.sha256(PDF).hexdigest()
+        for documento in documents
+    )
+    assert all(
+        Path(documento.path_storage).parent == Path("inscripciones")
+        and Path(documento.path_storage).suffix == ".pdf"
+        and UUID(Path(documento.path_storage).stem)
+        for documento in documents
+    )
+    assert str(settings.storage_path) not in response.text
+    assert all(
+        f"{field}.pdf" not in response.text
+        for field in DOCUMENT_FIELDS
+    )
+    assert all(
+        (settings.storage_path / documento.path_storage).is_file()
         for documento in documents
     )
 
@@ -239,23 +253,159 @@ def test_invalid_pdf_is_rejected_before_persistence(
     assert session.scalar(select(Legajo)) is None
 
 
-def test_invalid_email_is_rejected_before_persistence(
+def test_rechaza_mime_incorrecto_sin_persistir(
     client: tuple[TestClient, Session, Cohorte],
 ) -> None:
     test_client, session, _ = client
+    files = valid_files(archivo_dni=("dni.pdf", PDF, "application/octet-stream"))
 
     response = test_client.post(
         "/api/v1/inscripciones",
-        data=valid_form(email="no-es-un-email"),
-        files=valid_files(),
+        data=valid_form(),
+        files=files,
     )
 
     assert response.status_code == 422
+    assert "debe tener formato PDF" in response.json()["detail"]
     assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
 
 
-@pytest.mark.parametrize("tipo_beca", ["30%", "100%"])
-def test_scholarship_request_saves_type_and_private_form(
+def test_rechaza_archivo_mayor_a_5_mb_sin_persistir(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    contenido = b"%PDF-" + b"x" * (max_bytes - len(b"%PDF-") + 1)
+    files = valid_files(archivo_dni=("dni.pdf", contenido, "application/pdf"))
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(),
+        files=files,
+    )
+
+    assert response.status_code == 413
+    assert "supera el máximo" in response.json()["detail"]
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_acepta_archivo_del_tamano_maximo(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    contenido = b"%PDF-" + b"x" * (max_bytes - len(b"%PDF-"))
+    files = valid_files(archivo_dni=("dni.pdf", contenido, "application/pdf"))
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(),
+        files=files,
+    )
+
+    assert response.status_code == 201
+    documento = session.scalar(
+        select(DocumentoInscripcion).where(DocumentoInscripcion.tipo == "DNI")
+    )
+    assert documento is not None
+    assert (settings.storage_path / documento.path_storage).stat().st_size == max_bytes
+    assert documento.checksum_sha256 == hashlib.sha256(contenido).hexdigest()
+
+
+@pytest.mark.parametrize(
+    ("campo", "tipo"),
+    [
+        ("archivo_preinscripcion", "FORM_INSCRIPCION"),
+        ("archivo_dni", "DNI"),
+        ("archivo_titulo", "TITULO"),
+        ("archivo_partida", "PARTIDA"),
+        ("archivo_cuit", "CUIT"),
+    ],
+)
+def test_requiere_cada_documento_obligatorio(
+    client: tuple[TestClient, Session, Cohorte],
+    campo: str,
+    tipo: str,
+) -> None:
+    test_client, session, _ = client
+    files = valid_files()
+    files.pop(campo)
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(),
+        files=files,
+    )
+
+    assert response.status_code == 422
+    assert f"documento obligatorio: {tipo}" in response.json()["detail"]
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+@pytest.mark.parametrize(
+    ("campos_formulario", "campo_archivo", "tipo"),
+    [
+        ({"titulo_posgrado": "Doctorado"}, "archivo_posgrado", "TITULO_POSGRADO"),
+        (
+            {"solicita_beca": "true", "tipo_beca": "30%"},
+            "archivo_beca",
+            "FORM_BECA",
+        ),
+    ],
+)
+def test_requiere_documentos_segun_condiciones_de_inscripcion(
+    client: tuple[TestClient, Session, Cohorte],
+    campos_formulario: dict[str, str],
+    campo_archivo: str,
+    tipo: str,
+) -> None:
+    test_client, session, _ = client
+    files = valid_files()
+    files.pop(campo_archivo, None)
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(**campos_formulario),
+        files=files,
+    )
+
+    assert response.status_code == 422
+    assert f"documento obligatorio: {tipo}" in response.json()["detail"]
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert not (settings.storage_path / "inscripciones").exists()
+
+
+def test_rechaza_falla_de_base_de_datos_sin_persistencia_parcial(
+    client: tuple[TestClient, Session, Cohorte],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, session, _ = client
+
+    def fallar_commit() -> None:
+        raise SQLAlchemyError("Falla simulada al confirmar la inscripcion")
+
+    monkeypatch.setattr(session, "commit", fallar_commit)
+
+    with pytest.raises(SQLAlchemyError, match="Falla simulada"):
+        test_client.post(
+            "/api/v1/inscripciones",
+            data=valid_form(),
+            files=valid_files(),
+        )
+
+    assert session.scalar(select(Legajo)) is None
+    assert list(session.scalars(select(DocumentoInscripcion))) == []
+    assert list((settings.storage_path / "inscripciones").glob("*.pdf")) == []
+
+
+def test_beca_requires_percentage_and_signed_document(
     client: tuple[TestClient, Session, Cohorte],
     tipo_beca: str,
 ) -> None:
