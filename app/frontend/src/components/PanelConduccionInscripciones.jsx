@@ -27,11 +27,33 @@ function normalizarTexto(texto) {
 
 /**
  * Helpers de formateo según directivas de INTEGRACION_FRONTEND_LEGAJO_DESCRIPTIVO.md.
- * Renderiza el número de legajo como texto plano sin redirección a vistas mock pendientes.
+ * Renderiza el número de legajo como link de navegación al expediente si está disponible.
  */
-function renderNumeroLegajo(numeroLegajo) {
+function renderNumeroLegajo(numeroLegajo, onIrAEstudiante) {
   if (!numeroLegajo) {
     return <span style={{ color: '#6c757d', fontStyle: 'italic', fontSize: '13px' }}>Se asigna al aprobar</span>;
+  }
+  if (typeof onIrAEstudiante === 'function') {
+    return (
+      <button 
+        type="button"
+        className="font-mono"
+        style={{
+          background: 'none',
+          border: 'none',
+          padding: 0,
+          color: '#0d6efd',
+          cursor: 'pointer',
+          textDecoration: 'underline',
+          fontWeight: '600',
+        }}
+        onClick={() => onIrAEstudiante(numeroLegajo)}
+        title="Ver expediente del estudiante"
+        aria-label={`Ver legajo ${numeroLegajo}`}
+      >
+        {numeroLegajo}
+      </button>
+    );
   }
   return <span className="font-mono" style={{ fontWeight: '600' }}>{numeroLegajo}</span>;
 }
@@ -117,7 +139,7 @@ function renderBadgeEstado(estado) {
   );
 }
 
-export const PanelConduccionInscripciones = () => {
+export const PanelConduccionInscripciones = ({ onIrAEstudiante }) => {
   // ---------------------------------------------------------------------------
   // ESTADOS (State Management)
   // ---------------------------------------------------------------------------
@@ -567,7 +589,7 @@ export const PanelConduccionInscripciones = () => {
             ) : inscripcionesFiltradas.length > 0 ? (
               inscripcionesFiltradas.map((row) => (
                 <tr key={row.id}>
-                  <td>{renderNumeroLegajo(row.numero_legajo)}</td>
+                  <td>{renderNumeroLegajo(row.numero_legajo, onIrAEstudiante)}</td>
                   <td className="font-semibold">{formatearNombreAlumno(row)}</td>
                   <td>{formatearPosgrado(row.cohorte)}</td>
                   <td>{formatearCohorte(row.cohorte)}</td>
