@@ -24,7 +24,40 @@ defecto). Los archivos no se exponen como recursos estáticos.
 
 La documentación interactiva de la API queda disponible en
 `http://localhost:8000/api/docs`; el chequeo de disponibilidad está en
-`/health`.
+`/health` requiere un JWT válido como el resto de las rutas privadas.
+
+## Autenticación y autorización
+
+`POST /api/v1/auth/login` recibe JSON con `email` y `password`, y devuelve un
+access token JWT firmado con
+HS256. El access token vence según `JWT_EXPIRATION` (por defecto, 8 horas).
+`GET /api/v1/auth/me` requiere `Authorization: Bearer <token>`. El refresh
+token (por defecto, 7 días) se rota en cada uso y se almacena como hash; logout
+revoca toda la familia de tokens de esa sesión. Los usuarios se almacenan con
+bcrypt (cost factor 12) y no existe registro público.
+
+La inscripción (`POST /api/v1/inscripciones`) permanece pública. La interfaz de
+coordinación exige el rol `COORDINADOR`; `CPR` puede autenticarse, pero su módulo
+todavía no está disponible. Las rutas API pueden exigir roles con
+`requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
+con el Módulo B cuando exista el modelo de seminarios.
+
+En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
+desde `backend` para crear cuentas locales:
+
+| Rol | Email | Contraseña |
+|---|---|---|
+| COORDINADOR | `admin@fenix.test` | `Admin1234!` |
+| CPR | `cpr@fenix.test` | `Cpr1234!` |
+
+El seed rechaza cualquier entorno distinto de `development` y no restablece
+contraseñas de usuarios existentes. En producción, configurar `ENVIRONMENT`,
+`JWT_SECRET` (secreto aleatorio de al menos 32 caracteres) y una expiración
+adecuada; la aplicación rechaza secretos de ejemplo.
+
+Para aprovisionar una cuenta fuera del seed de desarrollo, usar
+`python -m scripts.create_user <email> <COORDINADOR|CPR|ADMIN>` desde `backend`;
+el comando solicita la contraseña sin mostrarla y almacena únicamente su hash.
 
 ## Inscripción pública
 
@@ -39,3 +72,35 @@ Se aceptan PDFs de hasta el límite configurado y se comprueba tanto el MIME
 declarado como la firma del contenido. Una respuesta `201` contiene el código
 de seguimiento y el estado inicial `Pendiente`; se devuelve `409` para DNI/email
 duplicados o si no hay cohorte abierta.
+
+Al recibir una inscripción, el backend envía una confirmación HTML y de texto al
+email principal usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+`SMTP_PASSWORD`, `SMTP_STARTTLS` y `EMAIL_FROM`). En Docker, MailHog captura los
+mensajes de desarrollo en `http://localhost:8025`. Los errores de entrega quedan
+registrados en el log del backend.
+
+## Servicios compartidos
+
+Las dependencias reutilizables para módulos nuevos están en `src/shared`:
+
+- `autorizacion.permisos`: `requerir_roles(...)` y
+  `verificar_propietario_o_roles(...)` para
+  autorización por rol y propiedad del recurso. La autorización del backend
+  debe aplicarse en cada endpoint privado; proteger una ruta en React no la
+  reemplaza.
+- `correo.cliente_smtp`: envío de `EmailMessage` usando la configuración SMTP
+  común.
+- `auditoria.servicio.registrar_evento_auditoria`: agrega un evento de auditoría a la sesión
+  SQLAlchemy; la transacción que realiza la operación debe confirmarlo.
+- `limite_solicitudes.servicio.dependencia_limite_solicitudes`: limitador de ventana fija con
+  contador persistente compartido por procesos. Debe agregarse como dependencia
+  a los endpoints que lo requieran. No se aplica automáticamente a rutas de
+  módulos.
+- `http.encabezados.MiddlewareEncabezadosSeguridad` y
+  `http.errores.ErrorAplicacion`: headers HTTP y formato común para errores de
+  aplicación.
+
+Las migraciones `20261116_0003` y `20261116_0004` crean y normalizan los nombres
+de las tablas compartidas. En desarrollo, ejecutar `alembic upgrade head` antes
+de usar esos servicios. Los detalles de auditoría no deben incluir contraseñas,
+tokens ni otros datos sensibles.

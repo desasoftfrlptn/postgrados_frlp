@@ -41,6 +41,10 @@ def client(
         yield session
 
     app.dependency_overrides[get_db] = override_get_db
+    monkeypatch.setattr(
+        "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
+        lambda email, nombre, codigo: None,
+    )
     with TestClient(app) as test_client:
         yield test_client, session, cohorte
     app.dependency_overrides.clear()
@@ -111,6 +115,29 @@ def test_public_enrollment_saves_legajo_and_private_documents(
     )
 
 
+def test_public_enrollment_sends_confirmation_email(
+    client: tuple[TestClient, Session, Cohorte],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    test_client, _, _ = client
+    sent: list[tuple[str, str, str]] = []
+    monkeypatch.setattr(
+        "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
+        lambda email, nombre, codigo: sent.append((email, nombre, codigo)),
+    )
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(),
+        files=valid_files(),
+    )
+
+    assert response.status_code == 201
+    assert response.json()["estado"] == "Pendiente"
+    assert "confirmación a tu email" in response.json()["mensaje"]
+    assert sent == [("ana@example.com", "Ana", response.json()["codigo_seguimiento"])]
+
+
 @pytest.mark.parametrize(
     ("duplicate_fields", "message"),
     [
@@ -160,6 +187,21 @@ def test_invalid_pdf_is_rejected_before_persistence(
 
     assert response.status_code == 422
     assert "no es un PDF válido" in response.json()["detail"]
+    assert session.scalar(select(Legajo)) is None
+
+
+def test_invalid_email_is_rejected_before_persistence(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+
+    response = test_client.post(
+        "/api/v1/inscripciones",
+        data=valid_form(email="no-es-un-email"),
+        files=valid_files(),
+    )
+
+    assert response.status_code == 422
     assert session.scalar(select(Legajo)) is None
 
 

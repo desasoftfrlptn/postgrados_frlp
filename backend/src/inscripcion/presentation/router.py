@@ -2,7 +2,16 @@ from http import HTTPStatus
 import json
 from json import JSONDecodeError
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -14,6 +23,7 @@ from src.inscripcion.application.inscribir_aspirante import (
     InscripcionNoDisponible,
     inscribir_aspirante,
 )
+from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
 from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
@@ -64,6 +74,7 @@ async def _validar_documento(
 
 @router.post("", response_model=InscripcionResponse, status_code=status.HTTP_201_CREATED)
 async def crear_inscripcion(
+    background_tasks: BackgroundTasks,
     carreras: str = Form(...),
     dni: str = Form(...),
     nombre: str = Form(...),
@@ -171,8 +182,15 @@ async def crear_inscripcion(
             detail=messages[error.field],
         ) from error
 
+    background_tasks.add_task(
+        enviar_confirmacion_inscripcion,
+        str(legajo.email),
+        legajo.nombre,
+        str(legajo.id),
+    )
+
     return InscripcionResponse(
         codigo_seguimiento=str(legajo.id),
         estado=legajo.estado,
-        mensaje="La inscripción fue recibida correctamente",
+        mensaje="La inscripción fue recibida correctamente. Enviamos una confirmación a tu email",
     )

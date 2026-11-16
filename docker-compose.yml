@@ -36,15 +36,17 @@ services:
     environment:
       # La URL del contenedor usa el DNS interno "db", no localhost del host.
       DATABASE_URL: postgresql://${DB_USER:-postgrado_user}:${DB_PASSWORD:-cambiar_en_produccion}@db:5432/${DB_NAME:-postgrado_dev}
-      JWT_SECRET: ${JWT_SECRET:-cambiar_en_produccion_por_secreto_seguro_de_minimo_32_caracteres}
+      JWT_SECRET: ${JWT_SECRET:-development-only-secret-change-before-deploying}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-8h}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       STORAGE_PATH: ${STORAGE_PATH:-/var/postgrado-storage}
       MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-5}
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@posgrado.frlp.utn.edu.ar}
       NODE_ENV: ${NODE_ENV:-development}
       PORT: ${PORT:-8000}
