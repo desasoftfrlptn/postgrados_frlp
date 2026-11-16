@@ -48,6 +48,8 @@ def test_login_issues_token_and_protected_identity_endpoint_returns_role(
 ) -> None:
     client, _, coordinator = auth_client
 
+    assert client.get("/health").status_code == 401
+
     response = client.post(
         "/api/v1/auth/login",
         json={"email": coordinator.email, "password": "Coordinator123!"},
@@ -149,6 +151,6 @@ def test_role_guard_forbids_cpr_from_coordinator_actions(
     coordinator_guard = require_roles("COORDINADOR")
 
     with pytest.raises(HTTPException) as exception:
-        coordinator_guard(user=cpr)
+        coordinator_guard(usuario=cpr)
 
     assert exception.value.status_code == 403
