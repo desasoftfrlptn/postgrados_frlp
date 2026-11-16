@@ -78,6 +78,119 @@ describe('Flujo E2E Completo del Módulo Core', () => {
     });
   });
 
+  it('actualiza el perfil y abre conducción inmediatamente después del login de admin', async () => {
+    const admin = {
+      id: 'admin-id',
+      nombre: 'Administrador',
+      apellido: 'Posgrado',
+      email: 'admin@posgrado.frlp.utn.edu.ar',
+      rol: 'ADMIN_POSGRADO',
+    };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        access_token: 'admin-token',
+        refresh_token: 'admin-refresh',
+        token_type: 'bearer',
+        expires_in: 28800,
+        user: admin,
+      }),
+    });
+    vi.spyOn(legajoService, 'obtenerLegajos').mockResolvedValue(mockLegajos);
+    vi.spyOn(legajoService, 'obtenerDocumentosLegajo').mockResolvedValue([]);
+    vi.spyOn(cohorteService, 'obtenerCohortes').mockResolvedValue(mockCohortes);
+
+    render(<App />);
+    fireEvent.change(screen.getByPlaceholderText(/Correo institucional/i), {
+      target: { value: admin.email },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'Admin123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar Sesión' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('(ADMIN_POSGRADO)')).toBeDefined();
+      expect(screen.getByText(/Panel de Equipo de conducción/i)).toBeDefined();
+    });
+    expect(JSON.parse(localStorage.getItem('user_profile')).rol).toBe('ADMIN_POSGRADO');
+  });
+
+  it('no muestra el acceso al Panel Docente para un aspirante', async () => {
+    const aspirante = {
+      id: 'aspirante-id',
+      nombre: 'Juan',
+      apellido: 'Perez',
+      email: 'aspirante.demo@posgrado.frlp.utn.edu.ar',
+      rol: 'ASPIRANTE',
+    };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        access_token: 'aspirante-token',
+        refresh_token: 'aspirante-refresh',
+        token_type: 'bearer',
+        expires_in: 28800,
+        user: aspirante,
+      }),
+    });
+    vi.spyOn(cohorteService, 'obtenerCohortes').mockResolvedValue(mockCohortes);
+
+    render(<App />);
+    fireEvent.change(screen.getByPlaceholderText(/Correo institucional/i), {
+      target: { value: aspirante.email },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'Aspirante123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar Sesión' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('(ASPIRANTE)')).toBeDefined();
+    });
+    expect(screen.queryByRole('button', { name: 'Docente' })).toBeNull();
+    expect(screen.queryByText(/Panel de Equipo de conducción/i)).toBeNull();
+  });
+
+  it('permite al docente iniciar sesión y ver su panel', async () => {
+    const docente = {
+      id: 'docente-id',
+      nombre: 'Docente',
+      apellido: 'Demo',
+      email: 'docente.demo@posgrado.frlp.utn.edu.ar',
+      rol: 'DOCENTE',
+    };
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        access_token: 'docente-token',
+        refresh_token: 'docente-refresh',
+        token_type: 'bearer',
+        expires_in: 28800,
+        user: docente,
+      }),
+    });
+
+    render(<App />);
+    fireEvent.change(screen.getByPlaceholderText(/Correo institucional/i), {
+      target: { value: docente.email },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Contraseña'), {
+      target: { value: 'Docente123!' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar Sesión' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('(DOCENTE)')).toBeDefined();
+      expect(screen.getByText('Panel DOCENTE')).toBeDefined();
+    });
+    expect(screen.getByRole('button', { name: 'Docente' })).toBeDefined();
+    expect(JSON.parse(localStorage.getItem('user_profile')).rol).toBe('DOCENTE');
+  });
+
   it('permite al coordinador auditar y gestionar el flujo de aprobación y métricas', async () => {
     // Simular coordinador autenticado con rol ADMIN_POSGRADO
     vi.spyOn(authService, 'isAuthenticated').mockReturnValue(true);

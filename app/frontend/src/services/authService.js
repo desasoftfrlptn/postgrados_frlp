@@ -62,16 +62,14 @@ export const authService = {
       body: JSON.stringify(payload),
     });
 
-    // Persistencia segura en localStorage tras login exitoso
-    if (data?.access_token) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+    if (!data?.access_token || !data?.refresh_token || !data?.user?.id || !data?.user?.rol) {
+      this.logout();
+      throw new Error('El backend devolvió una respuesta de autenticación incompleta.');
     }
-    if (data?.refresh_token) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
-    }
-    if (data?.user) {
-      localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(data.user));
-    }
+
+    localStorage.setItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN, data.access_token);
+    localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, data.refresh_token);
+    localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(data.user));
 
     return data;
   },

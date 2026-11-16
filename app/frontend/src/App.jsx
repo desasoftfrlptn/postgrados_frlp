@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './App.css';
 
 import Preinscripcion from './components/preinscripcion.jsx';
@@ -41,8 +41,8 @@ function Login({ onLogin, onIrAPreinscripcion }) {
     setError('');
 
     try {
-      await authService.login(emailNormalizado, pass);
-      onLogin();
+      const session = await authService.login(emailNormalizado, pass);
+      onLogin(session.user);
     } catch (err) {
       if (err.status === 401) {
         setError('Credenciales inválidas. Verifique su correo institucional y contraseña.');
@@ -133,12 +133,14 @@ function Login({ onLogin, onIrAPreinscripcion }) {
 
 // --- CONTENEDOR PRINCIPAL ---
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => authService.isAuthenticated());
+  const [usuarioActivo, setUsuarioActivo] = useState(() => authService.getUser());
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    () => authService.isAuthenticated() && Boolean(authService.getUser())
+  );
   const [mostrarPreinscripcionPublica, setMostrarPreinscripcionPublica] = useState(false);
 
-  // Control de acceso según RBAC: sólo ADMIN_POSGRADO y SUPERADMIN acceden a conducción
-  const usuarioActivo = authService.getUser();
   const tienePermisoConduccion = ['ADMIN_POSGRADO', 'SUPERADMIN'].includes(usuarioActivo?.rol);
+  const esDocente = usuarioActivo?.rol === 'DOCENTE';
 
   // Vista inicial inteligente: si no es admin, abrir preinscripción o docente según rol
   const vistaInicial = tienePermisoConduccion 
@@ -155,7 +157,9 @@ export default function App() {
 
   const handleLogout = () => {
     authService.logout();
+    setUsuarioActivo(null);
     setIsLoggedIn(false);
+    setVista('preinscripcion');
   };
 
   if (!isLoggedIn) {
@@ -164,8 +168,8 @@ export default function App() {
     }
     return (
       <Login 
-        onLogin={() => {
-          const userLogueado = authService.getUser();
+        onLogin={(userLogueado) => {
+          setUsuarioActivo(userLogueado);
           const esConduccion = ['ADMIN_POSGRADO', 'SUPERADMIN'].includes(userLogueado?.rol);
           setVista(esConduccion ? 'inscripciones' : (userLogueado?.rol === 'DOCENTE' ? 'docente' : 'preinscripcion'));
           setIsLoggedIn(true);
@@ -181,7 +185,9 @@ export default function App() {
     <nav className="demo-nav" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button className={vista === 'preinscripcion' ? 'active' : ''} onClick={() => setVista('preinscripcion')}>Preinscripcion</button>
-        <button className={vista === 'docente' ? 'active' : ''} onClick={() => setVista('docente')}>Docente</button>
+        {esDocente && (
+          <button className={vista === 'docente' ? 'active' : ''} onClick={() => setVista('docente')}>Docente</button>
+        )}
         {tienePermisoConduccion && (
           <button 
             className={['inscripciones', 'estudiante', 'posgrados', 'estadisticas'].includes(vista) ? 'active' : ''} 
@@ -212,6 +218,17 @@ export default function App() {
   }
   
   if (vista === 'docente') {
+    if (!esDocente) {
+      return (
+        <>
+          {renderNav()}
+          <div role="alert" style={{ padding: '40px 20px', textAlign: 'center' }}>
+            No tiene permisos para visualizar el Panel Docente.
+          </div>
+        </>
+      );
+    }
+
     return (
       <>
         {renderNav()}
