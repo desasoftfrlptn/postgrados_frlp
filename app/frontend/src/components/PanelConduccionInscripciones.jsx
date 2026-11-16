@@ -66,6 +66,24 @@ function formatearFecha(fechaIso) {
   }
 }
 
+function formatearTamanio(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function formatearTipoDoc(tipo) {
+  const tipos = {
+    DNI: 'Documento de Identidad (DNI)',
+    TITULO_GRADO: 'Título Universitario de Grado',
+    CV: 'Currículum Vitae',
+    SOLICITUD_BECA: 'Formulario de Beca',
+  };
+  return tipos[tipo] || tipo;
+}
+
 function renderBadgeEstado(estado) {
   const estadoStr = String(estado || 'BORRADOR').toUpperCase();
 
@@ -118,6 +136,16 @@ export const PanelConduccionInscripciones = () => {
     motivo: '',
     submitting: false,
     error: null,
+  });
+
+  // Estado del modal de documentos del legajo (Auditoría PDF)
+  const [modalDocs, setModalDocs] = useState({
+    open: false,
+    legajo: null,
+    docs: [],
+    cargando: false,
+    error: null,
+    descargandoId: null,
   });
 
   // ---------------------------------------------------------------------------
@@ -276,6 +304,66 @@ export const PanelConduccionInscripciones = () => {
     }
   };
 
+  const handleAbrirModalDocs = async (row) => {
+    setModalDocs({
+      open: true,
+      legajo: row,
+      docs: [],
+      cargando: true,
+      error: null,
+      descargandoId: null,
+    });
+
+    try {
+      const docs = await legajoService.obtenerDocumentosLegajo(row.id);
+      setModalDocs((prev) => ({
+        ...prev,
+        docs: Array.isArray(docs) ? docs : [],
+        cargando: false,
+      }));
+    } catch (err) {
+      setModalDocs((prev) => ({
+        ...prev,
+        cargando: false,
+        error: err.message || 'Error al obtener los documentos del legajo.',
+      }));
+    }
+  };
+
+  const handleCerrarModalDocs = () => {
+    setModalDocs({
+      open: false,
+      legajo: null,
+      docs: [],
+      cargando: false,
+      error: null,
+      descargandoId: null,
+    });
+  };
+
+  const handleDescargarDoc = async (doc) => {
+    try {
+      setModalDocs((prev) => ({ ...prev, descargandoId: doc.id }));
+      await legajoService.descargarDocumento(doc.id, doc.nombre_original);
+    } catch (err) {
+      alert(`Error al descargar el archivo: ${err.message}`);
+    } finally {
+      setModalDocs((prev) => ({ ...prev, descargandoId: null }));
+    }
+  };
+
+  const handleVerDoc = async (doc) => {
+    try {
+      setModalDocs((prev) => ({ ...prev, descargandoId: doc.id }));
+      const url = await legajoService.obtenerUrlVisorDocumento(doc.id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      alert(`Error al visualizar el archivo: ${err.message}`);
+    } finally {
+      setModalDocs((prev) => ({ ...prev, descargandoId: null }));
+    }
+  };
+
   return (
     <div className="panel-container">
       <header className="panel-header">
@@ -392,78 +480,101 @@ export const PanelConduccionInscripciones = () => {
                   <td>{formatearFecha(row.fecha_inscripcion || row.created_at)}</td>
                   <td>{renderBadgeEstado(row.estado)}</td>
                   <td style={{ textAlign: 'center' }}>
-                    {row.estado === 'APROBADO' ? (
-                      <span style={{ color: '#198754', fontSize: '12px', fontWeight: 'bold' }}>
-                        ✓ Aprobado
-                      </span>
-                    ) : row.estado === 'RECHAZADO' ? (
-                      <span style={{ color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
-                        ✕ Rechazado
-                      </span>
-                    ) : (
-                      <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
-                        <button
-                          type="button"
-                          style={{
-                            backgroundColor: '#198754',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '5px 10px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                          onClick={() => handleAprobar(row)}
-                          title="Aprobar legajo y emitir número oficial"
-                        >
-                          ✓ Aprobar
-                        </button>
-                        <button
-                          type="button"
-                          style={{
-                            backgroundColor: '#ffc107',
-                            color: '#212529',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '5px 10px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                          onClick={() => handleAbrirModalObservar(row)}
-                          title="Observar legajo requiriendo corrección de documentación"
-                        >
-                          ⚠ Observar
-                        </button>
-                        <button
-                          type="button"
-                          style={{
-                            backgroundColor: '#dc3545',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '4px',
-                            padding: '5px 10px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            fontWeight: '500',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                          }}
-                          onClick={() => handleRechazar(row)}
-                          title="Rechazar trámite de legajo"
-                        >
-                          ✕ Rechazar
-                        </button>
-                      </div>
-                    )}
+                    <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        style={{
+                          backgroundColor: '#0d6efd',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '5px 9px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          fontWeight: '500',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                        onClick={() => handleAbrirModalDocs(row)}
+                        title="Ver y auditar documentos PDF adjuntos"
+                      >
+                        📄 Docs
+                      </button>
+
+                      {row.estado === 'APROBADO' ? (
+                        <span style={{ color: '#198754', fontSize: '12px', fontWeight: 'bold' }}>
+                          ✓ Aprobado
+                        </span>
+                      ) : row.estado === 'RECHAZADO' ? (
+                        <span style={{ color: '#dc3545', fontSize: '12px', fontWeight: 'bold' }}>
+                          ✕ Rechazado
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            style={{
+                              backgroundColor: '#198754',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                            onClick={() => handleAprobar(row)}
+                            title="Aprobar legajo y emitir número oficial"
+                          >
+                            ✓ Aprobar
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              backgroundColor: '#ffc107',
+                              color: '#212529',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                            onClick={() => handleAbrirModalObservar(row)}
+                            title="Observar legajo requiriendo corrección de documentación"
+                          >
+                            ⚠ Observar
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              backgroundColor: '#dc3545',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              padding: '5px 10px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              fontWeight: '500',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                            }}
+                            onClick={() => handleRechazar(row)}
+                            title="Rechazar trámite de legajo"
+                          >
+                            ✕ Rechazar
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -653,6 +764,216 @@ export const PanelConduccionInscripciones = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Auditoría Documental de PDFs */}
+      {modalDocs.open && modalDocs.legajo && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-docs-titulo"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1050,
+            padding: '16px',
+            backdropFilter: 'blur(2px)',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCerrarModalDocs();
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: '8px',
+              maxWidth: '700px',
+              width: '100%',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+            }}
+          >
+            <div
+              style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #e9ecef',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: '#f8f9fa',
+              }}
+            >
+              <h3 id="modal-docs-titulo" style={{ margin: 0, fontSize: '18px', color: '#0d6efd', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📄</span> Documentación Adjunta del Legajo
+              </h3>
+              <button
+                type="button"
+                onClick={handleCerrarModalDocs}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '22px',
+                  cursor: 'pointer',
+                  color: '#6c757d',
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+                aria-label="Cerrar modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '20px', overflowY: 'auto' }}>
+              <div style={{ marginBottom: '16px', fontSize: '14px', color: '#495057', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div><strong>Aspirante:</strong> {formatearNombreAlumno(modalDocs.legajo)}</div>
+                <div><strong>DNI:</strong> {modalDocs.legajo.dni || 'Sin registrar'}</div>
+                <div><strong>Carrera:</strong> {formatearPosgrado(modalDocs.legajo.cohorte)}</div>
+                <div><strong>Cohorte:</strong> {formatearCohorte(modalDocs.legajo.cohorte)}</div>
+              </div>
+
+              {modalDocs.cargando ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#6c757d' }}>
+                  <p style={{ margin: 0 }}>Cargando documentos desde el repositorio seguro...</p>
+                </div>
+              ) : modalDocs.error ? (
+                <div
+                  role="alert"
+                  style={{
+                    backgroundColor: '#f8d7da',
+                    color: '#842029',
+                    border: '1px solid #f5c2c7',
+                    borderRadius: '4px',
+                    padding: '12px 16px',
+                    fontSize: '14px',
+                  }}
+                >
+                  {modalDocs.error}
+                </div>
+              ) : modalDocs.docs.length === 0 ? (
+                <div
+                  style={{
+                    backgroundColor: '#fff3cd',
+                    color: '#856404',
+                    border: '1px solid #ffeeba',
+                    borderRadius: '4px',
+                    padding: '16px',
+                    textAlign: 'center',
+                    fontSize: '14px',
+                  }}
+                >
+                  Este aspirante aún no tiene archivos PDF adjuntos subidos al legajo digital.
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f1f3f5', borderBottom: '2px solid #dee2e6', textAlign: 'left' }}>
+                      <th style={{ padding: '8px 10px' }}>Tipo</th>
+                      <th style={{ padding: '8px 10px' }}>Archivo Original</th>
+                      <th style={{ padding: '8px 10px' }}>Tamaño</th>
+                      <th style={{ padding: '8px 10px' }}>Fecha</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'center' }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalDocs.docs.map((doc) => (
+                      <tr key={doc.id} style={{ borderBottom: '1px solid #e9ecef' }}>
+                        <td style={{ padding: '8px 10px', fontWeight: '600' }}>
+                          {formatearTipoDoc(doc.tipo)}
+                        </td>
+                        <td style={{ padding: '8px 10px', color: '#495057' }}>
+                          {doc.nombre_original || 'documento.pdf'}
+                        </td>
+                        <td style={{ padding: '8px 10px', color: '#6c757d' }}>
+                          {formatearTamanio(doc.tamanio_bytes)}
+                        </td>
+                        <td style={{ padding: '8px 10px', color: '#6c757d' }}>
+                          {formatearFecha(doc.fecha_subida)}
+                        </td>
+                        <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleVerDoc(doc)}
+                              disabled={modalDocs.descargandoId === doc.id}
+                              style={{
+                                backgroundColor: '#0d6efd',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                cursor: modalDocs.descargandoId === doc.id ? 'wait' : 'pointer',
+                                fontWeight: '500',
+                              }}
+                              title="Abrir visor de PDF en pestaña nueva"
+                            >
+                              👁 Ver
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDescargarDoc(doc)}
+                              disabled={modalDocs.descargandoId === doc.id}
+                              style={{
+                                backgroundColor: '#198754',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                cursor: modalDocs.descargandoId === doc.id ? 'wait' : 'pointer',
+                                fontWeight: '500',
+                              }}
+                              title="Descargar archivo PDF binario"
+                            >
+                              ⬇ Bajar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div
+              style={{
+                padding: '12px 20px',
+                backgroundColor: '#f8f9fa',
+                borderTop: '1px solid #e9ecef',
+                display: 'flex',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleCerrarModalDocs}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #ced4da',
+                  backgroundColor: '#fff',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  color: '#495057',
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
