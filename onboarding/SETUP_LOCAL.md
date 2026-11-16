@@ -150,10 +150,10 @@ docker exec postgrado-backend npx ts-node prisma/seed.ts
 **Verificar que las tablas existen (igual para ambos stacks):**
 
 ```bash
-docker exec -it postgrado-db psql -U postgrado_user -d fenix_dev
+docker exec -it postgrado-db psql -U postgrado_user -d fenix_postgrado
 
 # Dentro del prompt psql:
-\dt
+\dt postgrados.*
 # Deberías ver: legajos, documentos, cohortes, seminarios, auditoria_legajos, etc.
 
 # Para salir:
@@ -334,16 +334,16 @@ docker exec postgrado-backend npx prisma generate
 
 ```bash
 # Conectarse con psql
-docker exec -it postgrado-db psql -U postgrado_user -d postgrado_dev
+docker exec -it postgrado-db psql -U postgrado_user -d fenix_postgrado
 
 # Comandos útiles dentro de psql:
-#   \dt             → listar tablas
+#   \dt postgrados.* → listar tablas (están en el esquema postgrados)
 #   \d legajos      → describir la tabla legajos (columnas, tipos, constraints)
 #   \x              → activar modo vertical (más legible para filas con muchas columnas)
 #   \q              → salir
 
 # Consulta rápida sin entrar al prompt interactivo:
-docker exec postgrado-db psql -U postgrado_user -d postgrado_dev -c "SELECT id, dni, estado FROM legajos LIMIT 5;"
+docker exec postgrado-db psql -U postgrado_user -d fenix_postgrado -c "SELECT id, dni, estado FROM legajos LIMIT 5;"
 ```
 
 ---
@@ -397,7 +397,7 @@ docker compose ps
 docker exec postgrado-backend alembic upgrade head
 
 # Si sigue fallando, verificar DATABASE_URL en .env:
-# Debe ser: postgresql+asyncpg://postgrado_user:postgrado_dev_password@db:5432/postgrado_dev
+# Debe ser: postgresql+asyncpg://postgrado_user:postgrado_dev_password@db:5432/fenix_postgrado
 # IMPORTANTE: el host es "db" (nombre del servicio en docker-compose), no "localhost"
 ```
 
@@ -409,7 +409,7 @@ Misma causa que el punto anterior. El host en `DATABASE_URL` debe ser `db`, no `
 
 ```bash
 # Verificar en .env:
-# DATABASE_URL="postgresql://postgrado_user:postgrado_dev_password@db:5432/postgrado_dev"
+# DATABASE_URL="postgresql://postgrado_user:postgrado_dev_password@db:5432/fenix_postgrado"
 #                                                           ^^
 #                                               Nombre del servicio Docker, no localhost
 ```

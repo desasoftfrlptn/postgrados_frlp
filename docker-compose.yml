@@ -9,21 +9,23 @@ services:
   # ──────────────────────────────────────────
   # BASE DE DATOS PostgreSQL
   # ──────────────────────────────────────────
+  # Crea la base DB_NAME (fenix_postgrado) solo la primera vez (si el volumen está vacío).
+  # El esquema postgrados y las tablas los crea Alembic, no Docker.
   db:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: postgrado-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-postgrado_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgrado_dev_password}
-      POSTGRES_DB: ${DB_NAME:-postgrado_dev}
+      POSTGRES_DB: ${DB_NAME:-fenix_postgrado}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./src/core/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./scripts/db:/docker-entrypoint-initdb.d 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgrado_user} -d ${DB_NAME:-postgrado_dev}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgrado_user} -d ${DB_NAME:-fenix_postgrado}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,7 +43,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
+      DATABASE_URL: postgresql://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-fenix_postgrado}
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
       STORAGE_PATH: /var/postgrado-storage
       SMTP_HOST: ${SMTP_HOST:-mailhog}
@@ -104,7 +106,7 @@ volumes:
 #   Abrir http://localhost:8025
 #
 # Acceder a la base de datos:
-#   docker exec -it postgrado-db psql -U postgrado_user -d postgrado_dev
+#   docker exec -it postgrado-db psql -U postgrado_user -d fenix_postgrado
 #
 # Si algo no funciona:
 #   docker-compose down && docker-compose up -d --build
