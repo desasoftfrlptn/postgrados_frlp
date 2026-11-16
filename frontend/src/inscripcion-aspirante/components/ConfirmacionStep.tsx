@@ -1,4 +1,5 @@
 import { Button } from "@/shared/components/Button";
+import { CARRERAS_POSGRADO } from "../../shared/types/types.ts";
 import type {
   DatosAcademicos,
   DatosDocumentos,
@@ -62,7 +63,16 @@ export function ConfirmacionStep({
                 Editar
               </button>
             </div>
-            <p>{datosAcademicos.carreraElegida}</p>
+            {datosAcademicos.tipoCarreras.map((tipo, i) => (
+              <p key={tipo}>
+                {tipo}:{" "}
+                {CARRERAS_POSGRADO.find((c) => c.value === datosAcademicos.carreras[i])?.label ??
+                  datosAcademicos.carreras[i]}
+              </p>
+            ))}
+            {datosAcademicos.tipoCarreras.length > 1 && (
+              <p className="text-xs text-ink-muted">Se registra una inscripción por cada carrera.</p>
+            )}
             <p>{datosAcademicos.canalDifusion}</p>
           </div>
 

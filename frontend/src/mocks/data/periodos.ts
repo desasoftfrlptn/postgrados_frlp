@@ -16,7 +16,7 @@ export const periodosFixture: PeriodoInscripcion[] = [
     id: "periodo-001",
     cohorte_id: COHORTE_2026,
     fecha_abre: "2026-09-20",
-    fecha_cierra: "2026-10-31",
+    fecha_cierra: "2026-12-31",
   },
 ];
 

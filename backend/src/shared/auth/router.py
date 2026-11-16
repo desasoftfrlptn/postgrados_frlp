@@ -16,12 +16,25 @@ from src.shared.auth.schemas import (
 from src.shared.database.session import get_db
 
 from src.shared.auth.refresh import renovar_sesion
-from src.shared.auth.schemas import RefreshRequest
+from src.shared.auth.schemas import RefreshRequest, ActivarCuentaRequest
+
+from src.shared.auth.activar_cuenta_repository import UsuarioRepository
+from src.shared.auth.activar_cuenta_service import UsuarioError, UsuarioService
 
 from fastapi import Response
 from src.shared.auth.refresh import revocar_sesion
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
+
+def get_service(db: AsyncSession = Depends(get_db)): return UsuarioService(UsuarioRepository(db))
+
+@router.post("/activar-cuenta")
+async def activar(datos: ActivarCuentaRequest, service: UsuarioService = Depends(get_service)):
+    try:
+        await service.activar_cuenta(datos.token, datos.password)
+        return {"mensaje": "Cuenta activada. Ya puede iniciar sesión."}
+    except UsuarioError as e: raise HTTPException(400, str(e)) from e
+
 
 
 @router.post("/login", response_model=LoginResponse)

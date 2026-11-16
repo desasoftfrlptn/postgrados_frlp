@@ -1,6 +1,6 @@
 import { ETIQUETA_TIPO } from "@/shared/types/types";
 import { useRef, useState } from "react";
-import { Input } from "@/shared/components/Input";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/shared/components/Button";
 import { Spinner } from "@/shared/components/Spinner";
 import ThemeToggle from "@/shared/components/ThemeToggle";
@@ -8,44 +8,50 @@ import {
   Paperclip,
   CheckCircle2,
   AlertTriangle,
+  Clock,
   FileText,
   X,
 } from "lucide-react";
 import { useAdjuntarDocumento, useConsultaEstado } from "../hooks/useEstados";
+import { useCerrarSesionAcceso } from "@/shared/hooks/useAccesos";
+import { isApiError } from "@/shared/api/client";
+import { MENSAJE_ESTADO, documentosRequeridos } from "@/shared/types/types";
 import type { EstadoLegajo, TipoDocumento } from "@/shared/types/types";
-import { useActualizarEstado } from "@/shared/hooks/useEstado";
 
 const TAMANIO_MAX_BYTES = 5 * 1024 * 1024;
 
-const MENSAJE_ESTADO: Record<EstadoLegajo, string> = {
-  BORRADOR: "Todavía no enviaste tu inscripción para revisión.",
-  PENDIENTE: "Tu inscripción está pendiente de revisión.",
-  EN_REVISION: "Estamos revisando tu inscripción.",
-  OBSERVADO: "Tu inscripción tiene observaciones. Revisá los documentos abajo.",
-  COMPLETADO: "Tu documentación está completa.",
-  ACTIVO: "¡Estás activo en la cohorte! Tu trayectoria está al día.",
-  VENCIDO: "Tu inscripción venció. Contactá a la coordinación.",
-  RECHAZADO:
-    "Tu inscripción fue rechazada. Contactá a la coordinación para más información.",
-  BAJA: "Tu inscripción fue dada de baja.",
-  GRADUADO: "¡Te graduaste! Felicitaciones.",
-};
+/* Qué tiene que hacer el aspirante, según el estado del legajo y sus documentos. */
+type ProximoPaso =
+  | { tipo: "subir"; cantidad: number }
+  | { tipo: "esperar" }
+  | { tipo: "contactar" }
+  | { tipo: "ninguno" };
 
-function documentosRequeridos(solicitaBeca: boolean): TipoDocumento[] {
-  const base: TipoDocumento[] = [
-    "DNI",
-    "TITULO_GRADO",
-    "PARTIDA",
-    "CUIT_CUIL",
-    "FORM_INSCRIPCION",
-  ];
-  return solicitaBeca ? [...base, "FORM_BECA"] : base;
+const ESTADOS_CERRADOS: EstadoLegajo[] = ["RECHAZADO", "BAJA", "VENCIDO"];
+const ESTADOS_EN_ESPERA: EstadoLegajo[] = ["BORRADOR", "PENDIENTE", "EN_REVISION"];
+
+function proximoPaso(estado: EstadoLegajo, pendientes: number): ProximoPaso {
+  if (ESTADOS_CERRADOS.includes(estado)) return { tipo: "contactar" };
+  if (pendientes > 0) return { tipo: "subir", cantidad: pendientes };
+  if (ESTADOS_EN_ESPERA.includes(estado)) return { tipo: "esperar" };
+  // Observado, pero sin documentos para volver a subir: hay que resolverlo con la coordinación
+  if (estado === "OBSERVADO") return { tipo: "contactar" };
+  return { tipo: "ninguno" };
+}
+
+function Pantalla({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="screen-shell relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export function ConsultarEstado() {
-  const [dni, setDni] = useState("");
-  const [email, setEmail] = useState("");
-  const [consultado, setConsultado] = useState(false);
+  const navigate = useNavigate();
 
   // Archivos elegidos pero todavía no enviados al servidor.
   const [archivosStaging, setArchivosStaging] = useState<
@@ -54,23 +60,14 @@ export function ConsultarEstado() {
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const [envioExitoso, setEnvioExitoso] = useState(false);
 
-  const {
-    data: legajo,
-    isLoading,
-    isError,
-  } = useConsultaEstado({ dni, email }, consultado);
+  const { data: legajo, isLoading, isError, error, refetch } = useConsultaEstado();
   const adjuntar = useAdjuntarDocumento(legajo?.id);
-  const actualizarEstado = useActualizarEstado();
+  const cerrarSesion = useCerrarSesionAcceso();
 
-  function handleBuscar(e: React.SubmitEvent) {
-    e.preventDefault();
-    setConsultado(true);
-  }
-
-  function handleNuevaConsulta() {
-    setConsultado(false);
-    setArchivosStaging(new Map());
-    setEnvioExitoso(false);
+  function handleSalir() {
+    cerrarSesion.mutate(undefined, {
+      onSuccess: () => navigate("/", { replace: true }),
+    });
   }
 
   function handleSeleccionarArchivo(tipo: TipoDocumento, file: File) {
@@ -93,75 +90,27 @@ export function ConsultarEstado() {
   async function handleEnviar() {
     if (!legajo || archivosStaging.size === 0) return;
     setErrorEnvio(null);
+    setEnvioExitoso(false);
 
+    let subidos = 0;
     try {
-      // Sube todos los documentos staged, uno por uno.
-      for (const [tipo, file] of archivosStaging) {
+      // Sube los documentos elegidos de a uno. El backend actualiza solo el estado del legajo
+      // cuando recibe los documentos nuevos: acá no hay que cambiarlo.
+      for (const [tipo, file] of Array.from(archivosStaging)) {
         await adjuntar.mutateAsync({ file, tipo });
+        handleQuitarArchivo(tipo); // lo que ya se subió sale de la lista a enviar
+        subidos++;
       }
-      // Vuelve a poner el legajo en revisión: el coordinador ve que
-      // hay novedades para revisar.
-      await actualizarEstado.mutateAsync({
-        id: legajo.id,
-        estado: "PENDIENTE",
-      });
-
-      setArchivosStaging(new Map());
       setEnvioExitoso(true);
     } catch (err) {
-      setErrorEnvio(
+      const mensaje =
         err instanceof Error
           ? err.message
-          : "No pudimos enviar tus documentos. Probá de nuevo.",
+          : "No pudimos enviar tus documentos. Probá de nuevo.";
+      setErrorEnvio(
+        subidos > 0 ? `${mensaje} Los documentos anteriores sí se enviaron.` : mensaje,
       );
     }
-  }
-
-  const enviando = adjuntar.isPending || actualizarEstado.isPending;
-
-  if (!consultado || (isError && !isLoading)) {
-    return (
-      <div className="screen-shell relative">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
-        </div>
-        <div className="mx-auto max-w-md p-6 screen-card p-6">
-          <h1 className="mb-1 text-lg font-semibold text-ink">
-            Consultar estado de inscripción
-          </h1>
-          <p className="mb-6 text-sm text-ink-secondary">
-            Ingresá el DNI y el email que usaste al inscribirte.
-          </p>
-
-          <form onSubmit={handleBuscar} className="space-y-4">
-            <Input
-              label="DNI"
-              value={dni}
-              onChange={(e) => setDni(e.target.value)}
-              required
-              inputMode="numeric"
-              placeholder="DNI sin puntos"
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="Email o correo electrónico"
-              error={
-                isError
-                  ? "No encontramos una inscripción con esos datos. Revisá el DNI y el email."
-                  : undefined
-              }
-            />
-            <Button type="submit" className="w-full" isLoading={isLoading}>
-              Consultar
-            </Button>
-          </form>
-        </div>
-      </div>
-    );
   }
 
   if (isLoading) {
@@ -172,20 +121,38 @@ export function ConsultarEstado() {
     );
   }
 
-  if (!legajo) return null;
+  if (isError || !legajo) {
+    const enlaceVencido = isApiError(error) && error.isUnauthorized;
+    return (
+      <Pantalla>
+        <div className="mx-auto max-w-md space-y-4 p-6 screen-card">
+          <h1 className="text-lg font-semibold text-ink">
+            No pudimos cargar tu inscripción
+          </h1>
+          <p role="alert" className="text-sm text-ink-secondary">
+            {enlaceVencido
+              ? "Tu enlace venció. Pedile a la coordinación que te envíe uno nuevo."
+              : (error?.message ?? "Probá de nuevo en unos minutos.")}
+          </p>
+          {!enlaceVencido && (
+            <Button className="w-full" onClick={() => void refetch()}>
+              Reintentar
+            </Button>
+          )}
+        </div>
+      </Pantalla>
+    );
+  }
 
   const requeridos = documentosRequeridos(legajo.solicita_beca);
   const documentosVigentes = legajo.documentos.filter((d) => d.estado !== "FALTANTE");
   const subidosPorTipo = new Map(documentosVigentes.map((d) => [d.tipo, d]));
   const faltantes = requeridos.filter((tipo) => !subidosPorTipo.has(tipo));
   const observados = documentosVigentes.filter((d) => d.estado === "OBSERVADO");
-  const sinPendientes = faltantes.length === 0 && observados.length === 0;
+  const paso = proximoPaso(legajo.estado, faltantes.length + observados.length);
 
   return (
-    <div className="screen-shell relative">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
+    <Pantalla>
       <div className="mx-auto max-w-2xl space-y-6 p-6 screen-card">
         <div className="flex items-center justify-between">
           <div>
@@ -199,10 +166,11 @@ export function ConsultarEstado() {
             )}
           </div>
           <button
-            onClick={handleNuevaConsulta}
-            className="text-sm font-medium text-brand-600 hover:underline"
+            onClick={handleSalir}
+            disabled={cerrarSesion.isPending}
+            className="text-sm font-medium text-brand-600 hover:underline disabled:opacity-50"
           >
-            Consultar otro DNI
+            Salir
           </button>
         </div>
 
@@ -213,19 +181,57 @@ export function ConsultarEstado() {
         {envioExitoso && (
           <div className="flex items-center gap-2 rounded-xl bg-semaforo-verde-soft p-4 text-sm text-semaforo-verde dark:bg-semaforo-verde-soft-dark">
             <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-            ¡Listo! Enviamos tus documentos y tu inscripción vuelve a estar
-            pendiente de revisión.
+            ¡Listo! Recibimos tus documentos. La coordinación los va a revisar.
           </div>
         )}
 
-        {sinPendientes ? (
-          <div className="flex items-center gap-2 rounded-xl bg-semaforo-verde-soft p-4 text-sm text-semaforo-verde dark:bg-semaforo-verde-soft-dark">
-            <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
-            Toda tu documentación está al día. No tenés nada pendiente de
-            adjuntar.
+        {paso.tipo === "ninguno" && (
+          <div className="flex items-start gap-2 rounded-xl bg-semaforo-verde-soft p-4 text-sm text-semaforo-verde dark:bg-semaforo-verde-soft-dark">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            No tenés nada pendiente. Toda tu documentación está al día.
           </div>
-        ) : (
+        )}
+
+        {paso.tipo === "esperar" && (
+          <div className="flex items-start gap-2 rounded-xl border border-line bg-paper-elevated p-4 text-sm text-ink">
+            <Clock className="mt-0.5 h-5 w-5 shrink-0 text-ink-muted" aria-hidden="true" />
+            <div>
+              <p className="font-medium">No tenés nada para hacer por ahora.</p>
+              <p className="mt-1 text-ink-secondary">
+                Estamos revisando tu documentación. Cuando haya novedades, las vas a ver
+                en esta página.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {paso.tipo === "contactar" && (
+          <div className="flex items-start gap-2 rounded-xl border border-semaforo-amarillo/30 bg-semaforo-amarillo-soft p-4 text-sm text-semaforo-amarillo dark:bg-semaforo-amarillo-soft-dark">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-medium">Comunicate con la coordinación.</p>
+              <p className="mt-1">
+                Para saber cómo seguir con tu inscripción, escribile o consultá a la coordinación.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {paso.tipo === "subir" && (
           <>
+            <div className="flex items-start gap-2 rounded-xl border border-semaforo-amarillo/30 bg-semaforo-amarillo-soft p-4 text-sm text-semaforo-amarillo dark:bg-semaforo-amarillo-soft-dark">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-medium">
+                  Tenés {paso.cantidad} {paso.cantidad === 1 ? "documento" : "documentos"}{" "}
+                  para subir.
+                </p>
+                <p className="mt-1">
+                  Adjuntalos abajo y tocá “Enviar cambios”. Después, la coordinación los revisa.
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-ink">
                 Documentos pendientes
@@ -234,7 +240,6 @@ export function ConsultarEstado() {
               {observados.map((doc) => (
                 <DocumentoPendienteItem
                   key={doc.id}
-                  legajoId={legajo.id}
                   tipo={doc.tipo}
                   motivo={doc.motivo_observacion}
                   variante="observado"
@@ -249,7 +254,6 @@ export function ConsultarEstado() {
               {faltantes.map((tipo) => (
                 <DocumentoPendienteItem
                   key={tipo}
-                  legajoId={legajo.id}
                   tipo={tipo}
                   variante="faltante"
                   archivoSeleccionado={archivosStaging.get(tipo)}
@@ -268,7 +272,7 @@ export function ConsultarEstado() {
             <Button
               className="w-full"
               disabled={archivosStaging.size === 0}
-              isLoading={enviando}
+              isLoading={adjuntar.isPending}
               onClick={handleEnviar}
             >
               Enviar cambios
@@ -277,15 +281,8 @@ export function ConsultarEstado() {
           </>
         )}
       </div>
-    </div>
+    </Pantalla>
   );
-}
-
-interface DocumentoPendienteItemProps {
-  tipo: TipoDocumento;
-  legajoId: string;
-  motivo?: string;
-  variante: "faltante" | "observado";
 }
 
 interface DocumentoPendienteItemProps {

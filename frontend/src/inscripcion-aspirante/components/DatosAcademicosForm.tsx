@@ -16,6 +16,7 @@ interface DatosAcademicosFormProps {
 
 type Errors = Partial<Record<string, string>>;
 
+const MOTIVACION_MIN = 50; // el backend rechaza motivaciones más cortas
 const MOTIVACION_MAX = 500;
 
 export function DatosAcademicosForm({
@@ -35,18 +36,36 @@ export function DatosAcademicosForm({
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
+  // carreras[i] es la carrera del tipo tipoCarreras[i]: se registra un legajo por carrera.
+  // Por eso al sacar o agregar un tipo, su carrera sale o entra en la misma posición.
   const toggleTipoCarrera = (tipo: TipoCarrera) => {
     setForm((prev) => {
-      const yaSeleccionado = prev.tipoCarreras.includes(tipo);
-      if (yaSeleccionado) {
-        return { ...prev, tipoCarreras: prev.tipoCarreras.filter((t) => t !== tipo) };
+      const indice = prev.tipoCarreras.indexOf(tipo);
+      if (indice !== -1) {
+        return {
+          ...prev,
+          tipoCarreras: prev.tipoCarreras.filter((_, i) => i !== indice),
+          carreras: prev.carreras.filter((_, i) => i !== indice),
+        };
       }
       if (prev.tipoCarreras.length >= 2) {
         return prev; // máximo 2, ignora el click
       }
-      return { ...prev, tipoCarreras: [...prev.tipoCarreras, tipo] };
+      return {
+        ...prev,
+        tipoCarreras: [...prev.tipoCarreras, tipo],
+        carreras: [...prev.carreras, ""],
+      };
     });
-    setErrors((prev) => ({ ...prev, tipoCarreras: undefined }));
+    setErrors((prev) => ({ ...prev, tipoCarreras: undefined, carreras: undefined }));
+  };
+
+  const handleCarreraChange = (indice: number, value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      carreras: prev.tipoCarreras.map((_, i) => (i === indice ? value : (prev.carreras[i] ?? ""))),
+    }));
+    setErrors((prev) => ({ ...prev, carreras: undefined }));
   };
 
   const validate = (): boolean => {
@@ -55,8 +74,11 @@ export function DatosAcademicosForm({
     if (form.tipoCarreras.length === 0) {
       nextErrors.tipoCarreras = "Seleccioná al menos un tipo de carrera.";
     }
-    if (!form.carreraElegida) {
-      nextErrors.carreraElegida = "Seleccioná la carrera a la que aspirás.";
+    const carreras = form.tipoCarreras.map((_, i) => form.carreras[i] ?? "");
+    if (carreras.some((carrera) => !carrera)) {
+      nextErrors.carreras = "Seleccioná la carrera a la que aspirás en cada tipo elegido.";
+    } else if (new Set(carreras).size !== carreras.length) {
+      nextErrors.carreras = "No podés elegir la misma carrera dos veces.";
     }
     if (!form.tituloGradoObtenido.trim()) {
       nextErrors.tituloGradoObtenido = "Ingresá tu título de grado.";
@@ -66,6 +88,8 @@ export function DatosAcademicosForm({
     }
     if (!form.motivaciones.trim()) {
       nextErrors.motivaciones = "Contanos brevemente tus motivaciones.";
+    } else if (form.motivaciones.trim().length < MOTIVACION_MIN) {
+      nextErrors.motivaciones = `Contanos un poco más: escribí al menos ${MOTIVACION_MIN} caracteres (llevás ${form.motivaciones.trim().length}).`;
     } else if (form.motivaciones.trim().length > MOTIVACION_MAX) {
       nextErrors.motivaciones = `No puedes exceder los ${MOTIVACION_MAX} caracteres (llevás ${form.motivaciones.trim().length}).`;
     }
@@ -118,29 +142,39 @@ export function DatosAcademicosForm({
         )}
       </div>
 
-      {/* Carrera elegida */}
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="carreraElegida">Carrera elegida (Posgrado)</label>
-        <p className="text-xs text-ink-muted">
-          Seleccioná el plan académico al que aspirás
-        </p>
-        <select
-          id="carreraElegida"
-          value={form.carreraElegida}
-          onChange={(e) => handleChange("carreraElegida", e.target.value)}
-          disabled={isSubmitting}
-        >
-          <option value="">Seleccioná una opción</option>
-          {CARRERAS_POSGRADO.map((carrera) => (
-            <option key={carrera.value} value={carrera.value}>
-              {carrera.label}
-            </option>
-          ))}
-        </select>
-        {errors.carreraElegida && (
-          <p className="text-xs font-medium text-semaforo-rojo">
-            {errors.carreraElegida}
+      {/* Carrera elegida: una por cada tipo seleccionado */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label>Carrera elegida (Posgrado)</label>
+          <p className="text-xs text-ink-muted">
+            Seleccioná el plan académico de cada tipo elegido. Se registra una inscripción por carrera.
           </p>
+        </div>
+        {form.tipoCarreras.length === 0 && (
+          <p className="text-xs text-ink-muted">Elegí primero el tipo de carrera.</p>
+        )}
+        {form.tipoCarreras.map((tipo, indice) => (
+          <div key={tipo} className="flex flex-col gap-1.5">
+            <label htmlFor={`carrera-${indice}`} className="text-xs">
+              {tipo}
+            </label>
+            <select
+              id={`carrera-${indice}`}
+              value={form.carreras[indice] ?? ""}
+              onChange={(e) => handleCarreraChange(indice, e.target.value)}
+              disabled={isSubmitting}
+            >
+              <option value="">Seleccioná una opción</option>
+              {CARRERAS_POSGRADO.map((carrera) => (
+                <option key={carrera.value} value={carrera.value}>
+                  {carrera.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+        {errors.carreras && (
+          <p className="text-xs font-medium text-semaforo-rojo">{errors.carreras}</p>
         )}
       </div>
 
@@ -213,7 +247,7 @@ export function DatosAcademicosForm({
           Motivaciones para realizar la carrera
         </label>
         <p className="text-xs text-ink-muted">
-          Describí brevemente tus expectativas y metas profesionales (máximo {MOTIVACION_MAX} caracteres)
+          Describí brevemente tus expectativas y metas profesionales (entre {MOTIVACION_MIN} y {MOTIVACION_MAX} caracteres)
         </p>
         <textarea
           id="motivaciones"

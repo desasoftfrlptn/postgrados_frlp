@@ -1,38 +1,55 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"; 
-import { api } from "@/shared/api/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { periodosApi } from "@/shared/api/endpoints";
 import type { PeriodoInscripcion } from "@/shared/types/types";
+
+// PENDIENTE (backend): /cohortes/:id/periodos y /periodos/:id todavía no tienen router.
+
+/**
+ * Fecha de hoy en hora LOCAL (YYYY-MM-DD). toISOString() da la fecha UTC: en Argentina (UTC-3),
+ * desde las 21 h ya sería "mañana", y un período se cerraría o figuraría abierto un día corrido.
+ */
+export function hoyLocal(): string {
+  const ahora = new Date();
+  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+  const dia = String(ahora.getDate()).padStart(2, "0");
+  return `${ahora.getFullYear()}-${mes}-${dia}`;
+}
 
 export function usePeriodosInscripcion(cohorteId: string) {
   return useQuery({
     queryKey: ["periodos", cohorteId],
-    queryFn: () => api.get<PeriodoInscripcion[]>(`/cohortes/${cohorteId}/periodos`),
+    queryFn: () => periodosApi.listar(cohorteId),
     enabled: Boolean(cohorteId),
   });
 }
- 
-export function useCrearPeriodo(cohorteId: string) {
+
+// Abrir o cerrar un período cambia el "período vigente" que ve el aspirante y el estado de la cohorte.
+function useRefrescarPeriodos(cohorteId: string) {
   const queryClient = useQueryClient();
- 
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ["periodos", cohorteId] });
+    queryClient.invalidateQueries({ queryKey: ["periodo-vigente"] });
+    queryClient.invalidateQueries({ queryKey: ["cohortes"] });
+  };
+}
+
+export function useCrearPeriodo(cohorteId: string) {
+  const refrescar = useRefrescarPeriodos(cohorteId);
+
   return useMutation({
     mutationFn: (datos: { fecha_abre: string; fecha_cierra: string | null }) =>
-      api.post<PeriodoInscripcion>(`/cohortes/${cohorteId}/periodos`, datos),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["periodos", cohorteId] });
-    },
+      periodosApi.crear(cohorteId, datos),
+    onSuccess: refrescar,
   });
 }
- 
+
 export function useCerrarPeriodo(cohorteId: string) {
-  const queryClient = useQueryClient();
- 
+  const refrescar = useRefrescarPeriodos(cohorteId);
+
   return useMutation({
     mutationFn: (periodoId: string) =>
-      api.patch<PeriodoInscripcion>(`/periodos/${periodoId}`, {
-        fecha_cierra: new Date().toISOString().slice(0, 10), // hoy, formato YYYY-MM-DD
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["periodos", cohorteId] });
-    },
+      periodosApi.actualizar(periodoId, { fecha_cierra: hoyLocal() }),
+    onSuccess: refrescar,
   });
 }
 
@@ -42,7 +59,7 @@ export function formatFecha(fecha: string): string {
 }
 
 export function estaAbierto(periodo: PeriodoInscripcion): boolean {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyLocal();
   const despuesDeAbrir = periodo.fecha_abre <= hoy;
   const antesDeCerrar = periodo.fecha_cierra === null || periodo.fecha_cierra >= hoy;
   return despuesDeAbrir && antesDeCerrar;

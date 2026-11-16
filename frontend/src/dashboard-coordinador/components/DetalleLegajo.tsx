@@ -1,7 +1,7 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useLegajo } from "../hooks/useLegajos";
-import { useDocumentos } from "../hooks/useDocumentos";
+import { useAbrirDocumento, useDocumentos } from "../hooks/useDocumentos";
 import { useTrabajoFinal } from "../hooks/useTrabajoFinal";
 import { Spinner } from "@/shared/components/Spinner";
 import { Button } from "@/shared/components/Button";
@@ -14,10 +14,11 @@ import {
   ETIQUETA_TIPO,
   type DocumentoConEstado,
 } from "@/shared/types/types";
-import { UserContext } from "@/shared/context/UserContext";
+import { useAuth } from "@/shared/auth/authContext";
+import { isApiError } from "@/shared/api/client";
 
 export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
-  const currentUser = useContext(UserContext);
+  const { user: currentUser } = useAuth();
   const routeParams = useParams();
   const id = idProp || routeParams.id;
 
@@ -37,65 +38,36 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
 
   const {
     data: trabajo,
-    isLoading: isLoadingTrabajo,
     isError: isErrorTrabajo,
     error: errorTrabajo,
   } = useTrabajoFinal(id || "");
+  const abrirDocumento = useAbrirDocumento();
+
+  // "Todavía no hay trabajo final" puede llegar como 404: no es un error de la pantalla
+  const trabajoNoExiste = isErrorTrabajo && isApiError(errorTrabajo) && errorTrabajo.isNotFound;
+  const errorTrabajoReal = isErrorTrabajo && !trabajoNoExiste;
 
   const iniciales = `${legajo?.nombre[0] || ""}${legajo?.apellido[0] || ""}`.toUpperCase();
   const [docSeleccionado, setDocSeleccionado] = useState<DocumentoConEstado | null>(null);
   const [legajoParaTrabajoFinal, setLegajoParaTrabajoFinal] = useState<string | null>(null);
 
-  const handlePreviewPDF = (urlOrBase64: string) => {
-    if (!urlOrBase64) return;
-
-    let targetUrl = urlOrBase64;
-
-    if (urlOrBase64.startsWith("data:application/pdf;base64,")) {
-      try {
-        const base64Data = urlOrBase64.split(",")[1];
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: "application/pdf" });
-        targetUrl = URL.createObjectURL(blob);
-
-        setTimeout(() => URL.revokeObjectURL(targetUrl), 60000);
-      } catch (err) {
-        console.error("Error al procesar el PDF para vista previa:", err);
-        return;
-      }
-    }
-
-    window.open(targetUrl, "_blank");
-  };
-
-  if (isLoadingLegajo || isLoadingDocumentos || isLoadingTrabajo) {
+  // Solo el legajo bloquea la pantalla. Documentos y trabajo final dependen de endpoints propios:
+  // si fallan, lo muestra su sección y el resto del detalle sigue disponible.
+  if (isLoadingLegajo) {
     return (
       <div className="flex items-center gap-2 p-6 text-ink-secondary">
-        <Spinner size="sm" /> Cargando…
+        <Spinner size="sm" /> Cargando legajo…
       </div>
     );
   }
 
-  if (isErrorLegajo || isErrorDocumentos || isErrorTrabajo) {
+  if (isErrorLegajo || !legajo) {
     return (
       <div
         role="alert"
         className="rounded-xl border border-semaforo-rojo/20 bg-semaforo-rojo-soft p-4 text-sm text-semaforo-rojo dark:bg-semaforo-rojo-soft-dark"
       >
-        {isErrorLegajo && (
-          <div>No se pudo cargar el legajo: {(errorLegajo as Error).message}</div>
-        )}
-        {isErrorDocumentos && (
-          <div>No se pudieron cargar los documentos: {(errorDocumentos as Error).message}</div>
-        )}
-        {isErrorTrabajo && (
-          <div>No se pudo cargar el trabajo final: {(errorTrabajo as Error).message}</div>
-        )}
+        No se pudo cargar el legajo: {errorLegajo?.message ?? "no se encontró."}
       </div>
     );
   }
@@ -125,7 +97,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
             </div>
           </div>
           <div className="sm:ml-auto flex items-center gap-2">
-            {currentUser?.rol === "cpr" && legajo?.estado === "ACTIVO" && !trabajo && (
+            {currentUser?.rol === "cpr" && legajo?.estado === "ACTIVO" && !trabajo && !errorTrabajoReal && (
               <Button
                 variant="outline"
                 icon={GraduationCap}
@@ -237,6 +209,23 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
             Documentos
           </p>
 
+          {isLoadingDocumentos && (
+            <div className="flex items-center gap-2 py-2 text-sm text-ink-secondary">
+              <Spinner size="sm" /> Cargando documentos…
+            </div>
+          )}
+          {isErrorDocumentos && (
+            <p role="alert" className="text-sm text-semaforo-rojo">
+              No se pudieron cargar los documentos: {errorDocumentos?.message}
+            </p>
+          )}
+          {abrirDocumento.isError && (
+            <p role="alert" className="mb-2 text-xs text-semaforo-rojo">
+              No se pudo abrir el documento: {abrirDocumento.error.message}
+            </p>
+          )}
+
+          {!isLoadingDocumentos && !isErrorDocumentos && (
           <div className="flex flex-col divide-y divide-line">
             {(Object.keys(ETIQUETA_TIPO) as TipoDocumento[]).map((t) => {
               const docsDeEseTipo =
@@ -290,7 +279,8 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                       type="button"
                       icon={Eye}
                       variant="outline"
-                      onClick={() => handlePreviewPDF(doc.url ?? "")}
+                      disabled={abrirDocumento.isPending}
+                      onClick={() => abrirDocumento.mutate({ docId: doc.id })}
                     >
                       Vista previa
                     </Button>
@@ -307,9 +297,15 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
               />
             )}
           </div>
+          )}
         </div>
 
         {/* Trabajo Final */}
+        {errorTrabajoReal && (
+          <p role="alert" className="text-sm text-semaforo-rojo">
+            No se pudo cargar el trabajo final: {errorTrabajo?.message}
+          </p>
+        )}
         {trabajo && (
           <div className="rounded-xl border border-line bg-surface-alt/50 p-4">
             <div className="text-xs font-bold uppercase tracking-wider text-ink-muted">

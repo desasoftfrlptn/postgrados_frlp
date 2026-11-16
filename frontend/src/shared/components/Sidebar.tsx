@@ -1,23 +1,45 @@
-import { Sun, Moon } from "lucide-react";
-import type { MenuItem, User } from "@/shared/types/types";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Sun, Moon, LogOut } from "lucide-react";
+import type { MenuItem } from "@/shared/types/types";
+import type { Usuario } from "@/shared/api/endpoints";
 import { Button } from "./Button";
 import { useTheme } from "@/shared/context/useTheme";
 import LogoFenix from "../../assets/LogoFenix.png";
 import UtnLogo from "../../assets/UtnLogo.png";
+import { useAuth } from "../auth/authContext";
 
 export interface SidebarProps {
-  user: User;
+  user: Usuario;
   items: MenuItem[];
   currentPath: string;
   onNavigate: (href: string) => void;
 }
 
-export function Sidebar({ user, items, currentPath, onNavigate }: SidebarProps) {
+export function Sidebar({
+  user,
+  items,
+  currentPath,
+  onNavigate,
+}: SidebarProps) {
   const visibleItems = items.filter(
-    (item) => !item.roles || item.roles.includes(user.rol)
+    (item) => !item.roles || item.roles.includes(user.rol),
   );
 
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
   const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
+
+  const handleLogOut = async() => {
+    try {
+      await logout();
+    } catch(err) {
+      setError(err instanceof Error ? err.message : "No pudimos cerrar sesión. Probá de nuevo.")
+    } finally {
+      navigate("/login");
+    }
+  }
 
   return (
     <aside
@@ -89,9 +111,28 @@ export function Sidebar({ user, items, currentPath, onNavigate }: SidebarProps) 
             .join("")}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-ink dark:text-white">{user.nombre}</p>
-          <p className="truncate text-xs capitalize text-ink-muted dark:text-slate-400">{user.rol}</p>
+          <p className="truncate text-sm font-medium text-ink dark:text-white">
+            {user.nombre}
+          </p>
+          <p className="truncate text-xs capitalize text-ink-muted dark:text-slate-400">
+            {user.rol}
+          </p>
         </div>
+      </div>
+
+      {error && (
+            <p role="alert" className="text-center text-sm font-medium text-semaforo-rojo">
+              {error}
+            </p>
+          )}
+
+      <div className="border-t border-line px-3 py-3 dark:border-white/10">
+        <Button
+          icon={LogOut}
+          variant="primary"
+          className="w-full justify-start gap-3 border-line bg-transparent text-ink-secondary shadow-none transition-colors hover:bg-paper-elevated hover:text-ink dark:border-white/10 dark:text-slate-400 dark:hover:bg-sidebar-hover dark:hover:text-slate-200"
+          onClick={handleLogOut}
+        >Cerrar sesión</Button>
       </div>
 
       {/* Toggle de tema */}

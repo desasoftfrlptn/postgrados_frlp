@@ -2,7 +2,8 @@ import { useState } from "react";
 import VentanaEmergente from "@/shared/components/VentanaEmergente";
 import { Input } from "@/shared/components/Input";
 import { Button } from "@/shared/components/Button";
-import { useCrearTrabajoFinal, ApiError } from "../hooks/useTrabajoFinal";
+import { useCrearTrabajoFinal } from "../hooks/useTrabajoFinal";
+import { isApiError } from "@/shared/api/client";
 import type { Rol, TipoTrabajoFinal } from "@/shared/types/types";
  
 const TIPOS: { value: TipoTrabajoFinal; label: string }[] = [
@@ -75,7 +76,7 @@ export function AltaTrabajoFinalModal({
     );
   }
  
-  const es403 = crear.isError && crear.error instanceof ApiError && crear.error.statusCode === 403;
+  const es403 = crear.isError && isApiError(crear.error) && crear.error.isForbidden;
  
   return (
     <VentanaEmergente isOpen={isOpen} onClose={limpiarYcerrar} title="Alta de Trabajo Final / Tesis">

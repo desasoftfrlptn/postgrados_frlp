@@ -1,9 +1,9 @@
 """Tablas del módulo de gestión documental (ARQUITECTURA.md §8.1 y §9)."""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, Text, func, text
+from sqlalchemy import CheckConstraint, ForeignKey, String, Text, func, text, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.shared.database.connection import Base
@@ -38,7 +38,10 @@ class Documento(Base):
     nombre_original: Mapped[str] = mapped_column(String(255))
     checksum_sha256: Mapped[str] = mapped_column(String(64))
     tamanio_bytes: Mapped[int]
-    fecha_subida: Mapped[datetime] = mapped_column(server_default=func.now())
+    fecha_subida: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
+        default=datetime.now(timezone.utc),
+    )
 
     # Revisión del coordinador
     estado: Mapped[str] = mapped_column(String(30), server_default=text("'PENDIENTE_REVISION'"))

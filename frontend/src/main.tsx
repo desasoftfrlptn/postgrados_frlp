@@ -1,20 +1,18 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
+import { shouldRetryQuery } from "./shared/api/client.ts";
+import { setupApiAuth } from "./shared/auth/authSession.ts";
+import { AuthProvider } from "./shared/auth/AuthProvider.tsx";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-const queryClient = new QueryClient();
-console.log("VITE_USE_MOCKS:", import.meta.env.VITE_USE_MOCKS);
-async function enableMocking() {
-  if (import.meta.env.VITE_USE_MOCKS !== "true") return;
-  const { worker } = await import("@/mocks/browser");
-  return worker.start({ onUnhandledRequest: "bypass" });
-}
-
-enableMocking().then(() => {
-  createRoot(document.getElementById("root")!).render(
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-  );
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: shouldRetryQuery } },
 });
+setupApiAuth(queryClient);
+
+createRoot(document.getElementById("root")!).render(
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider><App /></AuthProvider>
+  </QueryClientProvider>,
+);

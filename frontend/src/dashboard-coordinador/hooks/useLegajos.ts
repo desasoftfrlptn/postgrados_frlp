@@ -1,32 +1,53 @@
-import { keepPreviousData, useQuery} from "@tanstack/react-query";
-import { api } from "@/shared/api/client";
-import type { FiltrosLegajo, Legajo, LegajosPaginados } from "@/shared/types/types";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
+import { legajosApi } from "@/shared/api/endpoints";
+import { saveBlob } from "@/shared/api/files";
+import {
+  fromApiLegajo,
+  fromApiPagina,
+  toLegajoFiltros,
+  toListarLegajosParams,
+  type FiltrosLegajoCompat,
+} from "@/shared/api/mappers";
 
-function buildQueryString(filtros: FiltrosLegajo): string {
-  const params = new URLSearchParams();
-  if (filtros.estado) params.set("estado", filtros.estado);
-  if (filtros.cohorte_id) params.set("cohorte_id", filtros.cohorte_id);
-  if (filtros.tipo_carrera) params.set("tipo_carrera", filtros.tipo_carrera);
-  if (filtros.solo_con_beca) params.set("solo_con_beca", "true");
-  params.set("page", String(filtros.page ?? 1));
-  params.set("limit", String(filtros.limit ?? 10));
-  return params.toString();
-}
-
-export function useLegajos(filtros: FiltrosLegajo = {}) {
+// Listado paginado (GET /legajos). Solo coordinador.
+// Acepta los FiltrosLegajo de siempre (incluido `solo_con_beca`) y además `dni` y `apellido`.
+export function useLegajos(filtros: FiltrosLegajoCompat = {}) {
   return useQuery({
     queryKey: ["legajos", filtros],
-    queryFn: () => api.get<LegajosPaginados>(`/legajos?${buildQueryString(filtros)}`),
+    queryFn: async () => fromApiPagina(await legajosApi.listar(toListarLegajosParams(filtros))),
     placeholderData: keepPreviousData,
   });
 }
 
-// Para el detalle de un legajo puntual (GET /api/v1/legajos/:id)
+// Detalle de un legajo puntual (GET /legajos/:id)
 export function useLegajo(id: string) {
   return useQuery({
     queryKey: ["legajos", id],
-    queryFn: () => api.get<Legajo>(`/legajos/${id}`),
+    queryFn: async () => fromApiLegajo(await legajosApi.detalle(id)),
     enabled: Boolean(id),
   });
 }
 
+// NUEVO: legajos del usuario logueado (estudiante), uno por carrera.
+// PENDIENTE (backend): GET /legajos/mios (ver legajosApi.mios).
+export function useMisLegajos() {
+  return useQuery({
+    queryKey: ["legajos", "mios"],
+    queryFn: async () => (await legajosApi.mios()).map(fromApiLegajo),
+  });
+}
+
+// NUEVO: exporta a Excel los legajos que coinciden con los filtros (GET /legajos/exportar).
+// El backend exporta hasta 500 legajos con los mismos filtros del listado (sin paginar).
+// Uso: exportar.mutate({ filtros, nombreArchivo: "inscriptos-2026.xlsx" })
+export function useExportarLegajos() {
+  return useMutation({
+    mutationFn: async ({
+      filtros = {},
+      nombreArchivo,
+    }: { filtros?: FiltrosLegajoCompat; nombreArchivo?: string } = {}) => {
+      const { blob, filename } = await legajosApi.exportar(toLegajoFiltros(filtros));
+      saveBlob(blob, nombreArchivo ?? filename ?? "legajos.xlsx");
+    },
+  });
+}

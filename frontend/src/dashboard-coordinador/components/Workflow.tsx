@@ -5,10 +5,11 @@
 //  - Botones con funcionalidad real
 // ─────────────────────────────────────────────
 
+import { useState } from "react";
 import type { EstadoLegajo, Legajo } from "@/shared/types/types";
 import { useDocumentos } from "../hooks/useDocumentos";
 import { Button } from "@/shared/components/Button";
-import { Check, ArrowLeft, Lock } from "lucide-react";
+import { Check, ArrowLeft, Copy, Lock } from "lucide-react";
 import { useFaltanDocs } from "./SeccionDocumentos";
 import { useActualizarEstado } from "@/shared/hooks/useEstado";
 
@@ -45,6 +46,45 @@ const ESTADO_ANTERIOR: Partial<Record<EstadoLegajo, EstadoLegajo>> = {
   EN_REVISION: "OBSERVADO",
   COMPLETADO: "EN_REVISION",
 };
+
+// Al pasar a ACTIVO el backend crea el acceso del estudiante y devuelve el enlace en la respuesta.
+// El correo todavía no se envía: si el enlace no se muestra acá, el estudiante nunca puede activar su cuenta.
+function EnlaceActivacion({ url }: { url: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      /* sin permiso de portapapeles: se puede copiar a mano desde el campo */
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 dark:border-brand-800/60 dark:bg-brand-900/30">
+      <p className="text-xs font-medium text-brand-700 dark:text-brand-200">
+        Se generó el acceso del estudiante. Enviale este enlace para que elija su contraseña.
+      </p>
+      <p className="text-xs text-ink-secondary">
+        Todavía no se envía por correo: copialo y guardalo antes de salir de esta pantalla.
+      </p>
+      <div className="flex gap-2">
+        <input
+          readOnly
+          value={url}
+          aria-label="Enlace de activación"
+          onFocus={(e) => e.currentTarget.select()}
+          className="min-w-0 flex-1 text-xs"
+        />
+        <Button type="button" variant="outline" icon={copiado ? Check : Copy} onClick={() => void copiar()}>
+          {copiado ? "Copiado" : "Copiar"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export const Workflow = ({ legajo }: WorkflowProps) => {
   const {
@@ -173,6 +213,11 @@ export const Workflow = ({ legajo }: WorkflowProps) => {
         <div className="rounded-xl border border-semaforo-rojo/20 bg-semaforo-rojo-soft px-4 py-3 text-xs text-semaforo-rojo dark:bg-semaforo-rojo-soft-dark">
           {actualizarEstado.error.message}
         </div>
+      )}
+
+      {/* Enlace de activación (solo viene al activar al estudiante) */}
+      {actualizarEstado.data?.url_activacion && (
+        <EnlaceActivacion url={actualizarEstado.data.url_activacion} />
       )}
 
       {/* Acciones */}

@@ -12,7 +12,8 @@ import src.carga_academica.infrastructure.orm_models  # noqa: F401
 import src.gestion_documental.infrastructure.orm_models  # noqa: F401
 import src.inscripcion.infrastructure.orm_models  # noqa: F401
 import src.seguimiento_graduacion.infrastructure.orm_models  # noqa: F401
-import src.shared.auth.orm_models  # noqa: F401
+import src.acceso.models
+import src.shared.auth.orm_models
 from src.shared.database.connection import DATABASE_URL, DB_SCHEMA, Base
 
 # this is the Alembic Config object, which provides
@@ -29,7 +30,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
+# from mysrc import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
@@ -71,7 +72,7 @@ def do_run_migrations(connection: Connection) -> None:
         connection=connection,
         target_metadata=target_metadata,
         include_schemas=True,  # compara también los esquemas que no son public
-        include_name=lambda name, type_, parents: type_ != "schema" or name == DB_SCHEMA,
+        include_name=lambda name, type_, parents: type_ != "schema" or name in (DB_SCHEMA, None), # fix para que no detecte tablas existentes como nuevas
         version_table_schema=DB_SCHEMA,  # alembic_version también va en postgrados
     )
 

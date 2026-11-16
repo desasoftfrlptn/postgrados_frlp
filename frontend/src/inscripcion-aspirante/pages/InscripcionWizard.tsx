@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useInscripcion } from "@/shared/hooks/useInscripcion";
+import { useInscripcion, InscripcionParcialError } from "@/shared/hooks/useInscripcion";
+import { CAMPOS_WIZARD, erroresDeCampo } from "@/shared/api/mappers";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Button } from "@/shared/components/Button";
 import { WizardHeader } from "../components/WizardHeader";
 import { Stepper, type Step } from "../components/Stepper";
 import { DatosPersonalesForm } from "../components/DatosPersonalesForm";
@@ -43,12 +46,40 @@ export function InscripcionWizard() {
   const [datosDocumentos, setDatosDocumentos] = useState<DatosDocumentos>(
     DATOS_DOCUMENTOS_INICIAL
   );
+  // Errores de campo que devuelve el backend (409/422), con los nombres de DatosPersonales
+  const [serverErrors, setServerErrors] = useState<Record<string, string> | undefined>();
+  // Resultado de la inscripción: qué se registró y qué hay que resolver con la coordinación
+  const [resultado, setResultado] = useState<{ registradas: string[]; avisos: string[] } | null>(null);
   const mutation = useInscripcion();
-  const { data: estado, isLoading } = useEstadoInscripcionVigente();
+  const {
+    data: estado,
+    isLoading,
+    isError: errorPeriodo,
+    error: errorPeriodoDetalle,
+    refetch: reintentarPeriodo,
+  } = useEstadoInscripcionVigente();
   if (isLoading) {
     return (
       <div className="flex items-center gap-2 p-6 text-ink-secondary">
         <Spinner size="sm" /> Verificando período de inscripción…
+      </div>
+    );
+  }
+  // Un error de red o del servidor no significa que las inscripciones estén cerradas
+  if (errorPeriodo) {
+    return (
+      <div className="screen-shell relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <div className="screen-card mx-auto max-w-md space-y-4 p-6">
+          <p role="alert" className="text-sm text-ink">
+            No pudimos verificar el período de inscripción: {errorPeriodoDetalle?.message}
+          </p>
+          <Button className="w-full" onClick={() => void reintentarPeriodo()}>
+            Reintentar
+          </Button>
+        </div>
       </div>
     );
   }
@@ -74,7 +105,38 @@ export function InscripcionWizard() {
       </div>
       </div>
     );
-  } 
+  }
+  if (resultado) {
+    return (
+      <div className="screen-shell relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <div className="screen-card mx-auto max-w-md space-y-4 p-6">
+          <div className="flex items-start gap-2 rounded-xl bg-semaforo-verde-soft p-4 text-sm text-semaforo-verde dark:bg-semaforo-verde-soft-dark">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <div>
+              <p className="font-medium">¡Recibimos tu inscripción!</p>
+              <p className="mt-1">Registramos: {resultado.registradas.join(", ")}.</p>
+            </div>
+          </div>
+          {resultado.avisos.map((aviso) => (
+            <div
+              key={aviso}
+              role="alert"
+              className="flex items-start gap-2 rounded-xl border border-semaforo-amarillo/30 bg-semaforo-amarillo-soft p-4 text-sm text-semaforo-amarillo dark:bg-semaforo-amarillo-soft-dark"
+            >
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              {aviso}
+            </div>
+          ))}
+          <p className="text-sm text-ink-secondary">
+            La coordinación va a revisar tu solicitud y tu documentación.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const goToNextStep = () => {
     setCurrentStep((step) => Math.min(step + 1, STEPS.length - 1));
   };
@@ -104,11 +166,39 @@ export function InscripcionWizard() {
   };
   // Paso 4: dispara el POST real con el payload acumulado de los 3 pasos.
   const handleConfirmar = () => {
+    if (!estado?.cohorte_id) return; // con el período abierto siempre hay cohorte
+    setServerErrors(undefined);
     mutation.mutate(
-      { datosPersonales, datosAcademicos, datosDocumentos },
+      { datosPersonales, datosAcademicos, datosDocumentos, cohorte_id: estado.cohorte_id },
       {
-        onSuccess: () => {
-          setCurrentStep((step) => Math.min(step + 1, STEPS.length - 1));
+        onSuccess: ({ legajos, documentosFallidos }) => {
+          setResultado({
+            registradas: legajos.map((l) => l.carrera_elegida),
+            avisos:
+              documentosFallidos.length > 0
+                ? [
+                    `No pudimos subir ${documentosFallidos.length} documento(s). La coordinación te va a indicar cómo completarlos.`,
+                  ]
+                : [],
+          });
+        },
+        onError: (error) => {
+          // Se registró una carrera pero otra falló: no se puede reintentar (duplicaría la primera)
+          if (error instanceof InscripcionParcialError) {
+            setResultado({
+              registradas: error.creados.map((l) => l.carrera_elegida),
+              avisos: [
+                `No pudimos registrar ${error.carrerasPendientes.join(", ")}, y tampoco se subieron los documentos. Comunicate con la coordinación para completarlo.`,
+              ],
+            });
+            return;
+          }
+          // 409/422 con campo: se vuelve al paso 1 y se marca el campo
+          const errores = erroresDeCampo(error, CAMPOS_WIZARD);
+          if (Object.keys(errores).length > 0) {
+            setServerErrors(errores);
+            setCurrentStep(0);
+          }
         },
       },
     );
@@ -131,6 +221,7 @@ export function InscripcionWizard() {
             initialData={datosPersonales}
             isSubmitting={mutation.isPending}
             onNext={handleNextPersonales}
+            serverErrors={serverErrors}
           />
         )}
         {currentStep === 1 && (

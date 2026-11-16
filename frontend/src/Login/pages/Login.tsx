@@ -1,11 +1,14 @@
 import { useState, type SyntheticEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { User, Lock, Mail } from 'lucide-react';
+import { Navigate, useLocation } from 'react-router-dom';
+import { Lock, Mail } from 'lucide-react';
 import Header from '../components/Header';
 import Input from '../components/Input';
 import Checkbox from '../components/Checkbox';
 import {Button} from '../../shared/components/Button';
 import VentanaEmergente from '../../shared/components/VentanaEmergente';
+import { Spinner } from '@/shared/components/Spinner';
+import { useAuth } from '@/shared/auth/authContext';
+import { roleHome } from '@/shared/types/types';
 import LogoFenix from '../../assets/LogoFenix.png';
 import UtnLogo from '../../assets/UtnLogo.png';
 
@@ -15,10 +18,47 @@ export default function LoginScreen() {
   const [recordarme, setRecordarme] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
+  const { status, user, login } = useAuth();
+  const location = useLocation();
+
+  // Con sesión iniciada (ya había una, o se acaba de iniciar) se va a la página que se pedía
+  // —RequireAuth la deja en location.state.from— o, si no, al inicio que corresponde al rol.
+  if (status === "authenticated" && user) {
+    const desde = (location.state as { from?: { pathname: string; search?: string } } | null)?.from;
+    const destino = desde ? `${desde.pathname}${desde.search ?? ""}` : roleHome[user.rol];
+    return <Navigate to={destino} replace />;
+  }
+
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center gap-2 bg-paper text-ink-secondary">
+        <Spinner size="sm" /> Verificando tu sesión…
+      </div>
+    );
+  }
+
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log({ usuario, contrasena, recordarme });
+    if (enviando) return;
+
+    if (!usuario.trim() || !contrasena) {
+      setError("Ingresá tu email y tu contraseña.");
+      return;
+    }
+
+    setError(null);
+    setEnviando(true);
+    try {
+      await login(usuario.trim(), contrasena, { recordarme });
+      // Sin navigate: al pasar status a "authenticated" este mismo componente redirige (ver arriba)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No pudimos iniciar sesión. Probá de nuevo.");
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -52,8 +92,8 @@ export default function LoginScreen() {
           className="flex flex-1 flex-col gap-4 px-6 pb-8 pt-8"
         >
           <Input
-            icon={<User size={18} />}
-            placeholder="Usuario"
+            icon={<Mail size={18} />}
+            placeholder="Email"
             value={usuario}
             onChange={(e) => setUsuario(e.target.value)}
           />
@@ -65,9 +105,16 @@ export default function LoginScreen() {
             value={contrasena}
             onChange={(e) => setContrasena(e.target.value)}
           />
-          <Link to="/panel" className="text-center" >
-            <Button type="submit">Ingresar</Button>
-          </Link>
+
+          {error && (
+            <p role="alert" className="text-center text-sm font-medium text-semaforo-rojo">
+              {error}
+            </p>
+          )}
+
+          <div className="text-center">
+            <Button type="submit" isLoading={enviando}>Ingresar</Button>
+          </div>
 
           <a
             href="#"
