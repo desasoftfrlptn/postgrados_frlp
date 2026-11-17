@@ -110,6 +110,10 @@ class CrearClase(BaseModel):
     fecha: date = Field(default_factory=date.today)
 
 
+class CambiarFechaClase(BaseModel):
+    fecha: date
+
+
 class ClaseRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID

@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from main import app
 from src.authentication.application.security import create_token_pair
 from src.authentication.infrastructure.models import User
-from src.carga_academica.infraestructura.modelos import AccesoDocente
+from src.carga_academica.infraestructura.modelos import AccesoDocente, InscripcionSeminario
 from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
 from src.core.config import settings
 from src.db.base import Base
@@ -287,3 +287,20 @@ def test_recordatorios_notas_respetan_plazo_y_frecuencia(entorno, monkeypatch) -
     assert "#token=" in mensajes[0].get_content()
     assert enviar_recordatorios(session, ahora + timedelta(hours=23)) == 0
     assert enviar_recordatorios(session, ahora + timedelta(hours=24)) == 1
+
+
+def test_asistencia_futura_no_registra_avance_anticipado(entorno) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(f"/api/v1/seminarios/{seminario}/inscripciones", headers=coord, json={
+        "legajo_ids": [str(legajo.id)],
+    }).status_code == 204
+    docente = {"Authorization": f"Bearer {_enlace(cliente, seminario, tokens)['token']}"}
+    clase = cliente.post(f"/api/v1/seminarios/{seminario}/clases", headers=docente, json={
+        "fecha": (date.today() + timedelta(days=1)).isoformat(),
+    }).json()["id"]
+    assert cliente.patch(f"/api/v1/seminarios/{seminario}/asistencias", headers=docente, json={
+        "asistencias": [{"clase_id": clase, "legajo_id": str(legajo.id), "presente": True}],
+    }).status_code == 200
+    assert session.scalar(select(InscripcionSeminario)).ultimo_avance_en is None

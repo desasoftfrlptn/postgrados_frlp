@@ -246,7 +246,71 @@ La migración `20261116_0009` depende de `20261116_0007`. En este árbol las
 migraciones vacías de carga académica están inactivas. Si una base ya registra
 la revisión `20261116_0008`, Alembic no podrá actualizarla automáticamente:
 revisar su historial y esquema antes de intervenir; no cambiar su versión sin
-verificarla. El semáforo y las alertas corresponden a historias posteriores.
+verificarla.
+
+## Seguimiento de graduación (US-C-002 a US-C-004)
+
+Las rutas usan `Authorization: Bearer <access_token>` y conservan el formato
+común de errores. Coordinación configura el plan por cohorte y carrera:
+
+1. Crear o clasificar los seminarios de la cohorte mediante
+   `POST /api/v1/seminarios` o `PATCH /api/v1/seminarios/{id}/plan` con
+   `{"carrera":"Maestría","es_obligatorio":true}`.
+2. Confirmar que el conjunto de seminarios obligatorios está completo con
+   `POST /api/v1/graduacion/planes/confirmar` y
+   `{"cohorte_id":"<uuid>","carrera":"Maestría","confirmar":true}`.
+   `GET /api/v1/graduacion/planes?cohorte_id=<uuid>` lista los planes.
+   Una modificación de la clasificación invalida las confirmaciones afectadas.
+3. Para recibir alertas, un `ADMIN` o `COORDINADOR` asigna coordinadores activos
+   por carrera con `POST /api/v1/graduacion/asignaciones` y
+   `{"carrera":"Maestría","usuario_id":"<uuid>"}`. Se pueden consultar con
+   `GET /api/v1/graduacion/asignaciones` y quitar con
+   `DELETE /api/v1/graduacion/asignaciones/{id}`.
+4. `POST /api/v1/graduacion/recalcular`, para coordinación, calcula los estados
+   y procesa las alertas pendientes. Devuelve `cambios`, `alertas_enviadas` y
+   `alertas_pendientes`. También se ejecuta diariamente a las 02:00, hora local
+   del servidor, mientras la aplicación esté en funcionamiento.
+
+`GET /api/v1/legajos/{id}/semaforo` devuelve un arreglo con un estado por
+carrera del legajo. Sin plan confirmado informa `SIN_DATOS`; después de
+confirmar o reconfirmar y hasta el siguiente cálculo informa `SIN_EVALUAR`.
+La respuesta calculada incluye motivo, seminarios adeudados, última fecha de
+avance, días sin avance y fecha de cambio. Solo coordinación puede consultar
+o usar `PATCH` en esa ruta con
+`{"carrera":"Maestría","estado":"VERDE"}`; el próximo recálculo vuelve a
+aplicar las reglas automáticas.
+
+`POST /api/v1/legajos/{id}/avances-tesis` permite a `CPR` registrar
+`{"carrera":"Maestría","fecha":"2026-10-10","descripcion":"Revisión de tesis"}`.
+La carrera debe pertenecer al legajo y la fecha debe estar entre su inscripción
+y la fecha actual. El último avance también considera aprobaciones CPR,
+asistencias y cambios de notas en seminarios de esa carrera.
+
+`GET /api/v1/graduacion/en-riesgo?page=1&limit=20` devuelve los legajos activos
+en ROJO, ordenados por fecha de cambio más antigua. `limit` admite 1 a 500;
+`GET /api/v1/graduacion/en-riesgo/exportar` descarga el listado completo en
+XLSX. Ambos requieren `COORDINADOR`. Los seminarios obligatorios no inscriptos
+cuentan como adeudados; los inscriptos se consideran aprobados según su nota y
+asistencia del módulo B.
+
+El cálculo sigue el algoritmo de Arquitectura, con duraciones de 730, 1095 y
+1825 días para Especialización, Maestría y Doctorado. Los umbrales se comparan
+estrictamente y el cálculo puede asignar VERDE automáticamente. Esta decisión
+contradice BR-008 del SRS y fue elegida para esta implementación. Los cambios
+quedan auditados; al entrar en ROJO se registra una alerta con motivo y días
+restantes. Sin coordinadores asignados o ante un fallo SMTP la alerta queda
+pendiente para reintento. Los mensajes pendientes describen el cambio histórico,
+por lo que podrían llegar cuando el estado ya haya cambiado. Si ocurre una
+caída después del envío SMTP y antes de confirmar la entrega, puede repetirse.
+La tarea depende de que haya un proceso de aplicación activo; no es una cola
+externa ni garantiza horarios o entrega exactamente una vez.
+
+La migración `20261117_0012` crea los planes, asignaciones, avances, estados y
+alertas. Ejecutar `alembic upgrade head` antes de iniciar el backend. Las
+pruebas de migración incluidas usan SQLite; validar también la migración en el
+entorno PostgreSQL de destino antes del despliegue. Los recordatorios docentes
+generan el token antes de enviar el correo y confirman la transacción después:
+existe una breve ventana en que el enlace recibido aún no está confirmado.
 
 ## Servicios compartidos
 

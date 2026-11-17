@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from src.authentication.application.security import bearer_scheme, get_current_user
@@ -27,6 +27,7 @@ from src.carga_academica.presentacion.esquemas import (
     ActualizarPlanSeminario,
     ActualizarFechaLimite,
     CeldaAsistencia,
+    CambiarFechaClase,
     ClaseRespuesta,
     CrearClase,
     CrearEnlace,
@@ -44,6 +45,7 @@ from src.db.session import get_db
 from src.inscripcion.application.acceso_propietario import obtener_legajo_por_token
 from src.inscripcion.infrastructure.models import Cohorte, Legajo
 from src.inscripcion.presentation.acceso_legajo import autorizar_dueno_o_coordinador, exigir_credencial
+from src.seguimiento_graduacion.infraestructura.modelos import PlanGraduacion
 from src.shared.auditoria.servicio import registrar_evento_auditoria
 from src.shared.autorizacion.permisos import requerir_roles
 from src.shared.http.ruta_api import ErrorRespuesta, RutaAPI
@@ -130,6 +132,15 @@ def _auditar(
     )
 
 
+def _invalidar_planes(session: Session, cohorte_id: UUID, carreras: set[str]) -> None:
+    if carreras:
+        session.execute(
+            update(PlanGraduacion)
+            .where(PlanGraduacion.cohorte_id == cohorte_id, PlanGraduacion.carrera.in_(carreras))
+            .values(confirmado=False, requiere_recalculo=True)
+        )
+
+
 def _planilla(session: Session, seminario: Seminario) -> PlanillaRespuesta:
     clases = list(session.scalars(
         select(ClaseSeminario)
@@ -191,6 +202,8 @@ def crear_seminario(
     seminario = Seminario(**datos.model_dump())
     session.add(seminario)
     session.flush()
+    if seminario.carrera is not None and seminario.es_obligatorio:
+        _invalidar_planes(session, seminario.cohorte_id, {seminario.carrera})
     _auditar(session, usuario, seminario.id, "crear_seminario")
     session.commit()
     return seminario
@@ -216,6 +229,11 @@ def actualizar_plan_seminario(
     usuario: User = Depends(requerir_roles("COORDINADOR")),
 ) -> Seminario:
     seminario = _seminario(session, id, bloquear=True)
+    if seminario.carrera != datos.carrera or seminario.es_obligatorio != datos.es_obligatorio:
+        carreras = {datos.carrera}
+        if seminario.carrera is not None:
+            carreras.add(seminario.carrera)
+        _invalidar_planes(session, seminario.cohorte_id, carreras)
     seminario.carrera = datos.carrera
     seminario.es_obligatorio = datos.es_obligatorio
     _auditar(session, usuario, id, "actualizar_plan_seminario", datos.model_dump())
@@ -339,7 +357,7 @@ def crear_clase(
 def cambiar_fecha_clase(
     id: UUID,
     clase_id: UUID,
-    datos: CrearClase,
+    datos: CambiarFechaClase,
     _: Seminario = Depends(_exigir_docente),
     session: Session = Depends(get_db),
 ) -> ClaseSeminario:
@@ -379,10 +397,10 @@ def registrar_asistencias(
     pares = {(item.clase_id, item.legajo_id) for item in datos.asistencias}
     if len(pares) != len(datos.asistencias):
         raise HTTPException(status_code=422, detail="Hay asistencias duplicadas en el lote")
-    clases = set(session.scalars(select(ClaseSeminario.id).where(
+    clases = {clase.id: clase for clase in session.scalars(select(ClaseSeminario).where(
         ClaseSeminario.seminario_id == id,
         ClaseSeminario.id.in_({item.clase_id for item in datos.asistencias}),
-    )))
+    ))}
     inscripciones = {
         inscripcion.legajo_id: inscripcion
         for inscripcion in session.scalars(
@@ -395,7 +413,7 @@ def registrar_asistencias(
     existentes = {
         (item.clase_id, item.inscripcion_id): item
         for item in session.scalars(select(AsistenciaSeminario).where(
-            AsistenciaSeminario.clase_id.in_(clases),
+            AsistenciaSeminario.clase_id.in_(clases.keys()),
             AsistenciaSeminario.inscripcion_id.in_([item.id for item in inscripciones.values()]),
         ))
     }
@@ -403,6 +421,7 @@ def registrar_asistencias(
     for registro in datos.asistencias:
         inscripcion = inscripciones[registro.legajo_id]
         asistencia = existentes.get((registro.clase_id, inscripcion.id))
+        anterior = asistencia.presente if asistencia is not None else False
         if asistencia is None:
             session.add(AsistenciaSeminario(
                 clase_id=registro.clase_id, inscripcion_id=inscripcion.id,
@@ -410,7 +429,8 @@ def registrar_asistencias(
             ))
         else:
             asistencia.presente = registro.presente
-        inscripcion.ultimo_avance_en = ahora
+        if registro.presente and not anterior and clases[registro.clase_id].fecha <= date.today():
+            inscripcion.ultimo_avance_en = ahora
     registrar_evento_auditoria(
         session, accion="registrar_asistencias", tipo_recurso="seminario", id_recurso=id,
         rol_actor="DOCENTE", detalles={"cantidad": len(datos.asistencias)},
@@ -440,8 +460,10 @@ def registrar_notas(
         raise HTTPException(status_code=422, detail="Todos los estudiantes deben pertenecer al seminario")
     ahora = datetime.now(timezone.utc)
     for registro in datos.notas:
-        inscripciones[registro.legajo_id].nota = registro.nota
-        inscripciones[registro.legajo_id].ultimo_avance_en = ahora
+        inscripcion = inscripciones[registro.legajo_id]
+        if inscripcion.nota != registro.nota:
+            inscripcion.nota = registro.nota
+            inscripcion.ultimo_avance_en = ahora
     registrar_evento_auditoria(
         session, accion="registrar_notas", tipo_recurso="seminario", id_recurso=id,
         rol_actor="DOCENTE", detalles={"legajo_ids": [str(item) for item in sorted(ids)]},
