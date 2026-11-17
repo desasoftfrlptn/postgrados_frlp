@@ -7,7 +7,7 @@ def calcular_porcentaje_asistencia(
 ) -> Decimal:
     dictadas = [fecha for fecha in fechas_clases if fecha <= hoy]
     if not dictadas:
-        return Decimal("0.00")
+        return Decimal("0")
     presentes = sum(fecha in fechas_presentes for fecha in dictadas)
     return Decimal(presentes) * 100 / len(dictadas)
 
@@ -17,6 +17,4 @@ def calcular_condicion(nota: Decimal | None, porcentaje: Decimal) -> str:
         return "Pendiente"
     if nota < 4:
         return "Desaprobado"
-    if porcentaje < 75:
-        return "Libre"
-    return "Aprobado"
+    return "Libre" if porcentaje < 75 else "Aprobado"

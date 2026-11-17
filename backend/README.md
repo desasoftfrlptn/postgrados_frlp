@@ -37,10 +37,9 @@ revoca toda la familia de tokens de esa sesión. Los usuarios se almacenan con
 bcrypt (cost factor 12) y no existe registro público.
 
 La inscripción (`POST /api/v1/legajos`) permanece pública. La interfaz de
-coordinación exige el rol `COORDINADOR`; `CPR` puede autenticarse, pero su módulo
-todavía no está disponible. Las rutas API pueden exigir roles con
-`requerir_roles(...)`. El acceso de `DOCENTE` a cada seminario utiliza un
-token opaco específico, independiente de las cuentas con contraseña.
+coordinación exige el rol `COORDINADOR`; `CPR` puede crear y modificar trabajos
+finales. Las rutas API pueden exigir roles con `requerir_roles(...)`. El acceso
+`DOCENTE` usa un token opaco específico de seminario, no una cuenta ni JWT.
 
 `GET /api/v1/legajos`, `GET /api/v1/legajos/exportar` y las rutas de gestión de
 cohortes requieren un JWT válido con rol `COORDINADOR`. `GET
@@ -81,6 +80,63 @@ adecuada; la aplicación rechaza secretos de ejemplo.
 Para aprovisionar una cuenta fuera del seed de desarrollo, usar
 `python -m scripts.create_user <email> <COORDINADOR|CPR|ADMIN>` desde `backend`;
 el comando solicita la contraseña sin mostrarla y almacena únicamente su hash.
+
+## Acceso docente (US-B-001)
+
+Coordinación usa su JWT para:
+
+1. `POST /api/v1/seminarios`: crear un seminario con `cohorte_id`, `nombre`,
+   `docente_nombre`, `docente_email` y `fecha_fin_cuatrimestre` (`AAAA-MM-DD`).
+2. `GET /api/v1/seminarios?cohorte_id=<uuid>`: consultar seminarios; el filtro
+   de cohorte es opcional.
+3. `POST /api/v1/seminarios/{id}/inscripciones`: enviar
+   `{"legajo_ids":["<uuid>"]}`. Los legajos deben estar activos y pertenecer
+   a la cohorte. Un lote inválido no se inscribe parcialmente.
+4. `POST /api/v1/seminarios/{id}/enlace`: enviar `{}` o
+   `{"expira_en":"2027-07-01T00:00:00-03:00"}`. Devuelve `token`,
+   `expira_en` y `enlace`. El vencimiento opcional debe incluir zona horaria
+   y ser futuro. Por defecto vence al terminar la fecha informada para el
+   cuatrimestre en horario argentino UTC-3.
+
+El docente usa `Authorization: Bearer <token>` en
+`GET /api/v1/seminarios/{id}/estudiantes`. La respuesta contiene el seminario
+y sus estudiantes inscriptos, excluyendo legajos dados de baja. Un token
+vigente de otro seminario recibe `403`; uno ausente, inválido o vencido recibe
+`401`. Los errores usan el formato documentado en arquitectura.
+
+Cada token se genera con 32 bytes aleatorios y se almacena como hash SHA-256;
+generar otro enlace invalida el anterior. El token se entrega en el fragmento
+del enlace (`#token=...`) para que no se envíe al servidor en la URL. Debe
+tratarse como contraseña y compartirse de forma segura. Las respuestas con
+credenciales o datos docentes llevan `Cache-Control: no-store`.
+
+La ruta de frontend incluida en el enlace todavía no está implementada: el
+backend puede consumirse directamente, pero abrir el enlace en el navegador no
+muestra aún la planilla.
+
+El docente puede usar `POST /api/v1/seminarios/{id}/clases`, `PATCH
+/api/v1/seminarios/{id}/clases/{clase_id}`, `PATCH
+/api/v1/seminarios/{id}/asistencias`, `PATCH /api/v1/seminarios/{id}/notas` y
+`GET /api/v1/seminarios/{id}/exportar`. La planilla incluye clases,
+asistencias, porcentaje y condición; solo cuentan las clases ya dictadas.
+Las notas admiten valores numéricos de 1 a 10 con hasta un decimal. El dueño
+del legajo y coordinación pueden consultar el resultado actualizado en `GET
+/api/v1/legajos/{id}/seminarios`.
+
+Coordinación puede clasificar un seminario por carrera y obligatoriedad mediante
+`PATCH /api/v1/seminarios/{id}/plan`, y configurar la fecha límite de notas con
+`PATCH /api/v1/seminarios/{id}/fecha-limite-notas`. La tarea diaria de las
+08:00 (hora local del servidor) envía recordatorios cuando faltan como máximo
+48 horas y quedan notas pendientes; se repiten cada 24 horas hasta el plazo.
+Los errores SMTP se registran; no existe una cola durable de recordatorios.
+
+Ejecutar `alembic upgrade head` para aplicar `20261117_0010`. Si la base fue
+usada con la antigua revisión `0008` o ya contiene tablas del módulo B, revisar
+el historial y el esquema antes de migrar; esta revisión crea esas tablas y no
+las modifica ni reemplaza automáticamente.
+La revisión `20261117_0011` agrega las tablas de clases y asistencia y los
+campos de notas, carrera y fecha límite; los seminarios existentes quedan sin
+clasificar hasta que coordinación los configure.
 
 ## Inscripción pública
 
@@ -148,67 +204,113 @@ Todas las respuestas HTTP incluyen los encabezados de seguridad configurados
 por `MiddlewareEncabezadosSeguridad`. CORS permite el origen definido en
 `CORS_ORIGIN`.
 
-## Seminarios y carga académica
+## Trabajos finales (US-C-001)
 
-Ejecutar `alembic upgrade head` para crear las tablas del módulo. Coordinación
-usa su JWT en `Authorization: Bearer <JWT>`:
+Las tres operaciones usan `Authorization: Bearer <access_token>`:
 
-- `POST /api/v1/seminarios`: crear con `cohorte_id`, `nombre`,
-  `docente_nombre`, `docente_email` y `fecha_limite_notas` opcional (fecha y
-  hora ISO 8601 con zona horaria). `GET /api/v1/seminarios` lista seminarios y
-  admite el filtro `cohorte_id`.
-- `POST /api/v1/seminarios/{id}/inscripciones`: recibe
-  `{"legajo_ids":["<UUID>"]}`. Los legajos deben estar `Activo` y pertenecer
-  a la cohorte. El lote completo se rechaza si alguno no cumple.
-- `POST /api/v1/seminarios/{id}/enlace`: recibe `{}` o
-  `{"expira_en":"2027-06-30T23:59:59Z"}` y devuelve `token`, `expira_en` y
-  `enlace`. Por defecto vence al final del semestre calendario en UTC. Solo se
-  guarda el hash del token; generar otro enlace revoca todos los anteriores.
-  La respuesta no se almacena en caché y el token no vuelve a mostrarse.
+- `POST /api/v1/legajos/{id}/trabajo-final`: `CPR` registra un trabajo para
+  un legajo existente y recibe el registro completo con su `id` y `legajo_id`
+  (`201`). Un legajo puede tener varios trabajos.
+- `PATCH /api/v1/trabajos-finales/{id}`: `CPR` modifica parcialmente el
+  registro y recibe el resultado (`200`). Se debe enviar al menos un campo;
+  únicamente `codirector` puede establecerse en `null`.
+- `GET /api/v1/legajos/{id}/trabajo-final`: `CPR` o `COORDINADOR` obtiene un
+  arreglo de trabajos; si no existen, el arreglo está vacío.
 
-El docente envía `Authorization: Bearer <token>` en cada solicitud. El token
-solo autoriza su seminario; un token válido de otro seminario recibe `403`.
-La URL generada usa `CORS_ORIGIN` y el formato
-`/docente/seminarios/{id}#token=<token>`: el frontend deberá implementar esa
-ruta, extraer el fragmento y enviar el token en el encabezado; el frontend no
-está implementado por este módulo.
+Ejemplo de creación:
 
-- `GET /api/v1/seminarios/{id}/estudiantes` devuelve `seminario`, `clases` y
-  `estudiantes`. Cada estudiante incluye `legajo_id`, datos de identificación,
-  una lista `asistencias` con `clase_id` y `presente`, `porcentaje_asistencia`,
-  `nota` y `condicion`.
-- `POST /api/v1/seminarios/{id}/clases`: recibe `{}` para la fecha local actual
-  o `{"fecha":"2026-11-16"}`. Una clase nueva muestra ausentes por defecto;
-  no se admiten fechas duplicadas. `PATCH /api/v1/seminarios/{id}/clases/{clase_id}`
-  recibe `{"fecha":"2026-11-17"}` para corregirla.
-- `PATCH /api/v1/seminarios/{id}/asistencias`: recibe
-  `{"asistencias":[{"clase_id":"<UUID>","legajo_id":"<UUID>","presente":true}]}`
-  y devuelve la planilla actualizada. Puede enviarse una sola celda o un lote.
-- `PATCH /api/v1/seminarios/{id}/notas`: recibe
-  `{"notas":[{"legajo_id":"<UUID>","nota":7.5}]}` y devuelve la planilla.
-  Solo se admiten números de 1 a 10 con hasta un decimal. Los lotes se validan
-  íntegramente antes de guardar y se serializan por seminario en PostgreSQL.
-- `GET /api/v1/seminarios/{id}/exportar` descarga la planilla XLSX.
-- `GET /api/v1/legajos/{id}/seminarios` muestra notas y condición al dueño del
-  legajo o al coordinador usando sus credenciales habituales.
+```json
+{
+  "tipo": "Maestría",
+  "titulo": "Investigación aplicada",
+  "director_nombre": "María Pérez",
+  "director_email": "directora@example.com",
+  "codirector": null,
+  "fecha_aprobacion_cpr": "2026-10-10",
+  "numero_resolucion": "123/2026"
+}
+```
 
-La asistencia se calcula con las clases hasta la fecha local del servidor;
-las futuras no participan y sin clases dictadas es 0 %. Con nota menor a 4 la
-condición es `Desaprobado`; con nota desde 4 y asistencia menor a 75 % es
-`Libre`; con ambos umbrales cumplidos es `Aprobado`. Sin nota es `Pendiente`.
-La condición se calcula al consultar, de modo que refleja nuevas clases,
-asistencias, notas y cambios de fecha. Los legajos en `Baja` se excluyen de la
-planilla y no se pueden modificar desde ella.
+Los tipos aceptados son `TFI`, `Maestría` y `Doctorado`. Todos los campos son
+obligatorios salvo `codirector`. El servidor valida textos, email y fecha.
+Responde `401` si falta o es inválida la autenticación, `403` ante un rol sin
+permiso, `404` para un recurso inexistente y `422` ante datos inválidos. Las
+creaciones, modificaciones e intentos denegados de escritura se registran en
+auditoría sin guardar el contenido del trabajo. Un aspirante con token de
+propietario vigente también recibe `403` al intentar escribir y su legajo queda
+identificado en el evento; un token vencido o inválido recibe `401`.
+Los errores de estas rutas siguen el formato de arquitectura: `statusCode`,
+`error`, `message`, `field` (puede ser `null`) y `timestamp` UTC.
 
-Si se informó `fecha_limite_notas`, la tarea diaria a las 08:00 (hora local del
-servidor) envía un recordatorio cuando quedan hasta 48 horas y existen notas
-pendientes. Cada correo incluye un nuevo enlace que no revoca los existentes;
-se repite como máximo cada 24 horas hasta completar o vencer el plazo. Usar la
-configuración SMTP compartida y mantener el backend en ejecución. El envío no
-es una cola durable: los errores quedan en el log y se reintenta en la próxima
-ejecución; un fallo después de enviar y antes de confirmar puede duplicar un
-mensaje. Las modificaciones y la emisión de enlaces quedan auditadas sin
-registrar tokens.
+La migración `20261116_0009` depende de `20261116_0007`. En este árbol las
+migraciones vacías de carga académica están inactivas. Si una base ya registra
+la revisión `20261116_0008`, Alembic no podrá actualizarla automáticamente:
+revisar su historial y esquema antes de intervenir; no cambiar su versión sin
+verificarla.
+
+## Seguimiento de graduación (US-C-002 a US-C-004)
+
+Las rutas usan `Authorization: Bearer <access_token>` y conservan el formato
+común de errores. Coordinación configura el plan por cohorte y carrera:
+
+1. Crear o clasificar los seminarios de la cohorte mediante
+   `POST /api/v1/seminarios` o `PATCH /api/v1/seminarios/{id}/plan` con
+   `{"carrera":"Maestría","es_obligatorio":true}`.
+2. Confirmar que el conjunto de seminarios obligatorios está completo con
+   `POST /api/v1/graduacion/planes/confirmar` y
+   `{"cohorte_id":"<uuid>","carrera":"Maestría","confirmar":true}`.
+   `GET /api/v1/graduacion/planes?cohorte_id=<uuid>` lista los planes.
+   Una modificación de la clasificación invalida las confirmaciones afectadas.
+3. Para recibir alertas, un `ADMIN` o `COORDINADOR` asigna coordinadores activos
+   por carrera con `POST /api/v1/graduacion/asignaciones` y
+   `{"carrera":"Maestría","usuario_id":"<uuid>"}`. Se pueden consultar con
+   `GET /api/v1/graduacion/asignaciones` y quitar con
+   `DELETE /api/v1/graduacion/asignaciones/{id}`.
+4. `POST /api/v1/graduacion/recalcular`, para coordinación, calcula los estados
+   y procesa las alertas pendientes. Devuelve `cambios`, `alertas_enviadas` y
+   `alertas_pendientes`. También se ejecuta diariamente a las 02:00, hora local
+   del servidor, mientras la aplicación esté en funcionamiento.
+
+`GET /api/v1/legajos/{id}/semaforo` devuelve un arreglo con un estado por
+carrera del legajo. Sin plan confirmado informa `SIN_DATOS`; después de
+confirmar o reconfirmar y hasta el siguiente cálculo informa `SIN_EVALUAR`.
+La respuesta calculada incluye motivo, seminarios adeudados, última fecha de
+avance, días sin avance y fecha de cambio. Solo coordinación puede consultar
+o usar `PATCH` en esa ruta con
+`{"carrera":"Maestría","estado":"VERDE"}`; el próximo recálculo vuelve a
+aplicar las reglas automáticas.
+
+`POST /api/v1/legajos/{id}/avances-tesis` permite a `CPR` registrar
+`{"carrera":"Maestría","fecha":"2026-10-10","descripcion":"Revisión de tesis"}`.
+La carrera debe pertenecer al legajo y la fecha debe estar entre su inscripción
+y la fecha actual. El último avance también considera aprobaciones CPR,
+asistencias y cambios de notas en seminarios de esa carrera.
+
+`GET /api/v1/graduacion/en-riesgo?page=1&limit=20` devuelve los legajos activos
+en ROJO, ordenados por fecha de cambio más antigua. `limit` admite 1 a 500;
+`GET /api/v1/graduacion/en-riesgo/exportar` descarga el listado completo en
+XLSX. Ambos requieren `COORDINADOR`. Los seminarios obligatorios no inscriptos
+cuentan como adeudados; los inscriptos se consideran aprobados según su nota y
+asistencia del módulo B.
+
+El cálculo sigue el algoritmo de Arquitectura, con duraciones de 730, 1095 y
+1825 días para Especialización, Maestría y Doctorado. Los umbrales se comparan
+estrictamente y el cálculo puede asignar VERDE automáticamente. Esta decisión
+contradice BR-008 del SRS y fue elegida para esta implementación. Los cambios
+quedan auditados; al entrar en ROJO se registra una alerta con motivo y días
+restantes. Sin coordinadores asignados o ante un fallo SMTP la alerta queda
+pendiente para reintento. Los mensajes pendientes describen el cambio histórico,
+por lo que podrían llegar cuando el estado ya haya cambiado. Si ocurre una
+caída después del envío SMTP y antes de confirmar la entrega, puede repetirse.
+La tarea depende de que haya un proceso de aplicación activo; no es una cola
+externa ni garantiza horarios o entrega exactamente una vez.
+
+La migración `20261117_0012` crea los planes, asignaciones, avances, estados y
+alertas. Ejecutar `alembic upgrade head` antes de iniciar el backend. Las
+pruebas de migración incluidas usan SQLite; validar también la migración en el
+entorno PostgreSQL de destino antes del despliegue. Los recordatorios docentes
+generan el token antes de enviar el correo y confirman la transacción después:
+existe una breve ventana en que el enlace recibido aún no está confirmado.
 
 ## Servicios compartidos
 

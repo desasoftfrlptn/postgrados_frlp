@@ -27,6 +27,10 @@ from src.inscripcion.presentation.router import (
     router as inscripcion_router,
 )
 from src.inscripcion.presentation.workflow_router import router as workflow_router
+from src.seguimiento_graduacion.presentacion.router import router as graduacion_router
+from src.seguimiento_graduacion.presentacion.riesgo_router import router as riesgo_router
+from src.seguimiento_graduacion.aplicacion.alertas import enviar_alertas_pendientes
+from src.seguimiento_graduacion.aplicacion.semaforos import recalcular_semaforos
 from src.shared.http.encabezados import MiddlewareEncabezadosSeguridad
 from src.shared.limite_solicitudes.servicio import limpiar_contadores_limite
 
@@ -103,17 +107,42 @@ async def _ejecutar_recordatorios_docentes() -> None:
             _LOGGER.exception("Falló la tarea diaria de recordatorios docentes")
 
 
+def _procesar_semaforos() -> None:
+    with SessionLocal() as session:
+        recalcular_semaforos(session)
+        enviar_alertas_pendientes(session)
+
+
+async def _ejecutar_semaforos() -> None:
+    while True:
+        ahora = datetime.now().astimezone()
+        proxima = ahora.replace(hour=2, minute=0, second=0, microsecond=0)
+        if proxima <= ahora:
+            proxima += timedelta(days=1)
+        await asyncio.sleep((proxima - ahora).total_seconds())
+        try:
+            await asyncio.to_thread(_procesar_semaforos)
+        except Exception:
+            _LOGGER.exception("Falló la tarea diaria de semáforos")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     tarea = asyncio.create_task(_ejecutar_tarea_diaria())
     recordatorios = asyncio.create_task(_ejecutar_recordatorios_docentes())
+    semaforos = asyncio.create_task(_ejecutar_semaforos())
     try:
         yield
     finally:
         tarea.cancel()
         recordatorios.cancel()
+        semaforos.cancel()
         try:
             await tarea
+        except asyncio.CancelledError:
+            pass
+        try:
+            await semaforos
         except asyncio.CancelledError:
             pass
         try:
@@ -145,6 +174,8 @@ app.include_router(cohortes_router)
 app.include_router(legajos_router)
 app.include_router(workflow_router)
 app.include_router(autenticacion_router)
+app.include_router(graduacion_router)
+app.include_router(riesgo_router)
 app.include_router(seminarios_router)
 app.include_router(carga_legajos_router)
 

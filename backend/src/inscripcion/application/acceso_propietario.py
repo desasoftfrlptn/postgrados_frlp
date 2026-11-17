@@ -4,6 +4,9 @@ import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from src.inscripcion.infrastructure.models import Legajo
 
 _DURACION_TOKEN_PROPIETARIO = timedelta(days=30)
@@ -46,3 +49,14 @@ def validar_token_propietario(
     if expira_en.tzinfo is None:
         expira_en = expira_en.replace(tzinfo=timezone.utc)
     return expira_en > (ahora or datetime.now(timezone.utc))
+
+
+def obtener_legajo_por_token(session: Session, token: str) -> Legajo | None:
+    try:
+        token_hash = hashlib.sha256(token.encode("ascii")).hexdigest()
+    except UnicodeEncodeError:
+        return None
+    legajo = session.scalar(select(Legajo).where(Legajo.token_propietario_hash == token_hash))
+    if legajo is None or not validar_token_propietario(legajo, token):
+        return None
+    return legajo

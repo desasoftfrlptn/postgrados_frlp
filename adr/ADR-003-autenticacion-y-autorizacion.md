@@ -49,10 +49,8 @@ administrativas requieren identidad y permisos explicitamente definidos.
 
 En el repositorio, los valores predeterminados son 8 horas para el token de
 acceso y 7 dias para el de renovacion. Estos valores son configurables y deben
-revisarse antes de produccion. El acceso docente utiliza tokens opacos asociados
-a un seminario, almacenados como hash y con expiracion; coordinacion puede
-revocarlos generando un nuevo enlace. Los permisos se verifican en cada
-solicitud y no otorgan acceso a otros seminarios.
+revisarse antes de produccion. No se considera implementado el acceso docente
+mediante enlace hasta que exista su flujo propio.
 
 ## Consecuencias
 

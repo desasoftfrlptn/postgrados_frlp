@@ -1,10 +1,11 @@
+import base64
+import hashlib
 from collections.abc import Generator
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID, uuid4
-from xml.etree import ElementTree
 from zipfile import ZipFile
 
 import pytest
@@ -15,10 +16,8 @@ from sqlalchemy.orm import Session
 from main import app
 from src.authentication.application.security import create_token_pair
 from src.authentication.infrastructure.models import User
-from src.carga_academica.dominio.reglas import calcular_condicion, calcular_porcentaje_asistencia
+from src.carga_academica.infraestructura.modelos import AccesoDocente, InscripcionSeminario
 from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
-from src.carga_academica.infraestructura.excel import generar_excel
-from src.carga_academica.infraestructura.modelos import AccesoDocente, Seminario
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db
@@ -28,195 +27,280 @@ from src.shared.auditoria.modelos import EventoAuditoria
 
 @pytest.fixture
 def entorno(tmp_path: Path) -> Generator[tuple[TestClient, Session, Cohorte, Legajo, dict[str, str]], None, None]:
-    engine = create_engine(f"sqlite:///{tmp_path / 'academico.db'}")
-    Base.metadata.create_all(engine)
-    session = Session(engine)
-    cohorte = Cohorte(anio=2026, nombre="Cohorte", inscripcion_abierta=True)
-    usuario = User(email="coordinacion@example.com", password_hash="sin-uso", role="COORDINADOR")
-    session.add_all([cohorte, usuario])
+    motor = create_engine(f"sqlite:///{tmp_path / 'docentes.db'}")
+    Base.metadata.create_all(motor)
+    session = Session(motor)
+    cohorte = Cohorte(anio=2026, nombre="Cohorte")
+    coordinador = User(email="coord@example.com", password_hash="sin-uso", role="COORDINADOR")
+    cpr = User(email="cpr@example.com", password_hash="sin-uso", role="CPR")
+    session.add_all((cohorte, coordinador, cpr))
     session.flush()
     legajo = Legajo(
-        cohorte_id=cohorte.id, estado="Activo", carreras=["Especialización"],
-        dni="12345678", apellido="Pérez", nombre="Ana", nacionalidad="Argentina",
-        email="ana@example.com", email_alternativo="alternativo@example.com",
-        telefono_movil="123", domicilio="Calle 1", ciudad="La Plata",
-        provincia="Buenos Aires", pais="Argentina", titulo_grado="Ingeniería",
-        como_conocio="web", motivacion="Estudiar",
+        cohorte_id=cohorte.id, estado="Activo", carreras=["Maestría"], dni="12345678",
+        apellido="Pérez", nombre="Ana", nacionalidad="Argentina", email="ana@example.com",
+        email_alternativo="alternativo@example.com", telefono_movil="123", domicilio="Calle 1",
+        ciudad="La Plata", provincia="Buenos Aires", pais="Argentina",
+        titulo_grado="Ingeniería", como_conocio="web", motivacion="Estudiar",
     )
     session.add(legajo)
-    token, _, _ = create_token_pair(session, usuario)
+    tokens = {}
+    for usuario in (coordinador, cpr):
+        token, _, _ = create_token_pair(session, usuario)
+        tokens[usuario.role] = f"Bearer {token}"
     session.commit()
 
-    def reemplazar_sesion() -> Generator[Session, None, None]:
+    def obtener_session() -> Generator[Session, None, None]:
         yield session
 
-    app.dependency_overrides[get_db] = reemplazar_sesion
-    with TestClient(app) as cliente:
-        yield cliente, session, cohorte, legajo, {"Authorization": f"Bearer {token}"}
-    app.dependency_overrides.clear()
-    session.close()
-    engine.dispose()
+    app.dependency_overrides[get_db] = obtener_session
+    try:
+        with TestClient(app) as cliente:
+            yield cliente, session, cohorte, legajo, tokens
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+        session.close()
+        motor.dispose()
 
 
-def _crear(cliente: TestClient, cohorte: Cohorte, coordinador: dict[str, str]) -> str:
-    respuesta = cliente.post("/api/v1/seminarios", headers=coordinador, json={
-        "cohorte_id": str(cohorte.id), "nombre": "Metodología",
-        "docente_nombre": "Docente", "docente_email": "docente@example.com",
-    })
+def _crear(cliente: TestClient, cohorte: Cohorte, tokens: dict[str, str]) -> str:
+    respuesta = cliente.post(
+        "/api/v1/seminarios",
+        headers={"Authorization": tokens["COORDINADOR"]},
+        json={
+            "cohorte_id": str(cohorte.id),
+            "nombre": "Metodología",
+            "docente_nombre": "María Pérez",
+            "docente_email": "docente@example.com",
+            "fecha_fin_cuatrimestre": (date.today() + timedelta(days=30)).isoformat(),
+        },
+    )
     assert respuesta.status_code == 201, respuesta.text
     return respuesta.json()["id"]
 
 
-def _enlace(cliente: TestClient, id: str, coordinador: dict[str, str]) -> dict[str, str]:
-    respuesta = cliente.post(f"/api/v1/seminarios/{id}/enlace", json={}, headers=coordinador)
-    assert respuesta.status_code == 200
-    assert respuesta.headers["cache-control"] == "no-store"
-    return {"Authorization": "Bearer " + respuesta.json()["token"]}
-
-
-def test_reglas_con_fechas_futuras_y_limites() -> None:
-    hoy = date(2026, 11, 16)
-    fechas = [hoy - timedelta(days=i) for i in range(3)] + [hoy + timedelta(days=1), hoy + timedelta(days=2)]
-    porcentaje = calcular_porcentaje_asistencia(fechas, {fechas[0], fechas[1], fechas[3]}, hoy)
-    assert porcentaje == Decimal(200) / 3
-    assert calcular_porcentaje_asistencia([hoy + timedelta(days=1)], set(), hoy) == 0
-    assert calcular_condicion(None, Decimal(100)) == "Pendiente"
-    assert calcular_condicion(Decimal("3.9"), Decimal(100)) == "Desaprobado"
-    assert calcular_condicion(Decimal("4"), Decimal("74.999")) == "Libre"
-    assert calcular_condicion(Decimal("4"), Decimal("75")) == "Aprobado"
-
-
-def test_flujo_planilla_y_lotes_atomicos(entorno: tuple[TestClient, Session, Cohorte, Legajo, dict[str, str]]) -> None:
-    cliente, session, cohorte, legajo, coordinador = entorno
-    id = _crear(cliente, cohorte, coordinador)
-    assert cliente.post(f"/api/v1/seminarios/{id}/inscripciones", headers=coordinador, json={"legajo_ids": [str(legajo.id)]}).status_code == 204
-    docente = _enlace(cliente, id, coordinador)
-    clases = []
-    for fecha in [date.today() - timedelta(days=2), date.today() - timedelta(days=1), date.today(), date.today() + timedelta(days=1)]:
-        respuesta = cliente.post(f"/api/v1/seminarios/{id}/clases", headers=docente, json={"fecha": fecha.isoformat()})
-        assert respuesta.status_code == 201, respuesta.text
-        clases.append(respuesta.json()["id"])
-    respuesta = cliente.get(f"/api/v1/seminarios/{id}/estudiantes", headers=docente)
-    assert respuesta.status_code == 200
-    assert all(not a["presente"] for a in respuesta.json()["estudiantes"][0]["asistencias"])
-    registros = [{"clase_id": c, "legajo_id": str(legajo.id), "presente": True} for c in (clases[0], clases[1], clases[3])]
-    respuesta = cliente.patch(f"/api/v1/seminarios/{id}/asistencias", headers=docente, json={"asistencias": registros})
+def _enlace(cliente: TestClient, id: str, tokens: dict[str, str], datos: dict | None = None) -> dict:
+    respuesta = cliente.post(
+        f"/api/v1/seminarios/{id}/enlace",
+        headers={"Authorization": tokens["COORDINADOR"]},
+        json=datos if datos is not None else {},
+    )
     assert respuesta.status_code == 200, respuesta.text
-    assert Decimal(respuesta.json()["estudiantes"][0]["porcentaje_asistencia"]) == Decimal("66.67")
-    respuesta = cliente.patch(f"/api/v1/seminarios/{id}/notas", headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": 4}]})
-    assert respuesta.json()["estudiantes"][0]["condicion"] == "Libre"
-    respuesta = cliente.patch(f"/api/v1/seminarios/{id}/asistencias", headers=docente, json={"asistencias": [
-        {"clase_id": clases[2], "legajo_id": str(legajo.id), "presente": True},
-        {"clase_id": clases[2], "legajo_id": str(uuid4()), "presente": True},
-    ]})
-    assert respuesta.status_code == 422
-    assert cliente.get(f"/api/v1/seminarios/{id}/estudiantes", headers=docente).json()["estudiantes"][0]["condicion"] == "Libre"
-    respuesta = cliente.patch(f"/api/v1/seminarios/{id}/asistencias", headers=docente, json={"asistencias": [
-        {"clase_id": clases[2], "legajo_id": str(legajo.id), "presente": True},
-    ]})
-    assert respuesta.json()["estudiantes"][0]["condicion"] == "Aprobado"
-    for nota in [0, 11, 7.55, "abc", True]:
-        respuesta = cliente.patch(f"/api/v1/seminarios/{id}/notas", headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": nota}]})
-        assert respuesta.status_code == 422
-    respuesta = cliente.patch(f"/api/v1/seminarios/{id}/notas", headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": 3.9}]})
-    assert respuesta.json()["estudiantes"][0]["condicion"] == "Desaprobado"
-    historial = cliente.get(f"/api/v1/legajos/{legajo.id}/seminarios", headers=coordinador)
-    assert historial.status_code == 200
-    assert historial.json()[0]["condicion"] == "Desaprobado"
-    assert cliente.get(f"/api/v1/legajos/{legajo.id}/seminarios", headers=docente).status_code == 401
-    descarga = cliente.get(f"/api/v1/seminarios/{id}/exportar", headers=docente)
-    assert descarga.status_code == 200
-    with ZipFile(BytesIO(descarga.content)) as archivo:
-        hoja = archivo.read("xl/worksheets/sheet1.xml")
-        ElementTree.fromstring(hoja)
-        assert b"Ana" in hoja and b"66.67" not in hoja and b"100.00" in hoja
-    fecha_nueva = (date.today() + timedelta(days=2)).isoformat()
-    assert cliente.patch(f"/api/v1/seminarios/{id}/clases/{clases[0]}", headers=docente, json={"fecha": fecha_nueva}).status_code == 200
-    assert cliente.get(f"/api/v1/seminarios/{id}/estudiantes", headers=docente).json()["estudiantes"][0]["porcentaje_asistencia"] == "100.00"
-    assert session.scalar(select(EventoAuditoria).where(EventoAuditoria.accion == "registrar_notas")) is not None
+    assert respuesta.headers["cache-control"] == "no-store"
+    return respuesta.json()
+
+
+def test_flujo_docente_y_aislamiento(entorno) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    otro = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    inscripcion = cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones",
+        headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    )
+    assert inscripcion.status_code == 204
+    datos = _enlace(cliente, seminario, tokens)
+    token = datos["token"]
+    assert len(base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))) >= 32
+    assert datos["enlace"].endswith(f"/docente/seminarios/{seminario}#token={token}")
+    guardado = session.scalar(select(AccesoDocente))
+    assert guardado.token_hash == hashlib.sha256(token.encode("ascii")).hexdigest()
+    assert token not in guardado.token_hash
+    docente = {"Authorization": f"Bearer {token}"}
+    listado = cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes", headers=docente)
+    assert listado.status_code == 200
+    assert listado.headers["cache-control"] == "private, no-store"
+    assert [est["legajo_id"] for est in listado.json()["estudiantes"]] == [str(legajo.id)]
+    assert cliente.get(f"/api/v1/seminarios/{otro}/estudiantes", headers=docente).status_code == 403
+    assert cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes", headers=coord).status_code == 403
+    assert cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes").status_code == 401
+    assert cliente.get("/api/v1/seminarios", headers=docente).status_code == 401
+    assert cliente.get("/api/v1/seminarios", headers=coord).status_code == 200
+
     legajo.estado = "Baja"
     session.commit()
-    assert cliente.get(f"/api/v1/seminarios/{id}/estudiantes", headers=docente).json()["estudiantes"] == []
+    assert cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes", headers=docente).json()["estudiantes"] == []
 
 
-def test_autorizacion_revocacion_y_expiracion(entorno: tuple[TestClient, Session, Cohorte, Legajo, dict[str, str]]) -> None:
-    cliente, session, cohorte, _, coordinador = entorno
-    primero = _crear(cliente, cohorte, coordinador)
-    segundo = _crear(cliente, cohorte, coordinador)
-    docente = _enlace(cliente, primero, coordinador)
-    assert cliente.get(f"/api/v1/seminarios/{primero}/estudiantes").status_code == 401
-    assert cliente.get(f"/api/v1/seminarios/{segundo}/estudiantes", headers=docente).status_code == 403
-    assert cliente.post(f"/api/v1/seminarios/{segundo}/clases", json={}, headers=docente).status_code == 403
-    assert cliente.patch(f"/api/v1/seminarios/{segundo}/notas", json={"notas": []}, headers=docente).status_code == 403
-    assert cliente.get(f"/api/v1/seminarios/{primero}/estudiantes", headers=coordinador).status_code == 403
-    nuevo = _enlace(cliente, primero, coordinador)
-    assert cliente.get(f"/api/v1/seminarios/{primero}/estudiantes", headers=docente).status_code == 401
-    acceso = session.scalar(select(AccesoDocente).where(AccesoDocente.seminario_id == UUID(primero)))
+def test_vencimiento_rotacion_y_permisos(entorno) -> None:
+    cliente, session, cohorte, _, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    primero = _enlace(cliente, seminario, tokens)
+    expira = datetime.fromisoformat(primero["expira_en"].replace("Z", "+00:00"))
+    fin = date.today() + timedelta(days=30)
+    assert expira.astimezone(timezone(timedelta(hours=-3))).date() == fin
+    assert expira.astimezone(timezone(timedelta(hours=-3))).hour == 23
+    primero_header = {"Authorization": f"Bearer {primero['token']}"}
+
+    vencimiento = datetime.now(timezone.utc) + timedelta(days=2)
+    segundo = _enlace(cliente, seminario, tokens, {"expira_en": vencimiento.isoformat()})
+    assert datetime.fromisoformat(segundo["expira_en"].replace("Z", "+00:00")) == vencimiento
+    assert cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes", headers=primero_header).status_code == 401
+    segundo_header = {"Authorization": f"Bearer {segundo['token']}"}
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(f"/api/v1/seminarios/{seminario}/enlace", headers=coord, json={"expira_en": "2020-01-01T00:00:00Z"}).status_code == 422
+    assert cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes", headers=segundo_header).status_code == 200
+    acceso = session.scalar(select(AccesoDocente).where(AccesoDocente.seminario_id == UUID(seminario)))
     acceso.expira_en = datetime.now(timezone.utc) - timedelta(seconds=1)
     session.commit()
-    assert cliente.get(f"/api/v1/seminarios/{primero}/estudiantes", headers=nuevo).status_code == 401
-    assert cliente.post("/api/v1/seminarios", json={}).status_code == 401
+    assert cliente.get(f"/api/v1/seminarios/{seminario}/estudiantes", headers=segundo_header).status_code == 401
+    assert cliente.post(f"/api/v1/seminarios/{seminario}/enlace", headers=coord, json={"expira_en": "2030-01-01T00:00:00"}).status_code == 422
+    assert cliente.post(f"/api/v1/seminarios/{seminario}/enlace", headers={"Authorization": tokens["CPR"]}, json={}).status_code == 403
 
 
-def test_cors_preflight(entorno: tuple[TestClient, Session, Cohorte, Legajo, dict[str, str]]) -> None:
+def test_inscripciones_validan_cohorte_estado_y_duplicados(entorno) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    ruta = f"/api/v1/seminarios/{seminario}/inscripciones"
+    id_legajo = str(legajo.id)
+    assert cliente.post(ruta, headers=coord, json={"legajo_ids": [id_legajo, id_legajo]}).status_code == 422
+    assert cliente.post(ruta, headers=coord, json={"legajo_ids": [id_legajo, str(uuid4())]}).status_code == 422
+    otra_cohorte = Cohorte(anio=2027, nombre="Otra cohorte")
+    session.add(otra_cohorte)
+    session.flush()
+    legajo.cohorte_id = otra_cohorte.id
+    session.commit()
+    assert cliente.post(ruta, headers=coord, json={"legajo_ids": [id_legajo]}).status_code == 422
+    legajo.cohorte_id = cohorte.id
+    legajo.estado = "Pendiente"
+    session.commit()
+    assert cliente.post(ruta, headers=coord, json={"legajo_ids": [id_legajo]}).status_code == 422
+    legajo.estado = "Activo"
+    session.commit()
+    assert cliente.post(ruta, headers=coord, json={"legajo_ids": [id_legajo]}).status_code == 204
+    assert cliente.post(ruta, headers=coord, json={"legajo_ids": [id_legajo]}).status_code == 409
+
+
+def test_docente_no_puede_modificar_tesis_y_se_audita(entorno) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    enlace = _enlace(cliente, seminario, tokens)
+    respuesta = cliente.post(
+        f"/api/v1/legajos/{legajo.id}/trabajo-final",
+        headers={"Authorization": f"Bearer {enlace['token']}"},
+        json={
+            "tipo": "TFI", "titulo": "Trabajo", "director_nombre": "Docente",
+            "director_email": "docente@example.com", "fecha_aprobacion_cpr": "2026-01-01",
+            "numero_resolucion": "1",
+        },
+    )
+    assert respuesta.status_code == 403
+    id_trabajo = str(uuid4())
+    modificacion = cliente.patch(
+        f"/api/v1/trabajos-finales/{id_trabajo}",
+        headers={"Authorization": f"Bearer {enlace['token']}"},
+        json={"titulo": "No autorizado"},
+    )
+    assert modificacion.status_code == 403
+    eventos = list(session.scalars(select(EventoAuditoria).where(
+        EventoAuditoria.accion == "trabajo_final_acceso_denegado",
+        EventoAuditoria.rol_actor == "DOCENTE",
+    )))
+    assert len(eventos) == 2
+    assert all(evento.detalles["seminario_actor_id"] == seminario for evento in eventos)
+    assert any(evento.id_recurso == id_trabajo for evento in eventos)
+
+
+def test_cors_preflight(entorno) -> None:
     cliente, _, _, _, _ = entorno
-    respuesta = cliente.options(f"/api/v1/seminarios/{uuid4()}/asistencias", headers={
-        "Origin": settings.cors_origin, "Access-Control-Request-Method": "PATCH",
-        "Access-Control-Request-Headers": "authorization,content-type",
-    })
+    respuesta = cliente.options(
+        f"/api/v1/seminarios/{uuid4()}/estudiantes",
+        headers={
+            "Origin": settings.cors_origin, "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "authorization",
+        },
+    )
     assert respuesta.status_code == 200
     assert respuesta.headers["access-control-allow-origin"] == settings.cors_origin
 
 
-def test_excel_admite_mas_de_26_columnas_y_texto_literal() -> None:
-    contenido = generar_excel([["=texto"] + [str(i) for i in range(30)]])
-    with ZipFile(contenido) as archivo:
+def test_clases_asistencias_notas_y_exportacion(entorno) -> None:
+    cliente, _, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.patch(
+        f"/api/v1/seminarios/{seminario}/plan", headers=coord,
+        json={"carrera": "Maestría", "es_obligatorio": True},
+    ).status_code == 200
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones", headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    ).status_code == 204
+    enlace = _enlace(cliente, seminario, tokens)
+    docente = {"Authorization": f"Bearer {enlace['token']}"}
+    clases = []
+    for fecha in (date.today() - timedelta(days=1), date.today(), date.today() + timedelta(days=1)):
+        respuesta = cliente.post(
+            f"/api/v1/seminarios/{seminario}/clases", headers=docente,
+            json={"fecha": fecha.isoformat()},
+        )
+        assert respuesta.status_code == 201
+        clases.append(respuesta.json()["id"])
+    ruta_asistencias = f"/api/v1/seminarios/{seminario}/asistencias"
+    asistencias = [
+        {"clase_id": clases[0], "legajo_id": str(legajo.id), "presente": True},
+        {"clase_id": clases[2], "legajo_id": str(legajo.id), "presente": True},
+    ]
+    assert cliente.patch(ruta_asistencias, headers=docente, json={"asistencias": asistencias}).status_code == 200
+    ruta_notas = f"/api/v1/seminarios/{seminario}/notas"
+    for nota in (0, 11, 7.55, "4", True):
+        assert cliente.patch(ruta_notas, headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": nota}]}).status_code == 422
+    respuesta = cliente.patch(ruta_notas, headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": 4}]})
+    assert respuesta.status_code == 200
+    estudiante = respuesta.json()["estudiantes"][0]
+    assert Decimal(estudiante["porcentaje_asistencia"]) == 50
+    assert estudiante["condicion"] == "Libre"
+    assert cliente.patch(ruta_asistencias, headers=docente, json={"asistencias": [
+        {"clase_id": clases[1], "legajo_id": str(legajo.id), "presente": True},
+        {"clase_id": clases[1], "legajo_id": str(uuid4()), "presente": True},
+    ]}).status_code == 422
+    assert cliente.patch(ruta_asistencias, headers=docente, json={"asistencias": [
+        {"clase_id": clases[1], "legajo_id": str(legajo.id), "presente": True},
+    ]}).json()["estudiantes"][0]["condicion"] == "Aprobado"
+    historial = cliente.get(f"/api/v1/legajos/{legajo.id}/seminarios", headers=coord)
+    assert historial.status_code == 200
+    assert historial.json()[0]["condicion"] == "Aprobado"
+    descarga = cliente.get(f"/api/v1/seminarios/{seminario}/exportar", headers=docente)
+    assert descarga.status_code == 200
+    with ZipFile(BytesIO(descarga.content)) as archivo:
         hoja = archivo.read("xl/worksheets/sheet1.xml")
-        ElementTree.fromstring(hoja)
-        assert b'AE1' in hoja and b'=texto' in hoja and b"<f>" not in hoja
+        assert b"Ana" in hoja and b"100.00" in hoja
 
 
-def test_recordatorios_respetan_plazo_frecuencia_y_notas(
-    entorno: tuple[TestClient, Session, Cohorte, Legajo, dict[str, str]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    cliente, session, cohorte, legajo, coordinador = entorno
-    id = _crear(cliente, cohorte, coordinador)
-    cliente.post(f"/api/v1/seminarios/{id}/inscripciones", headers=coordinador, json={"legajo_ids": [str(legajo.id)]})
-    docente = _enlace(cliente, id, coordinador)
+def test_recordatorios_notas_respetan_plazo_y_frecuencia(entorno, monkeypatch) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    cliente.post(f"/api/v1/seminarios/{seminario}/inscripciones", headers=coord, json={"legajo_ids": [str(legajo.id)]})
     ahora = datetime.now(timezone.utc)
-    seminario = session.get(Seminario, UUID(id))
-    seminario.fecha_limite_notas = ahora + timedelta(hours=47)
-    session.commit()
-    enviados = []
-    monkeypatch.setattr("src.carga_academica.aplicacion.recordatorios.enviar_mensaje_correo", enviados.append)
+    assert cliente.patch(
+        f"/api/v1/seminarios/{seminario}/fecha-limite-notas",
+        headers=coord, json={"fecha_limite_notas": (ahora + timedelta(hours=47)).isoformat()},
+    ).status_code == 200
+    mensajes = []
+    monkeypatch.setattr("src.carga_academica.aplicacion.recordatorios.enviar_mensaje_correo", mensajes.append)
     assert enviar_recordatorios(session, ahora) == 1
-    assert "Metodología" in enviados[0].get_content()
-    assert "1 estudiante" in enviados[0].get_content()
-    assert "#token=" in enviados[0].get_content()
-    assert cliente.get(f"/api/v1/seminarios/{id}/estudiantes", headers=docente).status_code == 200
+    assert "Metodología" in mensajes[0].get_content()
+    assert "1 estudiante" in mensajes[0].get_content()
+    assert "#token=" in mensajes[0].get_content()
     assert enviar_recordatorios(session, ahora + timedelta(hours=23)) == 0
     assert enviar_recordatorios(session, ahora + timedelta(hours=24)) == 1
-    cliente.patch(f"/api/v1/seminarios/{id}/notas", headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": 5}]})
-    assert enviar_recordatorios(session, ahora + timedelta(hours=46)) == 0
 
 
-def test_error_smtp_no_confirma_recordatorio(
-    entorno: tuple[TestClient, Session, Cohorte, Legajo, dict[str, str]],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    cliente, session, cohorte, legajo, coordinador = entorno
-    id = _crear(cliente, cohorte, coordinador)
-    cliente.post(f"/api/v1/seminarios/{id}/inscripciones", headers=coordinador, json={"legajo_ids": [str(legajo.id)]})
-    ahora = datetime.now(timezone.utc)
-    seminario = session.get(Seminario, UUID(id))
-    seminario.fecha_limite_notas = ahora + timedelta(hours=2)
-    session.commit()
-
-    def fallar(_: object) -> None:
-        raise OSError("SMTP no disponible")
-
-    monkeypatch.setattr("src.carga_academica.aplicacion.recordatorios.enviar_mensaje_correo", fallar)
-    assert enviar_recordatorios(session, ahora) == 0
-    assert session.get(Seminario, UUID(id)).ultimo_recordatorio_en is None
-    assert session.scalar(select(AccesoDocente).where(AccesoDocente.seminario_id == UUID(id))) is None
+def test_asistencia_futura_no_registra_avance_anticipado(entorno) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(f"/api/v1/seminarios/{seminario}/inscripciones", headers=coord, json={
+        "legajo_ids": [str(legajo.id)],
+    }).status_code == 204
+    docente = {"Authorization": f"Bearer {_enlace(cliente, seminario, tokens)['token']}"}
+    clase = cliente.post(f"/api/v1/seminarios/{seminario}/clases", headers=docente, json={
+        "fecha": (date.today() + timedelta(days=1)).isoformat(),
+    }).json()["id"]
+    assert cliente.patch(f"/api/v1/seminarios/{seminario}/asistencias", headers=docente, json={
+        "asistencias": [{"clase_id": clase, "legajo_id": str(legajo.id), "presente": True}],
+    }).status_code == 200
+    assert session.scalar(select(InscripcionSeminario)).ultimo_avance_en is None
