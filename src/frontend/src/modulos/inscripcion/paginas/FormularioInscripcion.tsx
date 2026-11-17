@@ -92,14 +92,18 @@ export default function FormularioInscripcion() {
     void cargarCohortes();
   }, []);
 
+  
   const [documentos, setDocumentos] = useState({
     formularioPreinscripcion: null as File | null,
     formularioInscripcion: null as File | null,
+    dniPasaporte: null as File | null,
     partidaNacimiento: null as File | null,
     constanciaCuitCuil: null as File | null,
     tituloGrado: null as File | null,
     tituloPosgrado: null as File | null,
+    formularioBeca: null as File | null,
   });
+
 
   const [datos, setDatos] = useState({
     dni: "",
@@ -126,9 +130,12 @@ export default function FormularioInscripcion() {
       try {
         const borrador = await recuperarBorrador();
 
-        if (borrador) {
+       if (borrador) {
           setDatos(borrador.datos as typeof datos);
-          setDocumentos(borrador.documentos as typeof documentos);
+          setDocumentos((documentosActuales) => ({
+            ...documentosActuales,
+            ...borrador.documentos,
+          }));
           setOtroPais(borrador.otroPais);
           setEtapa(borrador.etapa);
         }
@@ -205,10 +212,16 @@ export default function FormularioInscripcion() {
       const documentosObligatorios = [
         documentos.formularioPreinscripcion,
         documentos.formularioInscripcion,
+        documentos.dniPasaporte,
         documentos.partidaNacimiento,
         documentos.constanciaCuitCuil,
         documentos.tituloGrado,
       ];
+
+      if (datos.solicitud_beca && !documentos.formularioBeca) {
+        setMensaje("Debés adjuntar el formulario de beca firmado.");
+        return;
+      }
 
       const faltaDocumento = documentosObligatorios.some(
         (documento) => documento === null
@@ -890,6 +903,32 @@ export default function FormularioInscripcion() {
                   </p>
                 )}
               </div>
+              
+
+              <div className="inscripcion-documento">
+                <label htmlFor="dni-pasaporte">
+                  Copia de DNI o pasaporte <span>*</span>
+                </label>
+
+                <input
+                  id="dni-pasaporte"
+                  name="dni-pasaporte"
+                  type="file"
+                  accept="application/pdf"
+                  required
+                  onChange={(e) =>
+                    validarDocumento(
+                      e.target.files?.[0],
+                      "dniPasaporte"
+                    )
+                  }
+                />
+
+                {documentos.dniPasaporte && (
+                  <p>Archivo: {documentos.dniPasaporte.name}</p>
+                )}
+              </div>
+
 
               <div className="inscripcion-documento">
                 <label htmlFor="partida-nacimiento">
@@ -1020,6 +1059,33 @@ export default function FormularioInscripcion() {
                   </p>
                 )}
               </div>
+
+
+              <div className="inscripcion-documento">
+                <label htmlFor="formulario-beca">
+                  Formulario de beca firmado
+                  {datos.solicitud_beca && <span>*</span>}
+                </label>
+
+                <input
+                  id="formulario-beca"
+                  name="formulario-beca"
+                  type="file"
+                  accept="application/pdf"
+                  required={Boolean(datos.solicitud_beca)}
+                  onChange={(e) =>
+                    validarDocumento(
+                      e.target.files?.[0],
+                      "formularioBeca"
+                    )
+                  }
+                />
+
+                {documentos.formularioBeca && (
+                  <p>Archivo: {documentos.formularioBeca.name}</p>
+                )}
+              </div>
+
             </fieldset>
 
             <div className="inscripcion-botones">
@@ -1200,6 +1266,11 @@ export default function FormularioInscripcion() {
                 </p>
 
                 <p>
+                  <strong>DNI o pasaporte:</strong>{" "}
+                  {documentos.dniPasaporte?.name || "No adjuntado"}
+                </p>
+
+                <p>
                   <strong>Formulario de inscripción:</strong>{" "}
                   {documentos.formularioInscripcion?.name || "No adjuntado"}
                 </p>
@@ -1223,6 +1294,13 @@ export default function FormularioInscripcion() {
                   <strong>Título de posgrado:</strong>{" "}
                   {documentos.tituloPosgrado?.name || "No adjuntado"}
                 </p>
+
+                <p>
+                  <strong>Formulario de beca:</strong>{" "}
+                  {documentos.formularioBeca?.name || "No adjuntado"}
+                </p>
+
+
               </section>
 
               <section className="inscripcion-resumen">
