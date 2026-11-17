@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="favicon.png" type="image/png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar sesión</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== PALETA ===== */
+:root {
+  --bg: #F2F4F7;
+  --surface: #FFFFFF;
+  --surface2: #EFF1F5;
+  --border: #DDE1EB;
+  --border-strong: #B8BFCF;
+  --text: #0F1623;
+  --text-2: #5A6378;
+  --text-3: #9AA0B2;
+  --accent: #003DA5;
+  --accent-light: #E6EDFA;
+  --accent-mid: #2361C9;
+  --accent-hover: #002D7A;
+  --sidebar-bg: #013aa6;
+  --sidebar-bg-dark: #011034;
+  --utn-red: #C8102E;
+  --fenix-cyan: #00AEEF;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 24px rgba(0,0,0,0.12);
+}
+
+body.dark {
+  --bg: #0D111C;
+  --surface: #161C2B;
+  --surface2: #1E2536;
+  --border: #2C3550;
+  --border-strong: #4A5470;
+  --text: #EEF0F5;
+  --text-2: #9DAABF;
+  --text-3: #6070A0;
+  --accent: #4A80E0;
+  --accent-light: #1A2540;
+  --accent-mid: #7AACFF;
+  --accent-hover: #6898F0;
+  --sidebar-bg-dark: #020918;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== STRIPE ===== */
+.utn-stripe {
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent) 60%, var(--utn-red) 100%);
+  flex-shrink: 0;
+}
+
+/* ===== LAYOUT ===== */
+.login-shell {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 0;
+}
+
+/* ===== LEFT PANEL ===== */
+.login-brand {
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+body.dark .login-brand {
+  background: var(--sidebar-bg-dark);
+}
+
+/* Subtle radial glow */
+.login-brand::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(0,174,239,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.brand-logo {
+  width: 260px;
+  max-width: 80%;
+  height: auto;
+  position: relative;
+  z-index: 1;
+  animation: fadeIn 0.6s ease;
+}
+
+.brand-tagline {
+  margin-top: 32px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-tagline-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.9);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.brand-tagline-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  margin-top: 6px;
+  letter-spacing: 0.02em;
+}
+
+/* Decorative lines mimicking the logo */
+.brand-lines {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 1;
+}
+
+.brand-line {
+  height: 1px;
+  width: 80px;
+  background: rgba(0,174,239,0.5);
+}
+
+.brand-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(0,174,239,0.7);
+}
+
+/* ===== RIGHT PANEL ===== */
+.login-form-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 48px;
+  background: var(--surface);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  animation: slideUp 0.22s ease;
+}
+
+.login-heading {
+  margin-bottom: 8px;
+}
+
+.login-heading h1 {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.login-heading p {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+.login-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* Form */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap .input-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-3);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.input-wrap input {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 8px 10px 8px 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+  width: 100%;
+}
+
+.input-wrap input:focus {
+  border-color: var(--accent-mid);
+  box-shadow: 0 0 0 3px var(--accent-light);
+  background: var(--surface);
+}
+
+.input-wrap input::placeholder {
+  color: var(--text-3);
+}
+
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 15px;
+  padding: 2px;
+  line-height: 1;
+  transition: color 0.12s;
+}
+
+.toggle-password:hover { color: var(--text-2); }
+
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.remember-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.remember-wrap input[type=checkbox] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.remember-label {
+  font-size: 12px;
+  color: var(--text-2);
+  user-select: none;
+}
+
+.forgot-link {
+  font-size: 12px;
+  color: var(--accent-mid);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+
+.forgot-link:hover { color: var(--accent); text-decoration: underline; }
+
+/* Btn */
+.btn-login {
+  width: 100%;
+  padding: 10px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.14s, transform 0.1s;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-login:hover { background: var(--accent-hover); }
+.btn-login:active { transform: scale(0.99); }
+.btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Loading spinner */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.35);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+
+.btn-login.loading .spinner { display: block; }
+.btn-login.loading .btn-text { opacity: 0.7; }
+
+/* Error */
+.login-error {
+  background: #FDE8EB;
+  border: 1px solid #f5b0bc;
+  color: #A81B1B;
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  font-size: 12px;
+  margin-bottom: 14px;
+  display: none;
+}
+
+body.dark .login-error {
+  background: #2A0A12;
+  border-color: #5a1a24;
+  color: #ff6b6b;
+}
+
+.login-error.show { display: block; }
+
+/* Footer */
+.login-footer {
+  margin-top: 28px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.login-footer a {
+  color: var(--accent-mid);
+  text-decoration: none;
+}
+
+.login-footer a:hover { text-decoration: underline; }
+
+/* Theme toggle */
+.theme-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 12px;
+  font-size: 12px;
+  font-family: var(--sans);
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.12s;
+}
+
+.theme-btn:hover { border-color: var(--border-strong); color: var(--text); }
+
+/* Animations */
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 760px) {
+  .login-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .login-brand {
+    padding: 40px 24px 36px;
+    min-height: auto;
+  }
+
+  .brand-logo {
+    width: 180px;
+  }
+
+  .brand-lines { display: none; }
+
+  .login-form-panel {
+    padding: 36px 24px;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="utn-stripe"></div>
+
+<div class="login-shell">
+
+  <!-- LEFT: Brand -->
+  <div class="login-brand">
+    <!-- Use white logo on the blue bg -->
+    <img class="brand-logo" src="logoBlanco.png" alt="Fénix Posgrado">
+
+    <div class="brand-tagline">
+      <div class="brand-tagline-title">Gestión Académica</div>
+      <div class="brand-tagline-sub">Sistema interno · UTN FRLP · 2026</div>
+    </div>
+
+    <div class="brand-lines">
+      <div class="brand-line"></div>
+      <div class="brand-dot"></div>
+      <div class="brand-line"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Form -->
+  <div class="login-form-panel">
+    <div class="login-card">
+
+      <div class="login-heading">
+        <h1>Iniciar sesión</h1>
+        <p>Ingresá con tu cuenta institucional</p>
+      </div>
+
+      <div class="login-divider"></div>
+
+      <!-- Error message -->
+      <div class="login-error" id="loginError">
+        ⚠ Credenciales incorrectas. Verificá tu usuario y contraseña.
+      </div>
+
+      <!-- Usuario -->
+      <div class="form-group">
+        <label for="userInput">Usuario</label>
+        <div class="input-wrap">
+          <span class="input-icon">👤</span>
+          <input
+            id="userInput"
+            type="text"
+            placeholder="usuario@utnfrlp.edu.ar"
+            autocomplete="username"
+            oninput="clearError()"
+          >
+        </div>
+      </div>
+
+      <!-- Contraseña -->
+      <div class="form-group">
+        <label for="passInput">Contraseña</label>
+        <div class="input-wrap">
+          <span class="input-icon">🔒</span>
+          <input
+            id="passInput"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            oninput="clearError()"
+            onkeydown="if(event.key==='Enter') handleLogin()"
+          >
+          <button class="toggle-password" type="button" onclick="togglePass()" title="Mostrar/ocultar contraseña" id="toggleBtn">👁</button>
+        </div>
+      </div>
+
+      <!-- Remember / Forgot -->
+      <div class="form-options">
+        <label class="remember-wrap">
+          <input type="checkbox" id="rememberMe">
+          <span class="remember-label">Recordarme</span>
+        </label>
+        <a href="#" class="forgot-link" onclick="handleForgot(event)">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <!-- Submit -->
+      <button class="btn-login" id="loginBtn" onclick="handleLogin()">
+        <div class="spinner" id="spinner"></div>
+        <span class="btn-text">Ingresar</span>
+      </button>
+
+      <div class="login-footer">
+        ¿Problemas para acceder?
+        <a href="mailto:soporte@utnfrlp.edu.ar">Contactá soporte</a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Theme toggle -->
+<button class="theme-btn" onclick="toggleTheme()" id="themeBtn" type="button">
+  <span id="themeIcon">🌙</span>
+  <span id="themeLabel">Modo oscuro</span>
+</button>
+
+<script>
+  /* ===== THEME ===== */
+  (function() {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') applyDark();
+  })();
+
+  function applyDark() {
+    document.body.classList.add('dark');
+    document.getElementById('themeIcon').textContent = '☀️';
+    document.getElementById('themeLabel').textContent = 'Modo claro';
+  }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+    document.getElementById('themeLabel').textContent = isDark ? 'Modo claro' : 'Modo oscuro';
+  }
+
+  /* ===== PASSWORD TOGGLE ===== */
+  function togglePass() {
+    const inp = document.getElementById('passInput');
+    const btn = document.getElementById('toggleBtn');
+    const isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    btn.textContent = isPass ? '🙈' : '👁';
+  }
+
+  /* ===== CLEAR ERROR ===== */
+  function clearError() {
+    document.getElementById('loginError').classList.remove('show');
+    document.getElementById('userInput').style.borderColor = '';
+    document.getElementById('passInput').style.borderColor = '';
+  }
+
+  /* ===== LOGIN HANDLER ===== */
+  function handleLogin() {
+    const user = document.getElementById('userInput').value.trim();
+    const pass = document.getElementById('passInput').value;
+    const btn  = document.getElementById('loginBtn');
+    const err  = document.getElementById('loginError');
+
+    if (!user || !pass) {
+      err.textContent = '⚠ Completá usuario y contraseña para continuar.';
+      err.classList.add('show');
+      return;
+    }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    btn.querySelector('.btn-text').textContent = 'Ingresando...';
+
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 450);
+  }
+
+  /* ===== FORGOT ===== */
+  function handleForgot(e) {
+    e.preventDefault();
+    alert('Enviá un mail a soporte@utnfrlp.edu.ar para restablecer tu acceso.');
+  }
+</script>
+</body>
+</html>

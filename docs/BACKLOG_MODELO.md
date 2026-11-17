@@ -15,7 +15,7 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para que** quede registrada mi intención de postularme a una carrera de posgrado.
 
 **Criterios de aceptación:**
-- [ ] El formulario valida cada campo en tiempo real (sin esperar el submit)
+- [X] El formulario valida cada campo en tiempo real (sin esperar el submit)
 - [ ] El DNI debe ser único en la cohorte activa actual
 - [ ] El email ingresado recibe confirmación automática de recepción
 - [ ] Si el aspirante cierra el navegador, sus datos se recuperan al volver con el mismo email
