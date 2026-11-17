@@ -25,7 +25,8 @@ export default function BarraNavegacionPerfil({
   ) =>
     ruta === "/dashboard" ||
     ruta === "/dashboard/docente" ||
-    ruta === "/dashboard/administrador";
+    ruta === "/dashboard/administrador" ||
+    ruta === "/dashboard/conduccion";
 
 
   return (
@@ -74,7 +75,7 @@ export default function BarraNavegacionPerfil({
                 </span>
 
                 <span>
-                  {opcion.texto}
+                  {opcion.texto} <small>(Próximamente)</small>
                 </span>
               </span>
             )}
@@ -84,3 +85,4 @@ export default function BarraNavegacionPerfil({
     </nav>
   );
 }
+

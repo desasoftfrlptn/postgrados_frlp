@@ -8,7 +8,7 @@ import CalificacionesPage from "../../modulos/perfiles/docente/paginas/Calificac
 import EstudiantesPage from "../../modulos/perfiles/docente/paginas/EstudiantesPage";
 import ReportesPage from "../../modulos/perfiles/docente/paginas/ReportesPage";
 import PendientesPage from "../../modulos/perfiles/docente/paginas/PendientesPage";
-import ProfesoresPage from "../../modulos/perfiles/docente/paginas/ProfesoresPage"; // <-- Importamos la última página
+import ProfesoresPage from "../../modulos/perfiles/docente/paginas/ProfesoresPage";
 
 // ESTUDIANTE
 import DashboardEstudiantePage from "../../modulos/perfiles/estudiante/paginas/DashboardEstudiantePage";
@@ -41,6 +41,13 @@ import PanelConduccionPage from "../../modulos/perfiles/conduccion/paginas/Panel
 import ListadoAspirantesPage from "../../modulos/perfiles/conduccion/paginas/ListadoAspirantesPage";
 import DetalleLegajoPage from "../../modulos/perfiles/conduccion/paginas/DetalleLegajoPage";
 import PeriodosInscripcionPage from "../../modulos/perfiles/conduccion/paginas/PeriodosInscripcionPage";
+import ExportacionesConduccionPage from "../../modulos/perfiles/conduccion/paginas/ExportacionesConduccionPage";
+import PerfilesAcademicosConduccionPage from "../../modulos/perfiles/conduccion/paginas/PerfilesAcademicosConduccionPage";
+import TutoriasConduccionPage from "../../modulos/perfiles/conduccion/paginas/TutoriasConduccionPage";
+import TrabajosFinalesConduccionPage from "../../modulos/perfiles/conduccion/paginas/TrabajosFinalesConduccionPage";
+import SeminariosConduccionPage from "../../modulos/perfiles/conduccion/paginas/SeminariosConduccionPage";
+import AlertasConduccionPage from "../../modulos/perfiles/conduccion/paginas/AlertasConduccionPage";
+import EstadisticasConduccionPage from "../../modulos/perfiles/conduccion/paginas/EstadisticasConduccionPage";
 
 // AUTENTICACIÓN
 import LoginPage from "../../modulos/manejo-sesion/paginas/LoginPage";
@@ -105,12 +112,12 @@ export const router = createBrowserRouter([
         element: <PaginaFAQ />,
       },
       {
-        path: "*",
-        element: <PaginaNoEncontrada />,
+        path: "estado-inscripcion",
+        element: <EstadoInscripcionPage />,
       },
       {
-  path: "estado-inscripcion",
-  element: <EstadoInscripcionPage />,
+        path: "*",
+        element: <PaginaNoEncontrada />,
       },
     ],
   },
@@ -204,7 +211,7 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><PendientesPage /></ProtectedRoute>,
           },
           {
-            path: "dashboard/docente/profesores", // <-- Conectamos la última ruta
+            path: "dashboard/docente/profesores",
             element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><ProfesoresPage /></ProtectedRoute>,
           },
         ],
@@ -236,6 +243,34 @@ export const router = createBrowserRouter([
           {
             path: "dashboard/conduccion/periodos-inscripcion",
             element: <PeriodosInscripcionPage />,
+          },
+          {
+            path: "dashboard/conduccion/exportaciones",
+            element: <ExportacionesConduccionPage />,
+          },
+          {
+            path: "dashboard/conduccion/perfiles-academicos",
+            element: <PerfilesAcademicosConduccionPage />,
+          },
+          {
+            path: "dashboard/conduccion/tutorias",
+            element: <TutoriasConduccionPage />,
+          },
+          {
+            path: "dashboard/conduccion/trabajos-finales",
+            element: <TrabajosFinalesConduccionPage />,
+          },
+          {
+            path: "dashboard/conduccion/seminarios",
+            element: <SeminariosConduccionPage />,
+          },
+          {
+            path: "dashboard/conduccion/alertas",
+            element: <AlertasConduccionPage />,
+          },
+          {
+            path: "dashboard/conduccion/estadisticas",
+            element: <EstadisticasConduccionPage />,
           },
         ],
       },
@@ -289,7 +324,7 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard/administrador/reportes",
-            element:  <ReportesAdminPage />,
+            element: <ReportesAdminPage />,
           },
           {
             path: "dashboard/administrador/home",

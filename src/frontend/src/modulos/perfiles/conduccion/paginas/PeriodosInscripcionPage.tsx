@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 import "../estilos/Conduccion.css";
+import "../estilos/ConduccionModulos.css";
 
 interface Carrera {
   id: string;
@@ -44,6 +45,14 @@ export default function PeriodosInscripcionPage() {
   const [filtroCarrera, setFiltroCarrera] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("TODAS");
   const [versionConsulta, setVersionConsulta] = useState(0);
+  const [mostrarAlta, setMostrarAlta] = useState(false);
+  const [creando, setCreando] = useState(false);
+  const [nueva, setNueva] = useState({
+    nombre: "",
+    anio: String(new Date().getFullYear()),
+    carrera_id: "",
+    fecha_inicio: "",
+  });
 
   useEffect(() => {
     let activo = true;
@@ -147,6 +156,36 @@ export default function PeriodosInscripcionPage() {
     }
   }
 
+  async function crearCohorte(evento: FormEvent<HTMLFormElement>) {
+    evento.preventDefault();
+    if (!token || creando) return;
+    const nombre = nueva.nombre.trim();
+    const anio = Number(nueva.anio);
+    if (!nombre || !nueva.carrera_id || !Number.isInteger(anio) || anio < 1) {
+      setError("Completá el nombre, año y carrera de la cohorte.");
+      return;
+    }
+    setCreando(true);
+    setError("");
+    setMensaje("");
+    try {
+      const creada = await api.post<Cohorte>("/cohortes", {
+        nombre,
+        anio,
+        carrera_id: nueva.carrera_id,
+        fecha_inicio: nueva.fecha_inicio || null,
+      }, token);
+      setCohortes((actuales) => [...actuales, creada]);
+      setMostrarAlta(false);
+      setNueva({ nombre: "", anio: String(new Date().getFullYear()), carrera_id: "", fecha_inicio: "" });
+      setMensaje(`Se creó la cohorte "${creada.nombre}" correctamente.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear la cohorte.");
+    } finally {
+      setCreando(false);
+    }
+  }
+
   return (
     <section className="perfil-pagina" aria-labelledby="titulo-periodos">
       <header className="perfil-pagina-encabezado">
@@ -156,6 +195,53 @@ export default function PeriodosInscripcionPage() {
           una según su carrera.
         </p>
       </header>
+
+      <section className="conduccion-tarjeta" aria-labelledby="titulo-gestion-cohortes">
+        <div className="conduccion-tarjeta-cuerpo">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="titulo-gestion-cohortes" className="text-lg font-bold">Administración de cohortes</h2>
+              <p>Creá cohortes y gestioná la apertura de inscripciones según la carrera.</p>
+            </div>
+            <button type="button" className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
+              onClick={() => setMostrarAlta((visible) => !visible)}>
+              {mostrarAlta ? "Cerrar formulario" : "+ Nueva cohorte"}
+            </button>
+          </div>
+          {mostrarAlta && <form className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={(evento) => void crearCohorte(evento)}>
+            <h3 className="mb-4 text-lg font-bold">Crear cohorte</h3>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div><label htmlFor="nueva-cohorte-nombre" className="mb-1 block font-semibold">Nombre</label>
+                <input id="nueva-cohorte-nombre" required maxLength={50} value={nueva.nombre}
+                  onChange={(e) => setNueva((a) => ({ ...a, nombre: e.target.value }))}
+                  className="w-full rounded-md border border-slate-300 bg-white p-2" placeholder="Ej.: Cohorte 2027" /></div>
+              <div><label htmlFor="nueva-cohorte-anio" className="mb-1 block font-semibold">Año</label>
+                <input id="nueva-cohorte-anio" required type="number" min={1} step={1} value={nueva.anio}
+                  onChange={(e) => setNueva((a) => ({ ...a, anio: e.target.value }))}
+                  className="w-full rounded-md border border-slate-300 bg-white p-2" /></div>
+              <div><label htmlFor="nueva-cohorte-carrera" className="mb-1 block font-semibold">Carrera</label>
+                <select id="nueva-cohorte-carrera" required value={nueva.carrera_id}
+                  onChange={(e) => setNueva((a) => ({ ...a, carrera_id: e.target.value }))}
+                  className="w-full rounded-md border border-slate-300 bg-white p-2">
+                  <option value="">Seleccioná una carrera</option>
+                  {carreras.filter((carrera) => carrera.activo).map((carrera) =>
+                    <option key={carrera.id} value={carrera.id}>{carrera.nombre}</option>)}
+                </select></div>
+              <div><label htmlFor="nueva-cohorte-fecha" className="mb-1 block font-semibold">Fecha de inicio de cohorte (opcional)</label>
+                <input id="nueva-cohorte-fecha" type="date" value={nueva.fecha_inicio}
+                  onChange={(e) => setNueva((a) => ({ ...a, fecha_inicio: e.target.value }))}
+                  className="w-full rounded-md border border-slate-300 bg-white p-2" /></div>
+            </div>
+            <div className="mt-4 flex gap-3">
+              <button type="submit" disabled={creando} className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
+                {creando ? "Creando…" : "Crear cohorte"}
+              </button>
+              <button type="button" disabled={creando} onClick={() => setMostrarAlta(false)}
+                className="rounded-md border border-slate-300 bg-white px-4 py-2 font-semibold">Cancelar</button>
+            </div>
+          </form>}
+        </div>
+      </section>
 
       <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         La apertura y el cierre se administran por cohorte. La fecha de inicio
