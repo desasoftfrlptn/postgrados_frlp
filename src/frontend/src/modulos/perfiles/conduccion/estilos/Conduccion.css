@@ -1,14 +1,13 @@
 
-/* ==========================================
+/* =========================================
    DETALLE DEL LEGAJO
-   ========================================== */
+   ========================================= */
 
 .conduccion-detalle {
   --conduccion-azul: #2563eb;
   --conduccion-borde: #e2e8f0;
   --conduccion-texto: #334155;
   --conduccion-secundario: #64748b;
-
   width: 100%;
   max-width: 1380px;
   color: #0f172a;
@@ -58,7 +57,7 @@
   font-size: 14px;
 }
 
-/* Resumen y tarjetas */
+/* Resumen del aspirante */
 
 .conduccion-detalle .conduccion-resumen,
 .conduccion-detalle .conduccion-tarjeta {
@@ -103,7 +102,7 @@
   font-size: 14px;
 }
 
-/* Estados de inscripción */
+/* Estados */
 
 .conduccion-detalle .conduccion-estado {
   display: inline-flex;
@@ -139,8 +138,6 @@
   background: #f1f5f9;
 }
 
-/* Datos del resumen */
-
 .conduccion-detalle .conduccion-resumen-datos {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -150,7 +147,7 @@
   border-top: 1px solid var(--conduccion-borde);
 }
 
-/* Distribución de tarjetas */
+/* Tarjetas */
 
 .conduccion-detalle .conduccion-grid {
   display: grid;
@@ -180,7 +177,7 @@
   padding: 21px;
 }
 
-/* Campos de información */
+/* Campos */
 
 .conduccion-detalle .conduccion-datos {
   display: grid;
@@ -273,7 +270,7 @@
   line-height: 1.8;
 }
 
-/* Listado de documentos del legajo */
+/* Documentos registrados */
 
 .conduccion-detalle .conduccion-documentos {
   display: grid;
@@ -320,7 +317,7 @@
   flex-shrink: 0;
 }
 
-/* Botones de documentos */
+/* Botones */
 
 .conduccion-detalle .conduccion-boton-secundario {
   padding: 9px 12px;
@@ -418,45 +415,9 @@
   background: #1d4ed8;
 }
 
-/* Responsive del detalle */
-
-@media (max-width: 900px) {
-  .conduccion-detalle .conduccion-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 600px) {
-  .conduccion-detalle .conduccion-resumen {
-    padding: 18px;
-  }
-
-  .conduccion-detalle .conduccion-resumen-datos,
-  .conduccion-detalle .conduccion-datos {
-    grid-template-columns: 1fr;
-  }
-
-  .conduccion-detalle .conduccion-tarjeta-cuerpo {
-    padding: 18px;
-  }
-
-  .conduccion-detalle .conduccion-documento {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .conduccion-detalle .conduccion-documento-botones {
-    width: 100%;
-  }
-
-  .conduccion-detalle .conduccion-documento-botones button {
-    flex: 1;
-  }
-}
-
-/* ==========================================
+/* =========================================
    LISTADO DE ASPIRANTES
-   ========================================== */
+   ========================================= */
 
 .conduccion-listado {
   --cl-ink: #14233b;
@@ -468,6 +429,8 @@
   color: var(--cl-ink);
   max-width: 1380px;
 }
+
+/* Encabezado */
 
 .conduccion-listado .conduccion-listado-encabezado {
   margin: 0 0 18px;
@@ -504,6 +467,8 @@
   font-size: 13px;
   margin: 8px 0 0;
 }
+
+/* Panel */
 
 .conduccion-listado-panel {
   background: #fff;
@@ -644,6 +609,8 @@
   outline-offset: 3px;
 }
 
+/* Filtros avanzados */
+
 .conduccion-listado-avanzados:not([hidden]) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -659,7 +626,7 @@
   display: none;
 }
 
-/* Mensajes del listado */
+/* Mensajes */
 
 .conduccion-listado-error {
   color: #9f2533;
@@ -684,7 +651,7 @@
   margin: 7px 0 13px;
 }
 
-/* Tabla de aspirantes */
+/* Tabla */
 
 .conduccion-listado-tabla-scroll {
   width: 100%;
@@ -726,7 +693,7 @@
   background: #f8fbff;
 }
 
-/* Datos de la persona */
+/* Información del aspirante */
 
 .conduccion-listado-persona {
   display: flex;
@@ -819,7 +786,7 @@
   background: #edf0f5;
 }
 
-/* Enlace a detalle */
+/* Enlaces */
 
 .conduccion-listado-link {
   display: inline-flex;
@@ -839,46 +806,9 @@
   background: #dceaff;
 }
 
-/* Responsive del listado */
-
-@media (max-width: 850px) {
-  .conduccion-listado-filtros-principales {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .conduccion-listado .conduccion-listado-encabezado {
-    padding: 21px 18px;
-  }
-
-  .conduccion-listado-superior {
-    padding: 19px 17px 15px;
-    align-items: flex-start;
-  }
-
-  .conduccion-listado-filtros {
-    padding: 0 17px 15px;
-  }
-
-  .conduccion-listado-filtros-principales,
-  .conduccion-listado-avanzados:not([hidden]) {
-    grid-template-columns: 1fr;
-  }
-
-  .conduccion-listado-superior h2 {
-    font-size: 16px;
-  }
-
-  .conduccion-listado-contador {
-    white-space: nowrap;
-  }
-}
-
-/* ==========================================
-   AJUSTES DE ESTILO INSTITUCIONAL
-   DEL LISTADO
-   ========================================== */
+/* =========================================
+   DISEÑO INSTITUCIONAL DEL LISTADO
+   ========================================= */
 
 .conduccion-listado .conduccion-listado-encabezado {
   background: transparent;
@@ -922,4 +852,170 @@
 .conduccion-listado-boton-texto:disabled {
   color: #94a3b8;
   cursor: not-allowed;
+}
+
+/* =========================================
+   GESTIÓN DE ADMISIÓN
+   ========================================= */
+
+/* Acciones de cada aspirante */
+
+.conduccion-listado-acciones-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Panel de gestión */
+
+.conduccion-panel-gestion {
+  margin-top: 20px;
+  padding: 24px;
+  border-color: #cbdcf4;
+  background: #fff;
+}
+
+.conduccion-panel-gestion-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.conduccion-panel-gestion-cabecera h2,
+.conduccion-gestion-encabezado h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #172b4d;
+}
+
+.conduccion-panel-gestion-cabecera p,
+.conduccion-gestion-encabezado p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.conduccion-panel-gestion > p {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0 0 18px;
+}
+
+/* Gestión desde detalle del legajo */
+
+.conduccion-detalle .conduccion-gestion {
+  background: #fff;
+  border: 1px solid #cbdcf4;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.conduccion-detalle .conduccion-gestion-encabezado {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.conduccion-detalle
+.conduccion-gestion-encabezado
+.conduccion-resumen-etiqueta {
+  margin: 0 0 6px;
+}
+
+/* =========================================
+   DISEÑO RESPONSIVE
+   ========================================= */
+
+@media (max-width: 900px) {
+  .conduccion-detalle .conduccion-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 850px) {
+  .conduccion-listado-filtros-principales {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  /* Detalle */
+
+  .conduccion-detalle .conduccion-resumen {
+    padding: 18px;
+  }
+
+  .conduccion-detalle .conduccion-resumen-datos,
+  .conduccion-detalle .conduccion-datos {
+    grid-template-columns: 1fr;
+  }
+
+  .conduccion-detalle .conduccion-tarjeta-cuerpo {
+    padding: 18px;
+  }
+
+  .conduccion-detalle .conduccion-documento {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .conduccion-detalle .conduccion-documento-botones {
+    width: 100%;
+  }
+
+  .conduccion-detalle .conduccion-documento-botones button {
+    flex: 1;
+  }
+
+  /* Listado */
+
+  .conduccion-listado .conduccion-listado-encabezado {
+    padding: 21px 18px;
+  }
+
+  .conduccion-listado-superior {
+    padding: 19px 17px 15px;
+    align-items: flex-start;
+  }
+
+  .conduccion-listado-filtros {
+    padding: 0 17px 15px;
+  }
+
+  .conduccion-listado-filtros-principales,
+  .conduccion-listado-avanzados:not([hidden]) {
+    grid-template-columns: 1fr;
+  }
+
+  .conduccion-listado-superior h2 {
+    font-size: 16px;
+  }
+
+  .conduccion-listado-contador {
+    white-space: nowrap;
+  }
+
+  /* Gestión */
+
+  .conduccion-panel-gestion,
+  .conduccion-detalle .conduccion-gestion {
+    padding: 17px;
+  }
+
+  .conduccion-listado-acciones-fila {
+    align-items: stretch;
+  }
 }

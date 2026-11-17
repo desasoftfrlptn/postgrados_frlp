@@ -363,9 +363,19 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
             </div>
           </section>
 
-          <div className="conduccion-gestion">
+          <section className="conduccion-gestion" aria-labelledby="titulo-gestion-legajo">
+            <header className="conduccion-gestion-encabezado">
+              <div>
+                <p className="conduccion-resumen-etiqueta">ADMISIÓN</p>
+                <h2 id="titulo-gestion-legajo">Revisión y decisión del legajo</h2>
+                <p>Revisá la documentación antes de aprobar, rechazar o solicitar correcciones.</p>
+              </div>
+              <span className={`conduccion-estado ${claseEstado(legajo.estado)}`}>
+                {legajo.estado.replaceAll("_", " ")}
+              </span>
+            </header>
             <GestionInscripcion legajoId={legajo.id} onEstadoActualizado={actualizarEstado} />
-          </div>
+          </section>
         </>
       )}
     </section>
