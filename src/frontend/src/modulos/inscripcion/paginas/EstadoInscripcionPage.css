@@ -1,0 +1,140 @@
+
+/* CONTENEDOR PRINCIPAL */
+.estado-inscripcion {
+  width: 100%;
+  min-height: auto;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 40px 24px 60px;
+  background-color: #062343;
+}
+
+/* PANELES BLANCOS */
+.estado-inscripcion-contenido,
+.estado-inscripcion-resultados {
+  width: 100%;
+  max-width: 1100px;
+  box-sizing: border-box;
+  margin: 0 auto 24px;
+  padding: 40px;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+}
+
+/* PANEL DEL FORMULARIO */
+.estado-inscripcion-contenido {
+  min-height: 390px;
+}
+
+/* PANEL DE RESULTADOS */
+.estado-inscripcion-resultados {
+  min-height: 220px;
+}
+
+/* TITULOS */
+.estado-inscripcion h1 {
+  margin-bottom: 16px;
+  color: #252525;
+  font-size: 28px;
+}
+
+.estado-inscripcion h2 {
+  margin-bottom: 16px;
+  color: #252525;
+  font-size: 22px;
+}
+
+/* TEXTOS */
+.estado-inscripcion p {
+  line-height: 1.6;
+}
+
+/* FORMULARIO */
+.estado-inscripcion form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.estado-inscripcion label {
+  font-weight: 600;
+}
+
+/* CAMPO DE SEGUIMIENTO */
+.estado-inscripcion input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid #bdbdbd;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.estado-inscripcion input:focus {
+  outline: 2px solid #351078;
+  outline-offset: 2px;
+}
+
+/* BOTÓN */
+.estado-inscripcion button {
+  align-self: flex-start;
+  padding: 13px 22px;
+  border: none;
+  border-radius: 6px;
+  background-color: #351078;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.estado-inscripcion button:hover {
+  background-color: #260858;
+}
+
+/* MENSAJE */
+.estado-inscripcion-mensaje {
+  margin-top: 16px;
+  color: #5b3b87;
+}
+
+/* LISTADO DE RESULTADOS */
+.estado-inscripcion-resultados ul {
+  padding-left: 24px;
+  line-height: 1.9;
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+  .estado-inscripcion {
+    min-height: calc(100vh - 120px);
+    padding: 24px 14px 40px;
+  }
+
+  .estado-inscripcion-contenido,
+  .estado-inscripcion-resultados {
+    padding: 24px 18px;
+  }
+
+  .estado-inscripcion-contenido {
+    min-height: 360px;
+  }
+
+  .estado-inscripcion-resultados {
+    min-height: 200px;
+  }
+
+  .estado-inscripcion h1 {
+    font-size: 23px;
+  }
+
+  .estado-inscripcion h2 {
+    font-size: 20px;
+  }
+
+  .estado-inscripcion button {
+    width: 100%;
+  }
+}
+

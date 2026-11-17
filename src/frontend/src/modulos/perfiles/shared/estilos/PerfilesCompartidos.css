@@ -1,0 +1,460 @@
+/* Estilos compartidos por los perfiles de estudiante y docente. */
+
+.perfil-layout {
+  min-height: 100vh;
+  display: flex;
+  background: #f3f4f6;
+}
+
+.perfil-sidebar {
+  width: 260px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  color: #ffffff;
+  background: #0f172a;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
+}
+
+.perfil-sidebar-encabezado {
+  padding: 24px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.perfil-sidebar-encabezado h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.perfil-sidebar-encabezado p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.perfil-menu {
+  flex: 1;
+  padding: 24px 16px;
+}
+
+.perfil-menu-lista {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+}
+
+.perfil-menu-enlace {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #cbd5e1;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.perfil-menu-enlace:hover {
+  color: #ffffff;
+  background: #1e293b;
+}
+
+.perfil-menu-enlace:focus-visible,
+.perfil-boton-prueba:focus-visible,
+.perfil-cerrar-sesion:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.perfil-menu-enlace-activo {
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.perfil-menu-enlace-deshabilitado {
+  color: #64748b;
+  cursor: default;
+}
+
+.perfil-menu-enlace-deshabilitado:hover {
+  color: #64748b;
+  background: transparent;
+}
+
+.perfil-menu-pruebas {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #334155;
+}
+
+.perfil-menu-pruebas p {
+  margin: 0 0 10px;
+  padding: 0 16px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.perfil-boton-prueba {
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fbbf24;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.perfil-boton-prueba:hover {
+  color: #0f172a;
+  background: #f59e0b;
+}
+
+.perfil-sidebar-pie {
+  padding: 16px;
+  border-top: 1px solid #1e293b;
+}
+
+.perfil-cerrar-sesion {
+  width: 100%;
+  padding: 11px 16px;
+  color: #ffffff;
+  background: #dc2626;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.perfil-cerrar-sesion:hover {
+  background: #b91c1c;
+}
+
+.perfil-contenedor {
+  min-width: 0;
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.perfil-header {
+  min-height: 64px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.perfil-header-contenido {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.perfil-header-icono {
+  padding: 6px;
+  color: #64748b;
+  background: transparent;
+  border: 0;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.perfil-header-icono:hover {
+  color: #2563eb;
+}
+
+.perfil-usuario {
+  padding-left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-left: 1px solid #e5e7eb;
+}
+
+.perfil-usuario-avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-radius: 50%;
+  font-weight: 700;
+}
+
+.perfil-usuario-datos p {
+  margin: 0;
+}
+
+.perfil-usuario-nombre {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.perfil-usuario-rol {
+  margin-top: 2px !important;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.perfil-contenido {
+  flex: 1;
+  padding: 20px 32px 32px;
+  overflow-y: auto;
+}
+
+/* Base visual compartida por todas las páginas internas de perfiles. */
+
+.perfil-pagina {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.perfil-pagina-encabezado {
+  margin-bottom: 20px;
+}
+
+.perfil-pagina-encabezado h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.perfil-pagina-encabezado p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.perfil-seccion-titulo {
+  margin: 0 0 16px;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.perfil-resumen {
+  margin-bottom: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.perfil-tarjeta-resumen {
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.perfil-tarjeta-resumen h2 {
+  margin: 0 0 14px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.perfil-tarjeta-contenido {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.perfil-tarjeta-contenido strong {
+  color: #1f2937;
+  font-size: 30px;
+}
+
+.perfil-tarjeta-verde {
+  border-left-color: #16a34a;
+}
+
+.perfil-tarjeta-amarilla {
+  border-left-color: #eab308;
+}
+
+.perfil-tarjeta-azul {
+  border-left-color: #2563eb;
+}
+
+.perfil-tarjeta-roja {
+  border-left-color: #dc2626;
+}
+
+.perfil-tarjeta-gris {
+  border-left-color: #334155;
+}
+
+.perfil-tarjeta-celeste {
+  border-left-color: #0d9488;
+}
+
+.perfil-enlace {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.perfil-enlace:hover {
+  text-decoration: underline;
+}
+
+.perfil-paneles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.perfil-panel {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.perfil-panel > header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.perfil-panel h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+}
+
+.perfil-lista {
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.perfil-lista li {
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+
+.perfil-lista li:last-child {
+  border-bottom: 0;
+}
+
+.perfil-alerta {
+  margin: 20px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+}
+
+.perfil-alerta h3,
+.perfil-alerta p {
+  margin: 0;
+}
+
+.perfil-alerta p {
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .perfil-sidebar {
+    width: 220px;
+  }
+
+  .perfil-resumen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .perfil-paneles {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .perfil-layout {
+    flex-direction: column;
+  }
+
+  .perfil-sidebar {
+    width: 100%;
+    min-height: auto;
+  }
+
+  .perfil-menu-lista {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .perfil-contenedor {
+    height: auto;
+  }
+
+  .perfil-resumen {
+    grid-template-columns: 1fr;
+  }
+
+  .perfil-usuario-datos {
+    display: none;
+  }
+
+  .perfil-contenido {
+    padding: 16px 20px 20px;
+  }
+
+  .perfil-pagina-encabezado {
+    margin-bottom: 16px;
+  }
+
+  .perfil-pagina-encabezado h1 {
+    font-size: 26px;
+  }
+
+  .perfil-pagina-encabezado p {
+    font-size: 15px;
+  }
+
+  .perfil-header-icono:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 4px;
+  }
+
+  .perfil-header-icono {
+    border-radius: 4px;
+  }
+}
