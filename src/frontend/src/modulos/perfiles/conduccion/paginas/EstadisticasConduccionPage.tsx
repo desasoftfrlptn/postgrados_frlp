@@ -24,7 +24,7 @@ export default function EstadisticasConduccionPage() {
           </tbody></table></div>}
       </div>
     </>}
-    <div className="cc-aviso">Indicadores de seminarios, ralentización de carrera, TFI/tesis, graduados y desgranamiento requieren datos académicos históricos adicionales. No pueden calcularse a partir del listado de inscripciones.</div>
+    <div className="cc-aviso"></div>
   </section>;
 }
 

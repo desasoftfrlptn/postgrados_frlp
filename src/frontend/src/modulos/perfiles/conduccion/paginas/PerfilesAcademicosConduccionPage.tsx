@@ -26,7 +26,6 @@ export default function PerfilesAcademicosConduccionPage() {
       </div>
       <div className="cc-acciones" style={{marginTop:18}}><Link to={`/dashboard/conduccion/legajos/${encodeURIComponent(legajo.id)}`} className="cc-btn">Ver detalle de inscripción</Link></div>
     </div>}
-    <div className="cc-aviso">Para mostrar créditos, calificaciones, materias aprobadas y el semáforo de avance académico se necesita una API de trayectoria académica asociada al estudiante. No se muestran valores inventados.</div>
-  </section>;
+   </section>;
 }
 

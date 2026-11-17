@@ -10,7 +10,7 @@ export default function SeminariosConduccionPage() {
       { nombre: "Calificación y acta", descripcion: "Nota final, fecha y referencia del acta." },
       { nombre: "Acreditación", descripcion: "Seminarios aprobados, pendientes y plazos de vencimiento." },
     ]}
-    aviso="El listado administrativo de seminarios no equivale a la trayectoria individual y puede requerir permisos ADMIN. Hace falta una API de seminarios cursados por estudiante para informar resultados reales a Conducción."
+    aviso=""
   />;
 }
 

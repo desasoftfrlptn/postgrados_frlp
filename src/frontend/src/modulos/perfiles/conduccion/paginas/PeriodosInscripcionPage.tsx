@@ -242,13 +242,7 @@ export default function PeriodosInscripcionPage() {
           </form>}
         </div>
       </section>
-
-      <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        La apertura y el cierre se administran por cohorte. La fecha de inicio
-        corresponde al comienzo de la cohorte, no a una fecha de apertura o
-        cierre de inscripciones.
-      </div>
-
+      
       <section className="conduccion-tarjeta" aria-label="Resumen de inscripciones">
         <div className="conduccion-tarjeta-cuerpo">
           <p className="font-semibold">

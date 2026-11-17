@@ -13,7 +13,7 @@ export default function AlertasConduccionPage() {
         <div className="cc-metrica"><strong>{datos.legajos.length - pendientes.length}</strong><span>Otros estados de inscripción</span></div></div>
       <div className="cc-tarjeta"><h2>Legajos que requieren atención</h2><TablaLegajos legajos={pendientes} /></div>
     </>}
-    <div className="cc-aviso">Las alertas de vencimiento de seminarios requieren fechas de cursada y acreditación por estudiante. El Backend actual no ofrece esos datos al coordinador; aquí se muestran únicamente alertas basadas en estados reales de inscripción.</div>
+    <div className="cc-aviso"></div>
   </section>;
 }
 

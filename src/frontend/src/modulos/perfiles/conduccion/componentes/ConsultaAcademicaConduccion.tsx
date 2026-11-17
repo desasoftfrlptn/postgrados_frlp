@@ -7,7 +7,7 @@ interface Props {
   titulo: string;
   descripcion: string;
   campos: CampoPendiente[];
-  aviso: string;
+  aviso?: string;
 }
 
 /** Pantalla de consulta basada en datos disponibles; no simula escrituras sin persistencia. */

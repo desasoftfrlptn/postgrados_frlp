@@ -10,7 +10,7 @@ export default function TrabajosFinalesConduccionPage() {
       { nombre: "Aprobación CPR y resolución", descripcion: "Fechas y número de resolución, cargados por el rol autorizado." },
       { nombre: "Avances y evaluación", descripcion: "Estado del proyecto, entregas, observaciones y aprobación." },
     ]}
-    aviso="El Backend aún debe definir la persistencia de TFI/tesis y los permisos de carga de CPR. La pantalla no permite registrar resoluciones sin el flujo autorizado."
+    aviso=""
   />;
 }
 
