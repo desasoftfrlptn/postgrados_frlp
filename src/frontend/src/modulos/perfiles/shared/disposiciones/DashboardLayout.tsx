@@ -18,12 +18,12 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
 
   const etiquetasRol: Record<Rol, string> = {
-    ESTUDIANTE: "Estudiante",
+    ADMIN: "Administrador",
     ASPIRANTE: "Aspirante",
-    DOCENTE: "Docente",
+    ALUMNO: "Alumno",
     COORDINADOR: "Coordinador",
     CPR: "CPR",
-    ADMIN: "Administrador",
+    DOCENTE: "Docente",
   };
 
   const rolUsuario = user
@@ -41,7 +41,7 @@ export default function DashboardLayout() {
   const opcionesMenu =
     user?.rol === "DOCENTE"
       ? menuDocente
-      : (user?.rol === "ASPIRANTE" || user?.rol === "ESTUDIANTE")
+      : (user?.rol === "ASPIRANTE" || user?.rol === "ALUMNO")
         ? menuEstudiante
         : user?.rol === "ADMIN"
           ? menuAdministrador

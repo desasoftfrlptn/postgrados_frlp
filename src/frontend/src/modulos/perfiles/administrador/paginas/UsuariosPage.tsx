@@ -55,6 +55,7 @@ const formularioInicial:
 const roles: Rol[] = [
   "ADMIN",
   "ASPIRANTE",
+  "ALUMNO",
   "COORDINADOR",
   "CPR",
   "DOCENTE",

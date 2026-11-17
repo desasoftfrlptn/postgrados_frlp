@@ -12,6 +12,7 @@ from src.compartido.conexion import AsyncSessionLocal, engine
 
 ROLES = (
     "ASPIRANTE",
+    "ALUMNO",
     "DOCENTE",
     "COORDINADOR",
     "EQUIPO PRODUCCION",
