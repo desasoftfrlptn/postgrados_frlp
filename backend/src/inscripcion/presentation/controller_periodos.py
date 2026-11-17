@@ -31,10 +31,11 @@ def _http_error(error: Exception) -> HTTPException:
 
 @router.get("/periodos/vigente", response_model=PeriodoVigenteResponse)
 async def obtener_periodo_vigente(
+    cohorte_id: UUID | None = None,
     service: PeriodoService = Depends(get_periodo_service),
 ):
     # Endpoint público: lo consulta el formulario antes de iniciar la inscripción.
-    return await service.vigente()
+    return await service.vigente(cohorte_id)
 
 
 @router.get("/cohortes/{cohorte_id}/periodos", response_model=list[PeriodoResponse])

@@ -139,12 +139,12 @@ export interface Documento {
 }
 
 export type EstadoDocumento = "PENDIENTE_REVISION" | "APROBADO" | "OBSERVADO" | "FALTANTE";
- 
+
 export interface DocumentoConEstado extends Documento {
   estado: EstadoDocumento;
-  motivo_observacion?: string; // solo si estado === "OBSERVADO"
+  motivo_observacion?: string | null; // solo si estado === "OBSERVADO"
 }
- 
+
 // Respuesta de la consulta pública (sin login) de estado de inscripción
 export interface ConsultaLegajoResponse {
   id: string;
@@ -360,7 +360,7 @@ export interface TrabajoFinal {
   creado_por: string; // email del usuario CPR que lo cargó (auditoría)
   created_at: string;
 }
- 
+
 export interface CrearTrabajoFinalRequest {
   tipo: TipoTrabajoFinal;
   titulo: string;

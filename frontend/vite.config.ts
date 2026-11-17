@@ -5,12 +5,13 @@ import { fileURLToPath, URL } from "node:url";
 
 
 // https://vite.dev/config/
-const apiProxyTarget = process.env.VITE_API_PROXY_TARGET;
+const apiProxyTarget = process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8000";
 
 export default defineConfig({
   server: {
-    proxy: apiProxyTarget ? { '/api/v1': apiProxyTarget } : undefined,
+    proxy: { '/api/v1': apiProxyTarget },
   },
+  preview: { proxy: { '/api/v1': apiProxyTarget } },
   plugins: [
       react(),
       tailwindcss(),

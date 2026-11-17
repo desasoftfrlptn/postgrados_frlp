@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useLegajo } from "../hooks/useLegajos";
-import { useAbrirDocumento, useDocumentos } from "../hooks/useDocumentos";
+import { useExportarLegajoPdf, useLegajo } from "../hooks/useLegajos";
+import { useAbrirDocumento, useDescargarDocumento, useDocumentos } from "../hooks/useDocumentos";
 import { useTrabajoFinal } from "../hooks/useTrabajoFinal";
 import { Spinner } from "@/shared/components/Spinner";
 import { Button } from "@/shared/components/Button";
@@ -42,6 +42,8 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
     error: errorTrabajo,
   } = useTrabajoFinal(id || "");
   const abrirDocumento = useAbrirDocumento();
+  const descargarDocumento = useDescargarDocumento();
+  const exportarPdf = useExportarLegajoPdf();
 
   // "Todavía no hay trabajo final" puede llegar como 404: no es un error de la pantalla
   const trabajoNoExiste = isErrorTrabajo && isApiError(errorTrabajo) && errorTrabajo.isNotFound;
@@ -106,11 +108,15 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                 Trabajo Final
               </Button>
             )}
-            <Button icon={Download} variant="outline">
+            <Button icon={Download} variant="outline"
+              onClick={() => exportarPdf.mutate(legajo.id)}
+              isLoading={exportarPdf.isPending} disabled={exportarPdf.isPending}>
               Exportar PDF
             </Button>
           </div>
         </div>
+
+        {exportarPdf.isError && <p role="alert" className="text-sm text-semaforo-rojo">No se pudo exportar el PDF: {exportarPdf.error.message}</p>}
 
         {/* Datos personales y académicos */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -219,6 +225,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
               No se pudieron cargar los documentos: {errorDocumentos?.message}
             </p>
           )}
+          {descargarDocumento.isError && <p role="alert" className="text-sm text-semaforo-rojo">{descargarDocumento.error.message}</p>}
           {abrirDocumento.isError && (
             <p role="alert" className="mb-2 text-xs text-semaforo-rojo">
               No se pudo abrir el documento: {abrirDocumento.error.message}
@@ -228,11 +235,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
           {!isLoadingDocumentos && !isErrorDocumentos && (
           <div className="flex flex-col divide-y divide-line">
             {(Object.keys(ETIQUETA_TIPO) as TipoDocumento[]).map((t) => {
-              const docsDeEseTipo =
-                documentos?.filter((d) => d.tipo === t) ?? [];
-              const doc =
-                docsDeEseTipo.find((d) => d.estado !== "FALTANTE") ??
-                docsDeEseTipo[0];
+              const doc = documentos?.find((d) => d.tipo === t);
               const noAplica =
                 (t === "FORM_BECA" && !legajo?.solicita_beca) ||
                 (t === "TITULO_POSGRADO" && !legajo?.titulo_posgrado);
@@ -240,6 +243,8 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
               return (
                 <div
                   key={t}
+                  role="group"
+                  aria-label={`Documento ${ETIQUETA_TIPO[t]}`}
                   className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                 >
                   <div className="min-w-0 flex-1">
@@ -248,9 +253,12 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                     </p>
 
                     {doc ? (
-                      <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-semaforo-verde-soft dark:bg-semaforo-verde-soft-dark px-2 py-0.5 text-xs font-medium text-semaforo-verde">
-                        <span className="h-1.5 w-1.5 rounded-full bg-semaforo-verde" />
-                        Subido
+                      <span className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        doc.estado === "APROBADO" ? "bg-semaforo-verde-soft text-semaforo-verde" :
+                        doc.estado === "PENDIENTE_REVISION" ? "bg-paper-elevated text-ink-muted" :
+                        "bg-semaforo-rojo-soft text-semaforo-rojo"}`}>
+
+                        {{ APROBADO: "Aprobado", PENDIENTE_REVISION: "Pendiente de revisión", OBSERVADO: "Observado", FALTANTE: "Faltante" }[doc.estado]}
                       </span>
                     ) : noAplica ? (
                       <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-xs font-medium text-ink-muted">
@@ -263,6 +271,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                         No subido
                       </span>
                     )}
+                    {doc?.motivo_observacion && <p className="mt-1 text-xs text-semaforo-rojo">{doc.motivo_observacion}</p>}
                   </div>
 
                   {doc && (
@@ -273,7 +282,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                       className="shrink-0"
                       onClick={() => setDocSeleccionado(doc)}
                     >
-                      Observar
+                      Revisar
                     </Button>
                     <Button
                       type="button"
@@ -284,6 +293,11 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
                     >
                       Vista previa
                     </Button>
+                    <Button type="button" icon={Download} variant="outline"
+                      disabled={descargarDocumento.isPending}
+                      onClick={() => descargarDocumento.mutate({ docId: doc.id, nombre: doc.nombre_original })}>
+                      Descargar
+                    </Button>
                     </>
                   )}
                 </div>
@@ -291,6 +305,7 @@ export default function DetalleLegajo({ id: idProp }: { id?: string } = {}) {
             })}
             {legajo && (
               <ObservarDocumentoModal
+                key={docSeleccionado?.id ?? "ninguno"}
                 doc={docSeleccionado}
                 legajoId={legajo.id}
                 onClose={() => setDocSeleccionado(null)}

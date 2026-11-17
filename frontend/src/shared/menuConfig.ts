@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Link2,
   UserPlus,
   Users,
   BarChart3,
@@ -32,6 +33,13 @@ export const menuItems: MenuItem[] = [
     href: "/inscriptos/nuevo",
     icon: UserPlus,
     roles: ["coordinador", "admin"],
+  },
+  {
+    id: "enlaces",
+    label: "Enlaces de acceso",
+    href: "/enlaces",
+    icon: Link2,
+    roles: ["coordinador"],
   },
   {
     id: "estadisticas",

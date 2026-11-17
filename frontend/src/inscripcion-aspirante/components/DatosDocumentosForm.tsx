@@ -51,9 +51,9 @@ function DocumentoRow({
   disabled,
 }: {
   documento: DocumentoRequerido;
-  archivo: File | null;
-  onSelectFile: (file: File | null) => void;
-  onError: (msg: string | null) => void;
+  archivo: File | undefined;
+  onSelectFile: (file: File | undefined) => void;
+  onError: (msg: string | undefined) => void;
   disabled?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -63,24 +63,24 @@ function DocumentoRow({
   };
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
+    const file = e.target.files?.[0] ?? undefined;
 
     if (!file) {
-      onSelectFile(null);
-      onError(null);
+      onSelectFile(undefined);
+      onError(undefined);
       return;
     }
 
     if (file.type !== "application/pdf") {
       onError(`El archivo "${file.name}" no es un PDF válido. Solo se permiten archivos PDF.`);
-      onSelectFile(null);
+      onSelectFile(undefined);
       if (e.target) e.target.value = "";
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
       onError(`El archivo "${file.name}" supera el límite máximo de 5MB.`);
-      onSelectFile(null);
+      onSelectFile(undefined);
       if (e.target) e.target.value = "";
       return;
     }
@@ -96,13 +96,13 @@ function DocumentoRow({
       const checksum = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
       (renamedFile as any).checksum = checksum;
-      
+
       console.log(`Archivo: ${uuidName} | SHA-256: ${checksum}`);
     } catch (err) {
       console.error("Error al calcular el checksum SHA-256:", err);
     }
 
-    onError(null);
+    onError(undefined);
     onSelectFile(renamedFile);
   };
 
@@ -155,14 +155,14 @@ export function DatosDocumentosForm({
   const faltantes = DOCUMENTOS_REQUERIDOS.filter(
     (doc) => !doc.opcional && !documentos[doc.id]
   );
-  if (faltantes.length > 0) {
-    console.log("Faltan documentos:", faltantes);
-    return;
-  }
-  
-const handleSubmit = () => {
-  onNext(documentos);
-};
+  const handleSubmit = () => {
+    if (faltantes.length > 0) {
+      setError("Adjuntá todos los documentos obligatorios antes de continuar.");
+      return;
+    }
+    setError(undefined);
+    onNext(documentos);
+  };
 
   const handleSaveDraft = () => {
     onSaveDraft?.(documentos);

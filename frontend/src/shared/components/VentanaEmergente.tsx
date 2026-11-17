@@ -16,6 +16,9 @@ export default function VentanaEmergente({ isOpen, onClose, title, children }: V
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-6"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-sm rounded-2xl border border-line bg-paper-elevated p-6 shadow-card"
       >

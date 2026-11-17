@@ -2,10 +2,13 @@
 """Servicios de aplicación para la gestión documental."""
 
 import asyncio
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 import uuid
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.gestion_documental.infrastructure.orm_models import (
@@ -16,7 +19,7 @@ from src.gestion_documental.infrastructure.storage import (
     STORAGE_ROOT,
     guardar_pdf,
 )
-from src.inscripcion.infrastructure.orm_models import Legajo
+from src.inscripcion.infrastructure.orm_models import AuditoriaLegajo, Legajo
 
 
 async def obtener_documento_para_descarga(
@@ -50,7 +53,7 @@ async def guardar_documento(
     """Valida, almacena y registra un documento PDF para un legajo."""
 
     # 1. Verificar que el legajo exista.
-    legajo = await db.get(Legajo, legajo_id)
+    legajo = await db.get(Legajo, legajo_id, with_for_update=True)
 
     if legajo is None:
         raise HTTPException(
@@ -115,4 +118,40 @@ async def guardar_documento(
 
     await db.refresh(documento)
 
+    return documento
+
+
+async def listar_documentos(db: AsyncSession, legajo_id: uuid.UUID) -> list[Documento]:
+    """Una version vigente por tipo; las versiones anteriores conservan su archivo."""
+    versiones = await db.scalars(select(Documento).where(Documento.legajo_id == legajo_id)
+        .order_by(Documento.fecha_subida.desc(), Documento.id.desc()))
+    vigentes = {}
+    for documento in versiones:
+        vigentes.setdefault(documento.tipo, documento)
+    return list(vigentes.values())
+
+
+async def revisar_documento(db: AsyncSession, legajo_id: uuid.UUID, documento_id: uuid.UUID,
+                            accion: str, motivo: str | None, usuario_email: str) -> Documento:
+    legajo = await db.get(Legajo, legajo_id, with_for_update=True)
+    if legajo is None:
+        raise HTTPException(404, "No se encontró el legajo")
+    documento = await db.get(Documento, documento_id)
+    if documento is None or documento.legajo_id != legajo_id:
+        raise HTTPException(404, "No se encontró el documento en este legajo")
+    vigentes = await listar_documentos(db, legajo_id)
+    if not any(d.id == documento_id for d in vigentes):
+        raise HTTPException(409, "Existe una versión más reciente del documento; actualizá el listado")
+    documento.estado = {"APROBAR": "APROBADO", "OBSERVAR": "OBSERVADO", "MARCAR_FALTANTE": "FALTANTE"}[accion]
+    documento.motivo_observacion = None if accion == "APROBAR" else motivo
+    # Revisar un documento no modifica el estado academico del legajo.
+    db.add(AuditoriaLegajo(legajo_id=legajo_id, estado_anterior=legajo.estado,
+        estado_nuevo=legajo.estado, usuario_email=usuario_email, created_at=datetime.now(timezone.utc),
+        comentario=json.dumps({"documento_id": str(documento_id), "accion": accion, "motivo": motivo}, ensure_ascii=False)))
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+    await db.refresh(documento)
     return documento

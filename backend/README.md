@@ -94,14 +94,53 @@ Seleccionar el entorno **Local - API Legajos** y completar `cohorte_id` con un U
 
 La colección captura automáticamente IDs y tokens de las respuestas cuando están disponibles. Los scripts no pueden generar datos previos que no existan en la base.
 
-### Pruebas negativas
+# Pruebas de autenticación
 
-La carpeta `04 - Pruebas negativas y autorización` contiene ejemplos para token inválido, sesión ausente, acceso sin enlace, rol insuficiente, UUID/body inválidos, login incorrecto e invitación inválida. Ejecutarlas separadas del flujo feliz; algunas admiten más de un código porque el middleware de personal externo puede rechazar la solicitud antes de validar el body.
+La suite cubre contraseñas, tokens JWT, permisos por rol, inicio de sesión,
+consulta de perfil, renovación de sesión y cierre de sesión.
 
-## 6. Consideraciones
+## Preparación
 
-1. **Estado inicial vs workflow:** `LegajoService.crear_legajo` establece `BORRADOR`, pero `TRANSICIONES` solo define `PENDIENTE → EN_REVISION` y no define transición desde `BORRADOR`. Con la implementación actual, un legajo recién creado no puede avanzar por el flujo de coordinación sin corregir esa discrepancia (por ejemplo, agregar la transición adecuada o cambiar el estado inicial según la regla de negocio acordada). No se modificó aquí porque requiere una decisión funcional.
-2. **Migración:** revisar `down_revision` antes de aplicar en un proyecto con migraciones previas.
-3. **Autenticación del personal:** integrar el middleware real; el placeholder `coordinator_token` de Postman no crea ni autentica una identidad por sí solo.
-4. **SMTP:** la invitación se devuelve en `url_activacion`; la integración SMTP está pendiente.
-5. **Producción:** HTTPS, `COOKIE_SECURE=true`, protección CSRF/origin, rate limit del login y gestión segura de secretos.
+Desde la raíz del repositorio, entrá a `backend` e instalá las dependencias
+de desarrollo con las versiones registradas en `uv.lock`:
+
+```powershell
+cd backend
+uv sync --locked --group dev
+```
+
+## Pruebas sin PostgreSQL
+
+Desde `backend`, ejecutá:
+
+```powershell
+uv run --locked --group dev python -m pytest tests/auth -m "not integration"
+```
+
+Resultado verificado en Docker para el PR #36: 29 casos aprobados y 6
+deseleccionados.
+
+## Pruebas de integración con PostgreSQL
+
+Prepará una base exclusiva para pruebas llamada `fenix_postgrado_test`.
+El usuario de PostgreSQL debe poder crear el esquema y las tablas de prueba.
+Configurá `TEST_DATABASE_URL` con la URL de esa base, sin parámetros de
+consulta. El nombre de la base debe ser distinto del que figura en
+`DATABASE_URL`.
+
+Por ejemplo, si el PostgreSQL de pruebas está disponible en `127.0.0.1:55432`,
+ejecutá desde `backend`:
+
+```powershell
+$env:DATABASE_URL = "postgresql://pytest:pytest@127.0.0.1:1/pytest_sin_conexion"
+$env:TEST_DATABASE_URL = "postgresql://pytest:pytest@127.0.0.1:55432/fenix_postgrado_test"
+uv run --locked --group dev python -m pytest tests/auth -m integration
+```
+
+`DATABASE_URL` usa una dirección ficticia para cargar el backend.
+`TEST_DATABASE_URL` es la conexión real que usa la fixture. Ajustá el host,
+el puerto y las credenciales al PostgreSQL de pruebas que hayas preparado.
+
+Si falta `TEST_DATABASE_URL`, pytest omite los casos de integración.
+Resultado verificado en Docker para el PR #36: 6 casos aprobados y 29
+deseleccionados.

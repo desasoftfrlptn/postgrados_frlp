@@ -42,7 +42,7 @@ async def intercambiar(datos: TokenRequest, response: Response, request: Request
 async def consultar_sesion(request: Request, service: AccesoService = Depends(get_acceso_service)):
     contexto = await service.obtener_contexto(request.cookies.get(COOKIE, ""))
     if not contexto: raise HTTPException(401, "Sesión de acceso inválida o vencida")
-    return {"tipo": contexto["tipo"]}
+    return {"tipo": contexto["tipo"], "cohorte_id": contexto.get("cohorte_id"), "legajo_id": contexto.get("legajo_id")}
 
 @router.delete("/sesion", status_code=204)
 async def cerrar_sesion(request: Request, response: Response, service: AccesoService = Depends(get_acceso_service)):
