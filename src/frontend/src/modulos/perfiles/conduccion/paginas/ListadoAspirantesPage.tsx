@@ -14,6 +14,7 @@ interface LegajoConduccion {
   dni_pasaporte: string;
   correo_electronico: string;
   estado: string;
+  solicitud_beca: number | null;
 }
 
 interface Cohorte {
@@ -29,6 +30,7 @@ interface FiltrosLegajos {
   apellido: string;
   carrera: string;
   estado: string;
+  beca: string;
 }
 
 const filtrosIniciales: FiltrosLegajos = {
@@ -37,6 +39,7 @@ const filtrosIniciales: FiltrosLegajos = {
   apellido: "",
   carrera: "",
   estado: "",
+  beca: "",
 };
 
 const estadosDisponibles = [
@@ -159,6 +162,15 @@ export default function ListadoAspirantesPage() {
     async function cargarLegajos() {
       setCargando(true);
 
+      if (!filtrosAplicados.cohorte_id) {
+        if (activo) {
+          setLegajos([]);
+          setError(null);
+          setCargando(false);
+        }
+        return;
+      }
+
       if (!user?.token) {
         if (activo) {
           setLegajos([]);
@@ -175,7 +187,21 @@ export default function ListadoAspirantesPage() {
           user.token,
         );
         if (activo) {
-          setLegajos(resultado);
+          const legajosFiltrados = resultado.filter((legajo) => {
+            const beca = filtrosAplicados.beca;
+
+            if (beca === "") return true;
+            if (beca === "SOLICITO") {
+              return legajo.solicitud_beca != null;
+            }
+            if (beca === "SIN_BECA") {
+              return legajo.solicitud_beca == null;
+            }
+
+            return legajo.solicitud_beca === Number(beca);
+          });
+
+          setLegajos(legajosFiltrados);
           setError(null);
         }
       } catch (err) {
@@ -194,7 +220,7 @@ export default function ListadoAspirantesPage() {
 
   function actualizarFiltro(campo: keyof FiltrosLegajos, valor: string) {
     setFiltros((anteriores) => ({ ...anteriores, [campo]: valor }));
-    if (campo === "cohorte_id" || campo === "estado") {
+    if (campo === "cohorte_id" || campo === "estado" || campo === "beca") {
       setFiltrosAplicados((anteriores) => ({ ...anteriores, [campo]: valor }));
     }
   }
@@ -211,7 +237,7 @@ export default function ListadoAspirantesPage() {
   }
 
   const hayFiltros = Object.values(filtros).some((valor) => valor.trim() !== "");
-  const cantidadFiltrosAvanzados = Number(Boolean(filtros.carrera)) + Number(Boolean(filtros.estado));
+  const cantidadFiltrosAvanzados = Number(Boolean(filtros.carrera)) + Number(Boolean(filtros.estado)) + Number(Boolean(filtros.beca));
 
   return (
     <section className="perfil-pagina conduccion-listado" aria-labelledby="titulo-aspirantes">
@@ -244,7 +270,7 @@ export default function ListadoAspirantesPage() {
                 disabled={cargandoCohortes}
                 onChange={(evento) => actualizarFiltro("cohorte_id", evento.target.value)}
               >
-                <option value="">{cargandoCohortes ? "Cargando cohortes..." : "Todas las cohortes"}</option>
+                <option value="">{cargandoCohortes ? "Cargando cohortes..." : "Seleccioná una cohorte"}</option>
                 {cohortes.map((cohorte) => (
                   <option key={cohorte.id} value={cohorte.id}>
                     {cohorte.nombre} ({cohorte.anio}){cohorte.abierta ? " - Abierta" : " - Cerrada"}
@@ -301,6 +327,20 @@ export default function ListadoAspirantesPage() {
           </div>
 
           <div id="filtros-avanzados" hidden={!mostrarAvanzados} className="conduccion-listado-avanzados">
+            <div>
+              <label htmlFor="filtro-beca">Beca</label>
+              <select
+                id="filtro-beca"
+                value={filtros.beca}
+                onChange={(evento) => actualizarFiltro("beca", evento.target.value)}
+              >
+                <option value="">Todas</option>
+                <option value="SOLICITO">Solicitó beca</option>
+                <option value="SIN_BECA">No solicitó beca</option>
+                <option value="30">Beca del 30 %</option>
+                <option value="100">Beca del 100 %</option>
+              </select>
+            </div>
             <div className="conduccion-listado-campo">
               <label htmlFor="filtro-carrera">Carrera</label>
               <input
@@ -344,7 +384,11 @@ export default function ListadoAspirantesPage() {
           {!cargando && !error && legajos.length === 0 && (
             <div className="conduccion-listado-vacio">
               <strong>No encontramos inscripciones</strong>
-              <p>Probá cambiando la cohorte o quitando alguno de los filtros.</p>
+              <p>
+                {!filtrosAplicados.cohorte_id
+                  ? "Seleccioná una cohorte para consultar sus legajos."
+                  : "Probá cambiando la cohorte o quitando alguno de los filtros."}
+              </p>
               {hayFiltros && <button type="button" className="conduccion-listado-boton-secundario" onClick={limpiarFiltros}>Limpiar filtros</button>}
             </div>
           )}
