@@ -7,6 +7,7 @@ from sqlalchemy import (
     ForeignKey,
     Text,
     Integer,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -15,6 +16,9 @@ from src.compartido.conexion import Base
 
 class LegajoORM(Base):
     __tablename__ = "legajos"
+    __table_args__ = (
+        UniqueConstraint("cohorte_id", "dni_pasaporte", name="uq_legajos_cohorte_dni"),
+    )
 
     id = Column(
         UUID(as_uuid=True),
@@ -79,3 +83,10 @@ class LegajoORM(Base):
         Integer,
         nullable=True,
     )
+
+
+class ContadorInscripcionORM(Base):
+    __tablename__ = "contadores_inscripcion"
+
+    anio = Column(Integer, primary_key=True)
+    ultimo_numero = Column(Integer, nullable=False, server_default="0")
