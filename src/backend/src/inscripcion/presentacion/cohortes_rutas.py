@@ -10,6 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.usuarios.modelos import UsuarioORM
+from src.usuarios.rutas import usuario_actual
+
 from src.carreras.modelos import CarreraORM
 from src.compartido.conexion import get_db
 from src.inscripcion.aplicacion.cohortes_servicio import (
@@ -38,6 +41,21 @@ enrutador = APIRouter(
     prefix="/api/v1/cohortes",
     tags=["Cohortes"],
 )
+
+async def administrador_o_coordinador_actual(
+    usuario: UsuarioORM = Depends(usuario_actual),
+) -> UsuarioORM:
+    if (
+        not usuario.activo
+        or usuario.rol is None
+        or usuario.rol.nombre not in ("ADMIN", "COORDINADOR")
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Se requieren permisos de administrador o coordinador.",
+        )
+
+    return usuario
 
 
 @enrutador.get(
@@ -97,7 +115,7 @@ async def listar_cohortes_disponibles(
 async def crear_cohorte_controller(
     datos: CohorteCrear,
     db: AsyncSession = Depends(get_db),
-    _usuario=Depends(coordinador_actual),
+    _usuario=Depends(administrador_o_coordinador_actual),
 ):
     repositorio = CohorteRepositorioPostgres(db)
 
@@ -132,7 +150,7 @@ async def modificar_inscripcion_controller(
     cohorte_id: UUID,
     datos: CohorteInscripcionModificar,
     db: AsyncSession = Depends(get_db),
-    _usuario=Depends(coordinador_actual),
+    _usuario=Depends(administrador_o_coordinador_actual),
 ):
     repositorio = CohorteRepositorioPostgres(db)
 
