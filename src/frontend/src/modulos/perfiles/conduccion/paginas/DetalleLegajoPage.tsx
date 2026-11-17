@@ -8,7 +8,6 @@ import "../estilos/Conduccion.css";
 
 interface LegajoDetalle {
   id: string;
-  cohorte_id: string | null;
   carrera_elegida: string;
   apellido: string;
   nombre: string;
@@ -25,8 +24,6 @@ interface LegajoDetalle {
   titulo_anterior: string;
   universidad_anterior: string;
   numero_seguimiento: string;
-  forma_conocio_ofertas: string;
-  motivos_cursar: string;
   solicitud_beca: number | null;
 }
 
@@ -63,7 +60,13 @@ const nombresDocumentos: Record<string, string> = {
 };
 
 function mostrarDato(valor: string | null | undefined) {
-  return valor?.trim() || "No informado";
+  return valor?.trim() || "";
+}
+
+function mostrarEstado(estado: string) {
+  if (estado === "COMPLETADO") return "Listo";
+  if (estado === "EN_REVISION") return "En revisión";
+  return estado.replaceAll("_", " ").toLowerCase().replace(/^./, (letra) => letra.toUpperCase());
 }
 
 function mostrarFecha(fecha: string) {
@@ -93,6 +96,7 @@ function claseEstado(estado: string) {
 }
 
 function Campo({ etiqueta, valor }: { etiqueta: string; valor: string | null | undefined }) {
+  if (!mostrarDato(valor)) return null;
   return (
     <div className="conduccion-campo">
       <dt>{etiqueta}</dt>
@@ -243,26 +247,24 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
                 <p className="conduccion-subtitulo">{legajo.carrera_elegida}</p>
               </div>
               <span className={`conduccion-estado ${claseEstado(legajo.estado)}`}>
-                {legajo.estado.replaceAll("_", " ")}
+                {mostrarEstado(legajo.estado)}
               </span>
             </div>
             <dl className="conduccion-resumen-datos">
               <Campo etiqueta="N.º de seguimiento" valor={legajo.numero_seguimiento} />
               <Campo etiqueta="DNI / Pasaporte" valor={legajo.dni_pasaporte} />
-              <Campo etiqueta="Cohorte" valor={legajo.cohorte_id} />
             </dl>
           </section>
 
           <div className="conduccion-grid">
-            <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado"><h2>Datos personales</h2></header>
-              <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
-                <Campo etiqueta="Nombre" valor={legajo.nombre} />
-                <Campo etiqueta="Apellido" valor={legajo.apellido} />
-                <Campo etiqueta="Nacionalidad" valor={legajo.nacionalidad} />
-                <Campo etiqueta="DNI / Pasaporte" valor={legajo.dni_pasaporte} />
-              </dl>
-            </section>
+            {legajo.nacionalidad?.trim() && (
+              <section className="conduccion-tarjeta">
+                <header className="conduccion-tarjeta-encabezado"><h2>Identificación</h2></header>
+                <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
+                  <Campo etiqueta="Nacionalidad" valor={legajo.nacionalidad} />
+                </dl>
+              </section>
+            )}
 
             <section className="conduccion-tarjeta">
               <header className="conduccion-tarjeta-encabezado"><h2>Contacto y domicilio</h2></header>
@@ -277,25 +279,24 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
               </dl>
             </section>
 
-            <section className="conduccion-tarjeta">
+            {(legajo.titulo_anterior?.trim() || legajo.universidad_anterior?.trim()) && (
+              <section className="conduccion-tarjeta">
               <header className="conduccion-tarjeta-encabezado"><h2>Formación académica</h2></header>
               <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
                 <Campo etiqueta="Título obtenido" valor={legajo.titulo_anterior} />
                 <Campo etiqueta="Universidad de origen" valor={legajo.universidad_anterior} />
               </dl>
-            </section>
+              </section>
+            )}
 
-            <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado"><h2>Información de inscripción</h2></header>
-              <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
-                <Campo etiqueta="Cómo conoció la oferta" valor={legajo.forma_conocio_ofertas} />
-                <Campo etiqueta="Solicitud de beca" valor={legajo.solicitud_beca == null ? "No solicitó beca" : `${legajo.solicitud_beca}%`} />
-                <div className="conduccion-campo conduccion-campo-ancho">
-                  <dt>Motivos para cursar</dt>
-                  <dd>{mostrarDato(legajo.motivos_cursar)}</dd>
-                </div>
-              </dl>
-            </section>
+            {legajo.solicitud_beca != null && (
+              <section className="conduccion-tarjeta">
+                <header className="conduccion-tarjeta-encabezado"><h2>Beca solicitada</h2></header>
+                <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
+                  <Campo etiqueta="Porcentaje solicitado" valor={`${legajo.solicitud_beca}%`} />
+                </dl>
+              </section>
+            )}
           </div>
 
           <section className="conduccion-tarjeta conduccion-seccion-documental" aria-labelledby="titulo-documentacion">
@@ -363,9 +364,19 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
             </div>
           </section>
 
-          <div className="conduccion-gestion">
+          <section className="conduccion-gestion" aria-labelledby="titulo-gestion-legajo">
+            <header className="conduccion-gestion-encabezado">
+              <div>
+                <p className="conduccion-resumen-etiqueta">ADMISIÓN</p>
+                <h2 id="titulo-gestion-legajo">Revisión y decisión del legajo</h2>
+                <p>El estado se actualiza únicamente cuando el backend confirma una operación de admisión.</p>
+              </div>
+              <span className={`conduccion-estado ${claseEstado(legajo.estado)}`}>
+                {mostrarEstado(legajo.estado)}
+              </span>
+            </header>
             <GestionInscripcion legajoId={legajo.id} onEstadoActualizado={actualizarEstado} />
-          </div>
+          </section>
         </>
       )}
     </section>
