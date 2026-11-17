@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from src.authentication.application.security import hash_password, require_roles
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import hash_password, require_roles
+from src.autenticacion.infraestructura.modelos import User
 from src.db.base import Base
 from src.db.session import get_db
 from main import app

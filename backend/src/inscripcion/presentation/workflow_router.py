@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.db.session import get_db
 from src.inscripcion.application.workflow_estados import (
     LegajoNoEncontrado,

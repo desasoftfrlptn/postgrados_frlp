@@ -8,8 +8,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
-from src.authentication.application.security import bearer_scheme, get_current_user
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import bearer_scheme, get_current_user
+from src.autenticacion.infraestructura.modelos import User
 from src.carga_academica.aplicacion.acceso import (
     crear_acceso,
     enlace_planilla,

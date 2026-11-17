@@ -10,8 +10,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from main import app
-from src.authentication.application.security import create_token_pair
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import create_token_pair
+from src.autenticacion.infraestructura.modelos import User
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db

@@ -11,8 +11,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from main import app
-from src.authentication.application.security import create_token_pair
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import create_token_pair
+from src.autenticacion.infraestructura.modelos import User
 from src.db.base import Base
 from src.db.session import get_db
 from src.inscripcion.infrastructure.models import Cohorte, Legajo

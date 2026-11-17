@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.db.session import get_db
 from src.inscripcion.infrastructure.models import Cohorte, Legajo
 from src.seguimiento_graduacion.aplicacion.alertas import enviar_alertas_pendientes

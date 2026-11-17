@@ -14,7 +14,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import Select, String, cast, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.db.session import get_db
 from src.inscripcion.application.estado_documental import evaluar_estado_documental
 from src.inscripcion.infrastructure.models import Cohorte, Legajo

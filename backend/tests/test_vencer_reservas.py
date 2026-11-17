@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 import main
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.db.base import Base
 from src.inscripcion.application.vencer_reservas import vencer_reservas
 from src.inscripcion.infrastructure.models import Cohorte, Legajo

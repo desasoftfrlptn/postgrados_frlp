@@ -10,9 +10,9 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from src.authentication.application.security import get_current_user
-from src.authentication.infrastructure.models import User
-from src.authentication.presentation.router import router as autenticacion_router
+from src.autenticacion.aplicacion.seguridad import get_current_user
+from src.autenticacion.infraestructura.modelos import User
+from src.autenticacion.presentacion.router import router as autenticacion_router
 from src.carga_academica.presentacion.router import router as seminarios_router
 from src.carga_academica.presentacion.router import router_legajos as carga_legajos_router
 from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios

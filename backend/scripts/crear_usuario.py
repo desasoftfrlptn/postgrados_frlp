@@ -4,8 +4,8 @@ from getpass import getpass
 from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select
 
-from src.authentication.application.security import hash_password
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import hash_password
+from src.autenticacion.infraestructura.modelos import User
 from src.db.session import SessionLocal
 
 ROLES = ("COORDINADOR", "CPR", "ADMIN")

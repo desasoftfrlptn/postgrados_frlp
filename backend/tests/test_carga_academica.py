@@ -14,8 +14,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from main import app
-from src.authentication.application.security import create_token_pair
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import create_token_pair
+from src.autenticacion.infraestructura.modelos import User
 from src.carga_academica.infraestructura.modelos import AccesoDocente, InscripcionSeminario
 from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
 from src.core.config import settings

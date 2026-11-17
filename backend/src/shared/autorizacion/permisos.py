@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 
 RolUsuario = Literal["COORDINADOR", "CPR", "ADMIN"]
 
@@ -14,7 +14,7 @@ class SujetoAutenticado(Protocol):
 
 
 def requerir_roles(*roles: RolUsuario) -> Callable[..., User]:
-    from src.authentication.application.security import get_current_user
+    from src.autenticacion.aplicacion.seguridad import get_current_user
 
     def dependencia_rol(usuario: User = Depends(get_current_user)) -> User:
         if usuario.role not in roles:
