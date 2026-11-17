@@ -68,7 +68,6 @@ function mostrarDato(valor: string | null | undefined) {
 
 function mostrarFecha(fecha: string) {
   const valor = new Date(fecha);
-
   return Number.isNaN(valor.getTime())
     ? "Fecha no disponible"
     : valor.toLocaleDateString("es-AR");
@@ -83,6 +82,7 @@ function claseEstado(estado: string) {
     case "COMPLETADO":
     case "ACTIVO":
     case "GRADUADO":
+    case "APROBADO":
       return "conduccion-estado-completado";
     case "RECHAZADO":
     case "BAJA":
@@ -92,13 +92,7 @@ function claseEstado(estado: string) {
   }
 }
 
-function Campo({
-  etiqueta,
-  valor,
-}: {
-  etiqueta: string;
-  valor: string | null | undefined;
-}) {
+function Campo({ etiqueta, valor }: { etiqueta: string; valor: string | null | undefined }) {
   return (
     <div className="conduccion-campo">
       <dt>{etiqueta}</dt>
@@ -111,9 +105,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
   const [legajo, setLegajo] = useState<LegajoDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
-
-  const [documentacion, setDocumentacion] =
-    useState<DocumentacionLegajo | null>(null);
+  const [documentacion, setDocumentacion] = useState<DocumentacionLegajo | null>(null);
   const [cargandoDocumentacion, setCargandoDocumentacion] = useState(true);
   const [errorDocumentacion, setErrorDocumentacion] = useState("");
   const [errorArchivo, setErrorArchivo] = useState("");
@@ -122,10 +114,55 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
     accion: AccionDocumento;
   } | null>(null);
 
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarLegajo() {
+      try {
+        const resultado = await api.get<LegajoDetalle>(
+          `/inscripcion/${encodeURIComponent(id)}`,
+          token,
+        );
+        if (activo) setLegajo(resultado);
+      } catch (err) {
+        if (activo) {
+          setError(err instanceof Error ? err.message : "No se pudo consultar el legajo.");
+        }
+      } finally {
+        if (activo) setCargando(false);
+      }
+    }
+
+    async function cargarDocumentacion() {
+      try {
+        const resultado = await api.get<DocumentacionLegajo>(
+          `/inscripcion/${encodeURIComponent(id)}/documentos`,
+          token,
+        );
+        if (activo) setDocumentacion(resultado);
+      } catch (err) {
+        if (activo) {
+          setErrorDocumentacion(
+            err instanceof Error ? err.message : "No se pudo consultar la documentación.",
+          );
+        }
+      } finally {
+        if (activo) setCargandoDocumentacion(false);
+      }
+    }
+
+    void cargarLegajo();
+    void cargarDocumentacion();
+    return () => { activo = false; };
+  }, [id, token]);
+
+  const actualizarEstado = useCallback((estado: string) => {
+    setLegajo((actual) => actual ? { ...actual, estado } : actual);
+  }, []);
+
   const descargar = async (documento: DocumentoLegajo) => {
     setOperacionDocumento({ id: documento.id, accion: "descargar" });
     setErrorArchivo("");
-
     try {
       const archivo = await api.descargar(
         `/documentos/${encodeURIComponent(documento.id)}/download`,
@@ -140,9 +177,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
       enlace.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 30000);
     } catch (err) {
-      setErrorArchivo(
-        err instanceof Error ? err.message : "No se pudo descargar el PDF.",
-      );
+      setErrorArchivo(err instanceof Error ? err.message : "No se pudo descargar el PDF.");
     } finally {
       setOperacionDocumento(null);
     }
@@ -150,19 +185,14 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
 
   const verDocumento = async (documento: DocumentoLegajo) => {
     setErrorArchivo("");
-
-    // Se abre al hacer clic para evitar que el navegador bloquee la pestaña.
+    // Abrir la pestaña durante el clic evita el bloqueo de ventanas emergentes.
     const ventana = window.open("about:blank", "_blank");
     if (!ventana) {
-      setErrorArchivo(
-        "No se pudo abrir el PDF. Habilitá las ventanas emergentes o descargalo.",
-      );
+      setErrorArchivo("No se pudo abrir el PDF. Habilitá las ventanas emergentes o descargalo.");
       return;
     }
-
     ventana.opener = null;
     setOperacionDocumento({ id: documento.id, accion: "ver" });
-
     try {
       const archivo = await api.descargar(
         `/documentos/${encodeURIComponent(documento.id)}/download`,
@@ -170,358 +200,161 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
       );
       const pdf = new Blob([archivo], { type: "application/pdf" });
       const url = URL.createObjectURL(pdf);
-
       if (ventana.closed) {
         URL.revokeObjectURL(url);
         return;
       }
-
       ventana.location.href = url;
-      // Da tiempo a que la nueva pestaña cargue el documento.
       window.setTimeout(() => URL.revokeObjectURL(url), 300000);
     } catch (err) {
       ventana.close();
-      setErrorArchivo(
-        err instanceof Error ? err.message : "No se pudo visualizar el PDF.",
-      );
+      setErrorArchivo(err instanceof Error ? err.message : "No se pudo visualizar el PDF.");
     } finally {
       setOperacionDocumento(null);
     }
   };
 
-  useEffect(() => {
-    let activo = true;
-
-    async function cargarLegajo() {
-      try {
-        const resultado = await api.get<LegajoDetalle>(
-          `/inscripcion/${encodeURIComponent(id)}`,
-          token,
-        );
-
-        if (activo) {
-          setLegajo(resultado);
-        }
-      } catch (err) {
-        if (activo) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "No se pudo consultar el legajo.",
-          );
-        }
-      } finally {
-        if (activo) {
-          setCargando(false);
-        }
-      }
-    }
-
-    async function cargarDocumentacion() {
-      try {
-        const resultado = await api.get<DocumentacionLegajo>(
-          `/inscripcion/${encodeURIComponent(id)}/documentos`,
-          token,
-        );
-
-        if (activo) {
-          setDocumentacion(resultado);
-        }
-      } catch (err) {
-        if (activo) {
-          setErrorDocumentacion(
-            err instanceof Error
-              ? err.message
-              : "No se pudo consultar la documentación.",
-          );
-        }
-      } finally {
-        if (activo) {
-          setCargandoDocumentacion(false);
-        }
-      }
-    }
-
-    void cargarLegajo();
-    void cargarDocumentacion();
-
-    return () => {
-      activo = false;
-    };
-  }, [id, token]);
-
-  const actualizarEstado = useCallback((estado: string) => {
-    setLegajo((actual) => {
-      if (!actual || actual.estado === estado) {
-        return actual;
-      }
-
-      return { ...actual, estado };
-    });
-  }, []);
-
   const documentos = documentacion?.documentos ?? [];
   const completitud = documentacion?.completitud ?? null;
+  const porcentaje = completitud ? Math.max(0, Math.min(100, completitud.porcentaje)) : 0;
 
   return (
-    <section
-      className="perfil-pagina conduccion-detalle"
-      aria-labelledby="titulo-detalle-legajo"
-    >
-      <Link
-        to="/dashboard/conduccion/aspirantes"
-        className="conduccion-volver"
-      >
-        ← Volver al listado de aspirantes
+    <section className="perfil-pagina conduccion-detalle" aria-labelledby="titulo-detalle-legajo">
+      <Link to="/dashboard/conduccion/aspirantes" className="conduccion-volver">
+        <span aria-hidden="true">←</span> Volver a aspirantes
       </Link>
 
-      <header className="perfil-pagina-encabezado">
+      <header className="conduccion-detalle-encabezado">
+        <p className="conduccion-etiqueta">EQUIPO DE CONDUCCIÓN / INSCRIPCIONES</p>
         <h1 id="titulo-detalle-legajo">Detalle del legajo</h1>
-        <p>Información y seguimiento de la inscripción.</p>
+        <p>Consultá los datos de la inscripción y su documentación.</p>
       </header>
 
       {cargando && <p role="status">Cargando información del legajo…</p>}
-
-      {error && (
-        <p
-          role="alert"
-          className="conduccion-mensaje conduccion-mensaje-error"
-        >
-          {error}
-        </p>
-      )}
+      {error && <p role="alert" className="conduccion-mensaje conduccion-mensaje-error">{error}</p>}
 
       {!cargando && !error && legajo && (
         <>
-          <section className="conduccion-resumen" aria-label="Resumen del legajo">
+          <section className="conduccion-resumen" aria-label="Resumen del aspirante">
             <div className="conduccion-resumen-superior">
               <div>
-                <h2 className="conduccion-nombre">
-                  {legajo.nombre} {legajo.apellido}
-                </h2>
-                <p className="conduccion-subtitulo">
-                  {legajo.carrera_elegida}
-                </p>
-                <p>
-                  Seguimiento: {mostrarDato(legajo.numero_seguimiento)}
-                </p>
+                <p className="conduccion-resumen-etiqueta">ASPIRANTE</p>
+                <h2 className="conduccion-nombre">{legajo.nombre} {legajo.apellido}</h2>
+                <p className="conduccion-subtitulo">{legajo.carrera_elegida}</p>
               </div>
-
-              <span
-                className={`conduccion-estado ${claseEstado(legajo.estado)}`}
-              >
+              <span className={`conduccion-estado ${claseEstado(legajo.estado)}`}>
                 {legajo.estado.replaceAll("_", " ")}
               </span>
             </div>
+            <dl className="conduccion-resumen-datos">
+              <Campo etiqueta="N.º de seguimiento" valor={legajo.numero_seguimiento} />
+              <Campo etiqueta="DNI / Pasaporte" valor={legajo.dni_pasaporte} />
+              <Campo etiqueta="Cohorte" valor={legajo.cohorte_id} />
+            </dl>
           </section>
 
           <div className="conduccion-grid">
             <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado">
-                <h2>Datos personales</h2>
-              </header>
-              <div className="conduccion-tarjeta-cuerpo">
-                <dl className="conduccion-datos">
-                  <Campo etiqueta="Nombre" valor={legajo.nombre} />
-                  <Campo etiqueta="Apellido" valor={legajo.apellido} />
-                  <Campo etiqueta="Nacionalidad" valor={legajo.nacionalidad} />
-                  <Campo
-                    etiqueta="DNI / Pasaporte"
-                    valor={legajo.dni_pasaporte}
-                  />
-                </dl>
-              </div>
+              <header className="conduccion-tarjeta-encabezado"><h2>Datos personales</h2></header>
+              <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
+                <Campo etiqueta="Nombre" valor={legajo.nombre} />
+                <Campo etiqueta="Apellido" valor={legajo.apellido} />
+                <Campo etiqueta="Nacionalidad" valor={legajo.nacionalidad} />
+                <Campo etiqueta="DNI / Pasaporte" valor={legajo.dni_pasaporte} />
+              </dl>
             </section>
 
             <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado">
-                <h2>Información de contacto</h2>
-              </header>
-              <div className="conduccion-tarjeta-cuerpo">
-                <dl className="conduccion-datos">
-                  <Campo
-                    etiqueta="Correo electrónico"
-                    valor={legajo.correo_electronico}
-                  />
-                  <Campo
-                    etiqueta="Correo alternativo"
-                    valor={legajo.correo_alternativo}
-                  />
-                  <Campo etiqueta="Teléfono móvil" valor={legajo.telefono_movil} />
-                </dl>
-              </div>
+              <header className="conduccion-tarjeta-encabezado"><h2>Contacto y domicilio</h2></header>
+              <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
+                <Campo etiqueta="Correo electrónico" valor={legajo.correo_electronico} />
+                <Campo etiqueta="Correo alternativo" valor={legajo.correo_alternativo} />
+                <Campo etiqueta="Teléfono móvil" valor={legajo.telefono_movil} />
+                <Campo etiqueta="Dirección" valor={legajo.domicilio} />
+                <Campo etiqueta="Ciudad" valor={legajo.ciudad} />
+                <Campo etiqueta="Provincia" valor={legajo.provincia} />
+                <Campo etiqueta="País" valor={legajo.pais} />
+              </dl>
             </section>
 
             <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado">
-                <h2>Domicilio</h2>
-              </header>
-              <div className="conduccion-tarjeta-cuerpo">
-                <dl className="conduccion-datos">
-                  <Campo etiqueta="País" valor={legajo.pais} />
-                  <Campo etiqueta="Provincia" valor={legajo.provincia} />
-                  <Campo etiqueta="Ciudad" valor={legajo.ciudad} />
-                  <Campo etiqueta="Dirección" valor={legajo.domicilio} />
-                </dl>
-              </div>
+              <header className="conduccion-tarjeta-encabezado"><h2>Formación académica</h2></header>
+              <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
+                <Campo etiqueta="Título obtenido" valor={legajo.titulo_anterior} />
+                <Campo etiqueta="Universidad de origen" valor={legajo.universidad_anterior} />
+              </dl>
             </section>
 
             <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado">
-                <h2>Formación académica previa</h2>
-              </header>
-              <div className="conduccion-tarjeta-cuerpo">
-                <dl className="conduccion-datos">
-                  <Campo
-                    etiqueta="Título obtenido"
-                    valor={legajo.titulo_anterior}
-                  />
-                  <Campo
-                    etiqueta="Universidad de origen"
-                    valor={legajo.universidad_anterior}
-                  />
-                </dl>
-              </div>
-            </section>
-
-            <section className="conduccion-tarjeta">
-              <header className="conduccion-tarjeta-encabezado">
-                <h2>Información de inscripción</h2>
-              </header>
-              <div className="conduccion-tarjeta-cuerpo">
-                <dl className="conduccion-datos">
-                  <Campo
-                    etiqueta="Cohorte (identificador)"
-                    valor={legajo.cohorte_id}
-                  />
-                  <Campo
-                    etiqueta="Cómo conoció la oferta académica"
-                    valor={legajo.forma_conocio_ofertas}
-                  />
-                  <Campo
-                    etiqueta="Motivos para cursar"
-                    valor={legajo.motivos_cursar}
-                  />
-                  <Campo
-                    etiqueta="Solicitud de beca"
-                    valor={
-                      legajo.solicitud_beca == null
-                        ? "No solicitó beca"
-                        : `${legajo.solicitud_beca}%`
-                    }
-                  />
-                </dl>
-              </div>
+              <header className="conduccion-tarjeta-encabezado"><h2>Información de inscripción</h2></header>
+              <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
+                <Campo etiqueta="Cómo conoció la oferta" valor={legajo.forma_conocio_ofertas} />
+                <Campo etiqueta="Solicitud de beca" valor={legajo.solicitud_beca == null ? "No solicitó beca" : `${legajo.solicitud_beca}%`} />
+                <div className="conduccion-campo conduccion-campo-ancho">
+                  <dt>Motivos para cursar</dt>
+                  <dd>{mostrarDato(legajo.motivos_cursar)}</dd>
+                </div>
+              </dl>
             </section>
           </div>
 
-          <section
-            className="conduccion-tarjeta"
-            aria-labelledby="titulo-completitud"
-          >
+          <section className="conduccion-tarjeta conduccion-seccion-documental" aria-labelledby="titulo-documentacion">
             <header className="conduccion-tarjeta-encabezado">
-              <h2 id="titulo-completitud">Estado de la documentación</h2>
+              <h2 id="titulo-documentacion">Estado de la documentación</h2>
             </header>
             <div className="conduccion-tarjeta-cuerpo">
-              {cargandoDocumentacion && (
-                <p role="status">Consultando estado documental…</p>
-              )}
-
-              {!cargandoDocumentacion && errorDocumentacion && (
-                <p role="alert">{errorDocumentacion}</p>
-              )}
-
+              {cargandoDocumentacion && <p role="status">Consultando documentación…</p>}
+              {!cargandoDocumentacion && errorDocumentacion && <p role="alert" className="conduccion-mensaje conduccion-mensaje-error">{errorDocumentacion}</p>}
               {!cargandoDocumentacion && !errorDocumentacion && (
                 completitud ? (
                   <>
-                    <p>
-                      <strong>{completitud.porcentaje}%</strong> de documentación
-                      presentada
-                    </p>
-                    <progress
-                      value={completitud.porcentaje}
-                      max={100}
-                      aria-label="Porcentaje de documentación presentada"
-                      style={{ width: "100%" }}
-                    />
-                    <p>
-                      Documentos presentados: {completitud.documentos_presentados}
-                      {" de "}
-                      {completitud.documentos_requeridos}
-                    </p>
-                    <p>
-                      {completitud.completo
-                        ? "La documentación requerida está completa."
-                        : "La documentación requerida está incompleta."}
+                    <div className="conduccion-progreso-encabezado">
+                      <p><strong>{completitud.documentos_presentados}</strong> de {completitud.documentos_requeridos} documentos presentados</p>
+                      <strong>{porcentaje}%</strong>
+                    </div>
+                    <progress className="conduccion-progreso" value={porcentaje} max={100} aria-label="Porcentaje de documentación presentada" />
+                    <p className="conduccion-ayuda">
+                      {completitud.completo ? "La documentación requerida está completa." : "Hay documentación pendiente de presentación."}
                     </p>
                     {completitud.documentos_faltantes.length > 0 && (
-                      <>
+                      <div className="conduccion-faltantes">
                         <h3>Documentos faltantes</h3>
                         <ul>
                           {completitud.documentos_faltantes.map((tipo) => (
-                            <li key={tipo}>
-                              {nombresDocumentos[tipo] ?? tipo}
-                            </li>
+                            <li key={tipo}>{nombresDocumentos[tipo] ?? tipo}</li>
                           ))}
                         </ul>
-                      </>
+                      </div>
                     )}
                   </>
-                ) : (
-                  <p>
-                    Todavía no se puede determinar la completitud documental
-                    de este aspirante.
-                  </p>
-                )
+                ) : <p className="conduccion-ayuda">Todavía no se puede determinar la completitud documental de este aspirante.</p>
               )}
             </div>
           </section>
 
-          <section className="conduccion-tarjeta">
-            <header className="conduccion-tarjeta-encabezado">
-              <h2>Documentos registrados</h2>
-            </header>
+          <section className="conduccion-tarjeta conduccion-seccion-documental" aria-labelledby="titulo-documentos">
+            <header className="conduccion-tarjeta-encabezado"><h2 id="titulo-documentos">Documentos registrados</h2></header>
             <div className="conduccion-tarjeta-cuerpo">
-              {cargandoDocumentacion && (
-                <p role="status">Cargando documentación…</p>
-              )}
-
-              {!cargandoDocumentacion && errorDocumentacion && (
-                <p role="alert">{errorDocumentacion}</p>
-              )}
-
-              {errorArchivo && <p role="alert">{errorArchivo}</p>}
-
+              {cargandoDocumentacion && <p role="status">Cargando documentos…</p>}
+              {!cargandoDocumentacion && errorDocumentacion && <p role="alert" className="conduccion-mensaje conduccion-mensaje-error">{errorDocumentacion}</p>}
+              {errorArchivo && <p role="alert" className="conduccion-mensaje conduccion-mensaje-error">{errorArchivo}</p>}
               {!cargandoDocumentacion && !errorDocumentacion && (
-                documentos.length === 0 ? (
-                  <p>No hay documentos registrados para este legajo.</p>
-                ) : (
-                  <ul>
+                documentos.length === 0 ? <p className="conduccion-ayuda">No hay documentos registrados para este legajo.</p> : (
+                  <ul className="conduccion-documentos">
                     {documentos.map((documento) => (
-                      <li key={documento.id}>
-                        <button
-                          type="button"
-                          disabled={operacionDocumento !== null}
-                          onClick={() => void verDocumento(documento)}
-                        >
-                          {operacionDocumento?.id === documento.id &&
-                          operacionDocumento.accion === "ver"
-                            ? "Abriendo…"
-                            : "Ver PDF"}
-                        </button>{" "}
-                        <button
-                          type="button"
-                          disabled={operacionDocumento !== null}
-                          onClick={() => void descargar(documento)}
-                        >
-                          {operacionDocumento?.id === documento.id &&
-                          operacionDocumento.accion === "descargar"
-                            ? "Descargando…"
-                            : "Descargar PDF"}
-                        </button>{" "}
-                        {nombresDocumentos[documento.tipo] ?? documento.tipo}
-                        {" — "}
-                        {mostrarFecha(documento.fecha)}
+                      <li className="conduccion-documento" key={documento.id}>
+                        <div className="conduccion-documento-info">
+                          <strong>{nombresDocumentos[documento.tipo] ?? documento.tipo}</strong>
+                          <span className="conduccion-documento-estado">Registrado el {mostrarFecha(documento.fecha)}</span>
+                        </div>
+                        <div className="conduccion-documento-botones">
+                          <button className="conduccion-boton-secundario" type="button" disabled={operacionDocumento !== null} onClick={() => void verDocumento(documento)}>
+                            {operacionDocumento?.id === documento.id && operacionDocumento.accion === "ver" ? "Abriendo…" : "Ver PDF"}
+                          </button>
+                          <button className="conduccion-boton-secundario" type="button" disabled={operacionDocumento !== null} onClick={() => void descargar(documento)}>
+                            {operacionDocumento?.id === documento.id && operacionDocumento.accion === "descargar" ? "Descargando…" : "Descargar"}
+                          </button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -530,10 +363,9 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
             </div>
           </section>
 
-          <GestionInscripcion
-            legajoId={legajo.id}
-            onEstadoActualizado={actualizarEstado}
-          />
+          <div className="conduccion-gestion">
+            <GestionInscripcion legajoId={legajo.id} onEstadoActualizado={actualizarEstado} />
+          </div>
         </>
       )}
     </section>
@@ -543,17 +375,9 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
 export default function DetalleLegajoPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-
   if (!id || !user?.token) {
     return <p role="alert">No se pudo identificar el legajo o la sesión.</p>;
   }
-
-  return (
-    <ContenidoDetalle
-      key={`${id}:${user.token}`}
-      id={id}
-      token={user.token}
-    />
-  );
+  return <ContenidoDetalle key={`${id}:${user.token}`} id={id} token={user.token} />;
 }
 

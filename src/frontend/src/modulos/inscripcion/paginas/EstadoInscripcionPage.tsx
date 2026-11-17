@@ -120,19 +120,6 @@ export default function EstadoInscripcionPage() {
         )}
       </section>
 
-      <section
-        className="estado-inscripcion-resultados"
-        aria-labelledby="resultados-titulo"
-      >
-        <h2 id="resultados-titulo">
-          Información de tu inscripción
-        </h2>
-
-        <p>
-          Una vez realizada la consulta, podrás visualizar
-          el estado actual de tu inscripción.
-        </p>
-      </section>
     </main>
   );
 }

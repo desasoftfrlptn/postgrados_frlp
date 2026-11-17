@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
+import GestionInscripcion from "../componentes/GestionInscripcion";
 import "../estilos/Conduccion.css";
 
 interface LegajoConduccion {
@@ -91,8 +92,10 @@ function obtenerClaseEstado(estado: string): string {
 }
 
 function mostrarEstado(estado: string): string {
-  return estadosDisponibles.find((item) => item.valor === estado)?.texto ??
-    estado.replaceAll("_", " ");
+  return (
+    estadosDisponibles.find((item) => item.valor === estado)?.texto ??
+    estado.replaceAll("_", " ")
+  );
 }
 
 export default function ListadoAspirantesPage() {
@@ -100,13 +103,21 @@ export default function ListadoAspirantesPage() {
   const [legajos, setLegajos] = useState<LegajoConduccion[]>([]);
   const [cohortes, setCohortes] = useState<Cohorte[]>([]);
   const [filtros, setFiltros] = useState<FiltrosLegajos>({ ...filtrosIniciales });
-  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosLegajos>({ ...filtrosIniciales });
+  const [filtrosAplicados, setFiltrosAplicados] = useState<FiltrosLegajos>({
+    ...filtrosIniciales,
+  });
   const [mostrarAvanzados, setMostrarAvanzados] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [cargandoCohortes, setCargandoCohortes] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorCohortes, setErrorCohortes] = useState<string | null>(null);
   const [reintento, setReintento] = useState(0);
+
+  // Se abre únicamente al seleccionar un aspirante. El componente reutilizado
+  // se ocupa de verificar, aprobar o rechazar según las reglas del Backend.
+  const [legajoGestionandoId, setLegajoGestionandoId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     let activo = true;
@@ -130,10 +141,12 @@ export default function ListadoAspirantesPage() {
     }
 
     void cargarCohortes();
-    return () => { activo = false; };
+    return () => {
+      activo = false;
+    };
   }, []);
 
-  // Debounce solo para filtros de texto; los selectores se aplican inmediatamente.
+  // Debounce solamente para campos de texto.
   useEffect(() => {
     const temporizador = window.setTimeout(() => {
       setFiltrosAplicados((anteriores) => {
@@ -186,18 +199,13 @@ export default function ListadoAspirantesPage() {
           `/inscripcion/${consulta}`,
           user.token,
         );
+
         if (activo) {
           const legajosFiltrados = resultado.filter((legajo) => {
             const beca = filtrosAplicados.beca;
-
             if (beca === "") return true;
-            if (beca === "SOLICITO") {
-              return legajo.solicitud_beca != null;
-            }
-            if (beca === "SIN_BECA") {
-              return legajo.solicitud_beca == null;
-            }
-
+            if (beca === "SOLICITO") return legajo.solicitud_beca != null;
+            if (beca === "SIN_BECA") return legajo.solicitud_beca == null;
             return legajo.solicitud_beca === Number(beca);
           });
 
@@ -207,7 +215,9 @@ export default function ListadoAspirantesPage() {
       } catch (err) {
         if (activo) {
           setLegajos([]);
-          setError(err instanceof Error ? err.message : "No se pudieron cargar los aspirantes.");
+          setError(
+            err instanceof Error ? err.message : "No se pudieron cargar los aspirantes.",
+          );
         }
       } finally {
         if (activo) setCargando(false);
@@ -215,7 +225,9 @@ export default function ListadoAspirantesPage() {
     }
 
     void cargarLegajos();
-    return () => { activo = false; };
+    return () => {
+      activo = false;
+    };
   }, [user?.token, filtrosAplicados, reintento]);
 
   function actualizarFiltro(campo: keyof FiltrosLegajos, valor: string) {
@@ -223,27 +235,53 @@ export default function ListadoAspirantesPage() {
     if (campo === "cohorte_id" || campo === "estado" || campo === "beca") {
       setFiltrosAplicados((anteriores) => ({ ...anteriores, [campo]: valor }));
     }
+    if (campo === "cohorte_id") setLegajoGestionandoId(null);
   }
 
   function limpiarFiltros() {
     setFiltros({ ...filtrosIniciales });
     setFiltrosAplicados({ ...filtrosIniciales });
+    setLegajoGestionandoId(null);
     setReintento((anterior) => anterior + 1);
   }
 
   function obtenerNombreCohorte(cohorteId: string | null): string {
     if (!cohorteId) return "Sin asignar";
-    return cohortes.find((item) => item.id === cohorteId)?.nombre ?? "Cohorte no disponible";
+    return (
+      cohortes.find((item) => item.id === cohorteId)?.nombre ??
+      "Cohorte no disponible"
+    );
   }
 
+  function alActualizarEstado(legajoId: string, estado: string) {
+    // Se invoca únicamente cuando GestionInscripcion confirma la operación.
+    setLegajos((anteriores) =>
+      anteriores.map((legajo) =>
+        legajo.id === legajoId ? { ...legajo, estado } : legajo,
+      ),
+    );
+    // Se vuelve a consultar el Backend por si los filtros dejan de coincidir.
+    setReintento((anterior) => anterior + 1);
+  }
+
+  const legajoGestionando =
+    legajos.find((legajo) => legajo.id === legajoGestionandoId) ?? null;
   const hayFiltros = Object.values(filtros).some((valor) => valor.trim() !== "");
-  const cantidadFiltrosAvanzados = Number(Boolean(filtros.carrera)) + Number(Boolean(filtros.estado)) + Number(Boolean(filtros.beca));
+  const cantidadFiltrosAvanzados =
+    Number(Boolean(filtros.carrera)) +
+    Number(Boolean(filtros.estado)) +
+    Number(Boolean(filtros.beca));
 
   return (
-    <section className="perfil-pagina conduccion-listado" aria-labelledby="titulo-aspirantes">
+    <section
+      className="perfil-pagina conduccion-listado"
+      aria-labelledby="titulo-aspirantes"
+    >
       <header className="perfil-pagina-encabezado conduccion-listado-encabezado">
         <div>
-          <span className="conduccion-listado-eyebrow">EQUIPO DE CONDUCCIÓN / ADMISIÓN</span>
+          <span className="conduccion-listado-eyebrow">
+            EQUIPO DE CONDUCCIÓN / ADMISIÓN
+          </span>
           <h1 id="titulo-aspirantes">Aspirantes</h1>
           <p>Gestioná las inscripciones y consultá sus legajos desde un solo lugar.</p>
         </div>
@@ -270,10 +308,13 @@ export default function ListadoAspirantesPage() {
                 disabled={cargandoCohortes}
                 onChange={(evento) => actualizarFiltro("cohorte_id", evento.target.value)}
               >
-                <option value="">{cargandoCohortes ? "Cargando cohortes..." : "Seleccioná una cohorte"}</option>
+                <option value="">
+                  {cargandoCohortes ? "Cargando cohortes..." : "Seleccioná una cohorte"}
+                </option>
                 {cohortes.map((cohorte) => (
                   <option key={cohorte.id} value={cohorte.id}>
-                    {cohorte.nombre} ({cohorte.anio}){cohorte.abierta ? " - Abierta" : " - Cerrada"}
+                    {cohorte.nombre} ({cohorte.anio})
+                    {cohorte.abierta ? " - Abierta" : " - Cerrada"}
                   </option>
                 ))}
               </select>
@@ -311,11 +352,8 @@ export default function ListadoAspirantesPage() {
               onClick={() => setMostrarAvanzados((anterior) => !anterior)}
             >
               {mostrarAvanzados ? "Ocultar filtros" : "Más filtros"}
-              {cantidadFiltrosAvanzados > 0
-                ? ` (${cantidadFiltrosAvanzados})`
-                : ""}
+              {cantidadFiltrosAvanzados > 0 ? ` (${cantidadFiltrosAvanzados})` : ""}
             </button>
-
             <button
               type="button"
               className="conduccion-listado-boton-texto"
@@ -326,7 +364,11 @@ export default function ListadoAspirantesPage() {
             </button>
           </div>
 
-          <div id="filtros-avanzados" hidden={!mostrarAvanzados} className="conduccion-listado-avanzados">
+          <div
+            id="filtros-avanzados"
+            hidden={!mostrarAvanzados}
+            className="conduccion-listado-avanzados"
+          >
             <div>
               <label htmlFor="filtro-beca">Beca</label>
               <select
@@ -341,6 +383,7 @@ export default function ListadoAspirantesPage() {
                 <option value="100">Beca del 100 %</option>
               </select>
             </div>
+
             <div className="conduccion-listado-campo">
               <label htmlFor="filtro-carrera">Carrera</label>
               <input
@@ -351,6 +394,7 @@ export default function ListadoAspirantesPage() {
                 placeholder="Nombre de la carrera"
               />
             </div>
+
             <div className="conduccion-listado-campo">
               <label htmlFor="filtro-estado">Estado</label>
               <select
@@ -360,22 +404,36 @@ export default function ListadoAspirantesPage() {
               >
                 <option value="">Todos los estados</option>
                 {estadosDisponibles.map((estado) => (
-                  <option key={estado.valor} value={estado.valor}>{estado.texto}</option>
+                  <option key={estado.valor} value={estado.valor}>
+                    {estado.texto}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {errorCohortes && <p className="conduccion-listado-error" role="alert">{errorCohortes}</p>}
+          {errorCohortes && (
+            <p className="conduccion-listado-error" role="alert">
+              {errorCohortes}
+            </p>
+          )}
         </div>
 
         <div className="conduccion-listado-resultados">
-          {cargando && <p className="conduccion-listado-mensaje" role="status">Buscando aspirantes...</p>}
+          {cargando && (
+            <p className="conduccion-listado-mensaje" role="status">
+              Buscando aspirantes...
+            </p>
+          )}
 
           {!cargando && error && (
             <div className="conduccion-listado-mensaje" role="alert">
               <p className="conduccion-listado-error">{error}</p>
-              <button type="button" className="conduccion-listado-boton-secundario" onClick={() => setReintento((n) => n + 1)}>
+              <button
+                type="button"
+                className="conduccion-listado-boton-secundario"
+                onClick={() => setReintento((anterior) => anterior + 1)}
+              >
                 Reintentar
               </button>
             </div>
@@ -389,7 +447,15 @@ export default function ListadoAspirantesPage() {
                   ? "Seleccioná una cohorte para consultar sus legajos."
                   : "Probá cambiando la cohorte o quitando alguno de los filtros."}
               </p>
-              {hayFiltros && <button type="button" className="conduccion-listado-boton-secundario" onClick={limpiarFiltros}>Limpiar filtros</button>}
+              {hayFiltros && (
+                <button
+                  type="button"
+                  className="conduccion-listado-boton-secundario"
+                  onClick={limpiarFiltros}
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
           )}
 
@@ -411,28 +477,59 @@ export default function ListadoAspirantesPage() {
                     <tr key={legajo.id}>
                       <td>
                         <div className="conduccion-listado-persona">
-                          <span className="conduccion-listado-avatar" aria-hidden="true">{legajo.nombre.charAt(0)}{legajo.apellido.charAt(0)}</span>
+                          <span className="conduccion-listado-avatar" aria-hidden="true">
+                            {legajo.nombre.charAt(0)}{legajo.apellido.charAt(0)}
+                          </span>
                           <div className="conduccion-listado-persona-datos">
-                            <span className="conduccion-listado-nombre">{legajo.apellido}, {legajo.nombre}</span>
-                            <span className="conduccion-listado-email">{legajo.correo_electronico}</span>
+                            <span className="conduccion-listado-nombre">
+                              {legajo.apellido}, {legajo.nombre}
+                            </span>
+                            <span className="conduccion-listado-email">
+                              {legajo.correo_electronico}
+                            </span>
                           </div>
                         </div>
                       </td>
-                      <td className="conduccion-listado-documento">{legajo.dni_pasaporte}</td>
+                      <td className="conduccion-listado-documento">
+                        {legajo.dni_pasaporte}
+                      </td>
                       <td>{legajo.carrera_elegida}</td>
-                      <td><span className="conduccion-listado-cohorte">{obtenerNombreCohorte(legajo.cohorte_id)}</span></td>
+                      <td>
+                        <span className="conduccion-listado-cohorte">
+                          {obtenerNombreCohorte(legajo.cohorte_id)}
+                        </span>
+                      </td>
                       <td>
                         <span className={`conduccion-listado-estado ${obtenerClaseEstado(legajo.estado)}`}>
                           {mostrarEstado(legajo.estado)}
                         </span>
                       </td>
                       <td>
-                        <Link
-                          className="conduccion-listado-link"
-                          to={`/dashboard/conduccion/legajos/${encodeURIComponent(legajo.id)}`}
-                        >
-                          Ver legajo
-                        </Link>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+                          <Link
+                            className="conduccion-listado-link"
+                            to={`/dashboard/conduccion/legajos/${encodeURIComponent(legajo.id)}`}
+                          >
+                            Ver legajo
+                          </Link>
+                          <button
+                            type="button"
+                            className="conduccion-listado-boton-secundario"
+                            aria-expanded={legajoGestionandoId === legajo.id}
+                            aria-controls="panel-gestion-aspirante"
+                            onClick={() =>
+                              setLegajoGestionandoId((actual) =>
+                                actual === legajo.id ? null : legajo.id,
+                              )
+                            }
+                          >
+                            {legajoGestionandoId === legajo.id
+                              ? "Cerrar gestión"
+                              : legajo.estado === "EN_REVISION"
+                                ? "Aprobar / rechazar"
+                                : "Gestionar admisión"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -442,6 +539,52 @@ export default function ListadoAspirantesPage() {
           )}
         </div>
       </section>
+
+      {legajoGestionando && user?.token && (
+        <section
+          id="panel-gestion-aspirante"
+          className="conduccion-listado-panel"
+          aria-labelledby="titulo-gestion-aspirante"
+          style={{ marginTop: "1.25rem", padding: "1.25rem" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "1rem",
+            }}
+          >
+            <div>
+              <h2 id="titulo-gestion-aspirante">Gestionar admisión</h2>
+              <p>
+                {legajoGestionando.apellido}, {legajoGestionando.nombre} —{" "}
+                {mostrarEstado(legajoGestionando.estado)}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="conduccion-listado-boton-secundario"
+              onClick={() => setLegajoGestionandoId(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+          <p>
+            Las acciones disponibles dependen del estado del legajo y se
+            verifican en el Backend antes de guardar los cambios.
+          </p>
+          <GestionInscripcion
+            key={legajoGestionando.id}
+            legajoId={legajoGestionando.id}
+            onEstadoActualizado={(estado) =>
+              alActualizarEstado(legajoGestionando.id, estado)
+            }
+          />
+        </section>
+      )}
     </section>
   );
 }
+
