@@ -185,8 +185,9 @@ Abrí estos URLs en tu navegador:
 | COORDINADOR | `admin@fenix.test` | `Admin1234!` |
 | CPR | `cpr@fenix.test` | `Cpr1234!` |
 
-El acceso DOCENTE se realizará mediante link token de seminario cuando se
-implemente el Módulo B; el seed no crea usuarios DOCENTE.
+El backend permite que coordinación genere un token por seminario para el
+acceso DOCENTE; el seed no crea usuarios DOCENTE. La interfaz para abrir el
+enlace todavía está pendiente. Ver el flujo en `backend/README.md`.
 
 ---
 

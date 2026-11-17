@@ -1,17 +1,13 @@
-from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, Response
-from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.authentication.application.security import bearer_scheme, get_current_user
 from src.authentication.infrastructure.models import User
+from src.carga_academica.aplicacion.acceso import obtener_acceso_vigente
 from src.db.session import get_db
 from src.inscripcion.application.acceso_propietario import obtener_legajo_por_token
 from src.inscripcion.infrastructure.models import Legajo
@@ -19,57 +15,16 @@ from src.seguimiento_graduacion.infraestructura.modelos import TrabajoFinal
 from src.seguimiento_graduacion.presentacion.esquemas import (
     ActualizarTrabajoFinal,
     DatosTrabajoFinal,
-    ErrorRespuesta,
     TrabajoFinalRespuesta,
 )
 from src.shared.auditoria.servicio import registrar_evento_auditoria
 from src.shared.autorizacion.permisos import requerir_roles
-
-class RutaGraduacion(APIRoute):
-    def get_route_handler(self) -> Callable[[Request], Awaitable[Response]]:
-        manejador = super().get_route_handler()
-
-        async def manejar(solicitud: Request) -> Response:
-            try:
-                return await manejador(solicitud)
-            except HTTPException as error:
-                codigos = {
-                    401: "UNAUTHORIZED",
-                    403: "FORBIDDEN",
-                    404: "NOT_FOUND",
-                }
-                return JSONResponse(
-                    status_code=error.status_code,
-                    headers=error.headers,
-                    content={
-                        "statusCode": error.status_code,
-                        "error": codigos.get(error.status_code, "HTTP_ERROR"),
-                        "message": error.detail,
-                        "field": None,
-                        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                    },
-                )
-            except RequestValidationError as error:
-                ubicacion = error.errors()[0].get("loc", ())
-                campo = ".".join(str(parte) for parte in ubicacion[1:]) or None
-                return JSONResponse(
-                    status_code=422,
-                    content={
-                        "statusCode": 422,
-                        "error": "VALIDATION_ERROR",
-                        "message": "Los datos enviados no son válidos",
-                        "field": campo,
-                        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                    },
-                )
-
-        return manejar
-
+from src.shared.http.ruta_api import ErrorRespuesta, RutaAPI
 
 router = APIRouter(
     prefix="/api/v1",
     tags=["seguimiento-graduacion"],
-    route_class=RutaGraduacion,
+    route_class=RutaAPI,
     responses={
         401: {"model": ErrorRespuesta, "description": "Autenticación inválida o ausente"},
         403: {"model": ErrorRespuesta, "description": "Permiso denegado"},
@@ -85,6 +40,7 @@ def exigir_cpr(
     session: Session = Depends(get_db),
 ) -> User:
     legajo_actor = None
+    acceso_docente = None
     try:
         usuario = get_current_user(credenciales, session)
     except HTTPException as error:
@@ -92,7 +48,9 @@ def exigir_cpr(
             raise
         legajo_actor = obtener_legajo_por_token(session, credenciales.credentials)
         if legajo_actor is None:
-            raise
+            acceso_docente = obtener_acceso_vigente(session, credenciales.credentials)
+            if acceso_docente is None:
+                raise
         usuario = None
 
     if usuario is None or usuario.role != "CPR":
@@ -105,12 +63,18 @@ def exigir_cpr(
             accion="trabajo_final_acceso_denegado",
             tipo_recurso="trabajo_final",
             id_actor=usuario.id if usuario is not None else None,
-            rol_actor=usuario.role if usuario is not None else "ASPIRANTE",
+            rol_actor=(
+                usuario.role if usuario is not None
+                else "DOCENTE" if acceso_docente is not None else "ASPIRANTE"
+            ),
             id_recurso=id_recurso if solicitud.method == "PATCH" else None,
             detalles={
                 "metodo": solicitud.method,
                 "legajo_id": id_recurso if solicitud.method == "POST" else None,
                 "legajo_actor_id": str(legajo_actor.id) if legajo_actor is not None else None,
+                "seminario_actor_id": (
+                    str(acceso_docente.seminario_id) if acceso_docente is not None else None
+                ),
             },
         )
         session.commit()

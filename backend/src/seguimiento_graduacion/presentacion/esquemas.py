@@ -70,11 +70,3 @@ class TrabajoFinalRespuesta(DatosTrabajoFinal):
 
     id: UUID
     legajo_id: UUID
-
-
-class ErrorRespuesta(BaseModel):
-    statusCode: int
-    error: str
-    message: str
-    field: str | None
-    timestamp: str

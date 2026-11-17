@@ -20,7 +20,7 @@ def test_migracion_trabajos_finales_desde_0007_y_reversion(tmp_path: Path, monke
     configuracion.set_main_option("script_location", str(carpeta_backend / "alembic"))
     monkeypatch.setattr(settings, "database_url", url)
 
-    command.upgrade(configuracion, "head")
+    command.upgrade(configuracion, "20261116_0009")
     inspector = inspect(motor)
     assert "trabajos_finales" in inspector.get_table_names()
     assert inspector.get_foreign_keys("trabajos_finales")[0]["referred_table"] == "legajos"

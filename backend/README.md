@@ -38,9 +38,8 @@ bcrypt (cost factor 12) y no existe registro público.
 
 La inscripción (`POST /api/v1/legajos`) permanece pública. La interfaz de
 coordinación exige el rol `COORDINADOR`; `CPR` puede crear y modificar trabajos
-finales. Las rutas API pueden exigir roles con
-`requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
-con el Módulo B cuando exista el modelo de seminarios.
+finales. Las rutas API pueden exigir roles con `requerir_roles(...)`. El acceso
+`DOCENTE` usa un token opaco específico de seminario, no una cuenta ni JWT.
 
 `GET /api/v1/legajos`, `GET /api/v1/legajos/exportar` y las rutas de gestión de
 cohortes requieren un JWT válido con rol `COORDINADOR`. `GET
@@ -81,6 +80,45 @@ adecuada; la aplicación rechaza secretos de ejemplo.
 Para aprovisionar una cuenta fuera del seed de desarrollo, usar
 `python -m scripts.create_user <email> <COORDINADOR|CPR|ADMIN>` desde `backend`;
 el comando solicita la contraseña sin mostrarla y almacena únicamente su hash.
+
+## Acceso docente (US-B-001)
+
+Coordinación usa su JWT para:
+
+1. `POST /api/v1/seminarios`: crear un seminario con `cohorte_id`, `nombre`,
+   `docente_nombre`, `docente_email` y `fecha_fin_cuatrimestre` (`AAAA-MM-DD`).
+2. `GET /api/v1/seminarios?cohorte_id=<uuid>`: consultar seminarios; el filtro
+   de cohorte es opcional.
+3. `POST /api/v1/seminarios/{id}/inscripciones`: enviar
+   `{"legajo_ids":["<uuid>"]}`. Los legajos deben estar activos y pertenecer
+   a la cohorte. Un lote inválido no se inscribe parcialmente.
+4. `POST /api/v1/seminarios/{id}/enlace`: enviar `{}` o
+   `{"expira_en":"2027-07-01T00:00:00-03:00"}`. Devuelve `token`,
+   `expira_en` y `enlace`. El vencimiento opcional debe incluir zona horaria
+   y ser futuro. Por defecto vence al terminar la fecha informada para el
+   cuatrimestre en horario argentino UTC-3.
+
+El docente usa `Authorization: Bearer <token>` en
+`GET /api/v1/seminarios/{id}/estudiantes`. La respuesta contiene el seminario
+y sus estudiantes inscriptos, excluyendo legajos dados de baja. Un token
+vigente de otro seminario recibe `403`; uno ausente, inválido o vencido recibe
+`401`. Los errores usan el formato documentado en arquitectura.
+
+Cada token se genera con 32 bytes aleatorios y se almacena como hash SHA-256;
+generar otro enlace invalida el anterior. El token se entrega en el fragmento
+del enlace (`#token=...`) para que no se envíe al servidor en la URL. Debe
+tratarse como contraseña y compartirse de forma segura. Las respuestas con
+credenciales o datos docentes llevan `Cache-Control: no-store`.
+
+La ruta de frontend incluida en el enlace todavía no está implementada: el
+backend puede consumirse directamente, pero abrir el enlace en el navegador no
+muestra aún la planilla. Clases, asistencia, notas y recordatorios pertenecen
+a las historias siguientes del módulo B.
+
+Ejecutar `alembic upgrade head` para aplicar `20261117_0010`. Si la base fue
+usada con la antigua revisión `0008` o ya contiene tablas del módulo B, revisar
+el historial y el esquema antes de migrar; esta revisión crea esas tablas y no
+las modifica ni reemplaza automáticamente.
 
 ## Inscripción pública
 

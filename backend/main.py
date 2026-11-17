@@ -13,6 +13,7 @@ from sqlalchemy import select
 from src.authentication.application.security import get_current_user
 from src.authentication.infrastructure.models import User
 from src.authentication.presentation.router import router as autenticacion_router
+from src.carga_academica.presentacion.router import router as seminarios_router
 from src.core.config import settings
 from src.db.session import SessionLocal
 from src.inscripcion.application.vencer_reservas import vencer_reservas
@@ -120,6 +121,7 @@ app.include_router(legajos_router)
 app.include_router(workflow_router)
 app.include_router(autenticacion_router)
 app.include_router(graduacion_router)
+app.include_router(seminarios_router)
 
 
 @app.get("/health", tags=["health"], dependencies=[Depends(get_current_user)])
