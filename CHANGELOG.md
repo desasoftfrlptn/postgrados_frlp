@@ -12,6 +12,12 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 > Los cambios que están en `develop` pero no en un release van acá.
 
 ### Added
+- Backend del módulo B: gestión de seminarios e inscripciones, acceso docente
+  mediante enlace con token, planilla de clases, asistencias y notas, consulta
+  de resultados por legajo y exportación XLSX.
+- Recordatorios diarios de notas pendientes por SMTP y migración Alembic para
+  la carga académica. La interfaz docente y la entrega durable de correos
+  siguen pendientes.
 - Estructura inicial del repositorio
 - Documentación base: SRS, PRD, BFD, Arquitectura, Cronograma
 - Dependencias para recibir formularios multipart y validar direcciones de email en el backend
