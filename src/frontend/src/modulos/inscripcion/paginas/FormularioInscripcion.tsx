@@ -235,8 +235,16 @@ export default function FormularioInscripcion() {
     }
   };
 
-  const avanzarDesdeDatosPersonales = (e: React.FormEvent) => {
+  const avanzarDesdeDatosPersonales = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const formulario = e.currentTarget;
+
+    if (!formulario.checkValidity()) {
+      formulario.reportValidity();
+      return;
+    }
+
     siguienteEtapa();
   };
 
@@ -554,6 +562,7 @@ export default function FormularioInscripcion() {
                   name="email"
                   type="email"
                   required
+                  pattern="[^@\s]+@[^@\s]+\.[^@\s]+"
                   placeholder="ejemplo@correo.com"
                   value={datos.email}
                   onChange={(e) =>
@@ -572,7 +581,6 @@ export default function FormularioInscripcion() {
 
                 <input
                   id="correo_alternativo"
-                  required
                   name="correo_alternativo"
                   type="email"
                   placeholder="ejemplo@correo.com"
