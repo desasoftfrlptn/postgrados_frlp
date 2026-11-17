@@ -298,3 +298,46 @@ async def test_exportar_pdf_sin_documentos_y_con_observacion_extensa(entorno):
     response = await client.get(path, headers=auth(staff))
     assert response.status_code == 200
     assert len(PdfReader(io.BytesIO(response.content)).pages) > 1
+
+
+async def test_enlaces_generados_solo_por_coordinador_y_sesion_autorizada(entorno):
+    from urllib.parse import urlparse, parse_qs
+    client, db, _ = entorno
+    staff = await usuario(db)
+    student = await usuario(db, "estudiante")
+    c = await cohorte(db)
+    datos = {"tipo":"INSCRIPCION", "cohorte_id":str(c.id), "duracion_dias":7, "usos_maximos":1}
+    assert (await client.post("accesos", json=datos)).status_code == 401
+    assert (await client.post("accesos", headers=auth(student), json=datos)).status_code == 403
+    response = await client.post("accesos", headers=auth(staff), json=datos)
+    assert response.status_code == 201, response.text
+    creado = response.json()
+    assert creado["tipo"] == "INSCRIPCION" and "/inscripcion?token=" in creado["url"]
+    token = parse_qs(urlparse(creado["url"]).query)["token"][0]
+    assert (await client.post("accesos/intercambiar", json={"token":token})).status_code == 200
+    response = await client.get("accesos/sesion")
+    assert response.json() == {"tipo":"INSCRIPCION", "cohorte_id":str(c.id), "legajo_id":None}
+    # Consultar la sesion no vuelve a consumir el enlace de un solo uso.
+    assert (await client.get("accesos/sesion")).status_code == 200
+    assert (await client.post("accesos/intercambiar", json={"token":token})).status_code == 401
+    l = await legajo(db, c.id)
+    await seguimiento(client, staff, l.id)
+    assert (await client.get("accesos/sesion")).json() == {"tipo":"SEGUIMIENTO", "cohorte_id":None, "legajo_id":str(l.id)}
+    assert (await client.get("accesos/legajo")).json()["id"] == str(l.id)
+
+
+async def test_periodo_vigente_respeta_cohorte_del_enlace(entorno):
+    from datetime import date, timedelta
+    from src.inscripcion.infrastructure.orm_models import PeriodoInscripcion
+    client, db, _ = entorno
+    primera, segunda = await cohorte(db), await cohorte(db)
+    hoy = date.today()
+    db.add_all([PeriodoInscripcion(cohorte_id=primera.id, fecha_abre=hoy-timedelta(days=10), fecha_cierra=hoy+timedelta(days=10)),
+                PeriodoInscripcion(cohorte_id=segunda.id, fecha_abre=hoy-timedelta(days=1), fecha_cierra=hoy+timedelta(days=20))])
+    await db.commit()
+    assert (await client.get("periodos/vigente")).json()["cohorte_id"] == str(segunda.id)
+    response = await client.get("periodos/vigente", params={"cohorte_id":str(primera.id)})
+    assert response.status_code == 200
+    assert response.json()["cohorte_id"] == str(primera.id)
+    assert response.json()["abierto"] is True
+    assert (await client.get("periodos/vigente", params={"cohorte_id":str(uuid4())})).json()["abierto"] is False
