@@ -1,8 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { api } from "../../../../shared/api/client";
@@ -12,6 +8,7 @@ import "../estilos/Conduccion.css";
 
 interface LegajoDetalle {
   id: string;
+  cohorte_id: string | null;
   carrera_elegida: string;
   apellido: string;
   nombre: string;
@@ -27,7 +24,10 @@ interface LegajoDetalle {
   ciudad: string;
   titulo_anterior: string;
   universidad_anterior: string;
-  numero_seguimiento?: string;
+  numero_seguimiento: string;
+  forma_conocio_ofertas: string;
+  motivos_cursar: string;
+  solicitud_beca: number | null;
 }
 
 interface DocumentoLegajo {
@@ -36,10 +36,21 @@ interface DocumentoLegajo {
   fecha: string;
 }
 
+interface CompletitudDocumental {
+  porcentaje: number;
+  documentos_requeridos: number;
+  documentos_presentados: number;
+  documentos_faltantes: string[];
+  completo: boolean;
+}
+
 interface DocumentacionLegajo {
   legajo_id: string;
   documentos: DocumentoLegajo[];
+  completitud: CompletitudDocumental | null;
 }
+
+type AccionDocumento = "ver" | "descargar";
 
 const nombresDocumentos: Record<string, string> = {
   FORMULARIO_PREINSCRIPCION: "Formulario de preinscripción firmado",
@@ -96,39 +107,85 @@ function Campo({
   );
 }
 
-function ContenidoDetalle({
-  id,
-  token,
-}: {
-  id: string;
-  token: string;
-}) {
+function ContenidoDetalle({ id, token }: { id: string; token: string }) {
   const [legajo, setLegajo] = useState<LegajoDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
 
   const [documentacion, setDocumentacion] =
     useState<DocumentacionLegajo | null>(null);
-  const [cargandoDocumentacion, setCargandoDocumentacion] =
-    useState(true);
+  const [cargandoDocumentacion, setCargandoDocumentacion] = useState(true);
   const [errorDocumentacion, setErrorDocumentacion] = useState("");
-  const [descargando, setDescargando] = useState<string | null>(null);
+  const [errorArchivo, setErrorArchivo] = useState("");
+  const [operacionDocumento, setOperacionDocumento] = useState<{
+    id: string;
+    accion: AccionDocumento;
+  } | null>(null);
 
   const descargar = async (documento: DocumentoLegajo) => {
-    setDescargando(documento.id);
-    setErrorDocumentacion("");
+    setOperacionDocumento({ id: documento.id, accion: "descargar" });
+    setErrorArchivo("");
+
     try {
-      const archivo = await api.descargar(`/documentos/${documento.id}/download`, token);
+      const archivo = await api.descargar(
+        `/documentos/${encodeURIComponent(documento.id)}/download`,
+        token,
+      );
       const url = URL.createObjectURL(archivo);
       const enlace = document.createElement("a");
       enlace.href = url;
       enlace.download = `${documento.tipo}.pdf`;
+      document.body.appendChild(enlace);
       enlace.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (error) {
-      setErrorDocumentacion(error instanceof Error ? error.message : "No se pudo descargar el documento.");
+      enlace.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      setErrorArchivo(
+        err instanceof Error ? err.message : "No se pudo descargar el PDF.",
+      );
     } finally {
-      setDescargando(null);
+      setOperacionDocumento(null);
+    }
+  };
+
+  const verDocumento = async (documento: DocumentoLegajo) => {
+    setErrorArchivo("");
+
+    // Se abre al hacer clic para evitar que el navegador bloquee la pestaña.
+    const ventana = window.open("about:blank", "_blank");
+    if (!ventana) {
+      setErrorArchivo(
+        "No se pudo abrir el PDF. Habilitá las ventanas emergentes o descargalo.",
+      );
+      return;
+    }
+
+    ventana.opener = null;
+    setOperacionDocumento({ id: documento.id, accion: "ver" });
+
+    try {
+      const archivo = await api.descargar(
+        `/documentos/${encodeURIComponent(documento.id)}/download`,
+        token,
+      );
+      const pdf = new Blob([archivo], { type: "application/pdf" });
+      const url = URL.createObjectURL(pdf);
+
+      if (ventana.closed) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      ventana.location.href = url;
+      // Da tiempo a que la nueva pestaña cargue el documento.
+      window.setTimeout(() => URL.revokeObjectURL(url), 300000);
+    } catch (err) {
+      ventana.close();
+      setErrorArchivo(
+        err instanceof Error ? err.message : "No se pudo visualizar el PDF.",
+      );
+    } finally {
+      setOperacionDocumento(null);
     }
   };
 
@@ -204,6 +261,7 @@ function ContenidoDetalle({
   }, []);
 
   const documentos = documentacion?.documentos ?? [];
+  const completitud = documentacion?.completitud ?? null;
 
   return (
     <section
@@ -222,9 +280,7 @@ function ContenidoDetalle({
         <p>Información y seguimiento de la inscripción.</p>
       </header>
 
-      {cargando && (
-        <p role="status">Cargando información del legajo…</p>
-      )}
+      {cargando && <p role="status">Cargando información del legajo…</p>}
 
       {error && (
         <p
@@ -237,10 +293,7 @@ function ContenidoDetalle({
 
       {!cargando && !error && legajo && (
         <>
-          <section
-            className="conduccion-resumen"
-            aria-label="Resumen del legajo"
-          >
+          <section className="conduccion-resumen" aria-label="Resumen del legajo">
             <div className="conduccion-resumen-superior">
               <div>
                 <h2 className="conduccion-nombre">
@@ -250,8 +303,7 @@ function ContenidoDetalle({
                   {legajo.carrera_elegida}
                 </p>
                 <p>
-                  Seguimiento:{" "}
-                  {mostrarDato(legajo.numero_seguimiento)}
+                  Seguimiento: {mostrarDato(legajo.numero_seguimiento)}
                 </p>
               </div>
 
@@ -272,10 +324,7 @@ function ContenidoDetalle({
                 <dl className="conduccion-datos">
                   <Campo etiqueta="Nombre" valor={legajo.nombre} />
                   <Campo etiqueta="Apellido" valor={legajo.apellido} />
-                  <Campo
-                    etiqueta="Nacionalidad"
-                    valor={legajo.nacionalidad}
-                  />
+                  <Campo etiqueta="Nacionalidad" valor={legajo.nacionalidad} />
                   <Campo
                     etiqueta="DNI / Pasaporte"
                     valor={legajo.dni_pasaporte}
@@ -298,10 +347,7 @@ function ContenidoDetalle({
                     etiqueta="Correo alternativo"
                     valor={legajo.correo_alternativo}
                   />
-                  <Campo
-                    etiqueta="Teléfono móvil"
-                    valor={legajo.telefono_movil}
-                  />
+                  <Campo etiqueta="Teléfono móvil" valor={legajo.telefono_movil} />
                 </dl>
               </div>
             </section>
@@ -337,21 +383,114 @@ function ContenidoDetalle({
                 </dl>
               </div>
             </section>
+
+            <section className="conduccion-tarjeta">
+              <header className="conduccion-tarjeta-encabezado">
+                <h2>Información de inscripción</h2>
+              </header>
+              <div className="conduccion-tarjeta-cuerpo">
+                <dl className="conduccion-datos">
+                  <Campo
+                    etiqueta="Cohorte (identificador)"
+                    valor={legajo.cohorte_id}
+                  />
+                  <Campo
+                    etiqueta="Cómo conoció la oferta académica"
+                    valor={legajo.forma_conocio_ofertas}
+                  />
+                  <Campo
+                    etiqueta="Motivos para cursar"
+                    valor={legajo.motivos_cursar}
+                  />
+                  <Campo
+                    etiqueta="Solicitud de beca"
+                    valor={
+                      legajo.solicitud_beca == null
+                        ? "No solicitó beca"
+                        : `${legajo.solicitud_beca}%`
+                    }
+                  />
+                </dl>
+              </div>
+            </section>
           </div>
+
+          <section
+            className="conduccion-tarjeta"
+            aria-labelledby="titulo-completitud"
+          >
+            <header className="conduccion-tarjeta-encabezado">
+              <h2 id="titulo-completitud">Estado de la documentación</h2>
+            </header>
+            <div className="conduccion-tarjeta-cuerpo">
+              {cargandoDocumentacion && (
+                <p role="status">Consultando estado documental…</p>
+              )}
+
+              {!cargandoDocumentacion && errorDocumentacion && (
+                <p role="alert">{errorDocumentacion}</p>
+              )}
+
+              {!cargandoDocumentacion && !errorDocumentacion && (
+                completitud ? (
+                  <>
+                    <p>
+                      <strong>{completitud.porcentaje}%</strong> de documentación
+                      presentada
+                    </p>
+                    <progress
+                      value={completitud.porcentaje}
+                      max={100}
+                      aria-label="Porcentaje de documentación presentada"
+                      style={{ width: "100%" }}
+                    />
+                    <p>
+                      Documentos presentados: {completitud.documentos_presentados}
+                      {" de "}
+                      {completitud.documentos_requeridos}
+                    </p>
+                    <p>
+                      {completitud.completo
+                        ? "La documentación requerida está completa."
+                        : "La documentación requerida está incompleta."}
+                    </p>
+                    {completitud.documentos_faltantes.length > 0 && (
+                      <>
+                        <h3>Documentos faltantes</h3>
+                        <ul>
+                          {completitud.documentos_faltantes.map((tipo) => (
+                            <li key={tipo}>
+                              {nombresDocumentos[tipo] ?? tipo}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <p>
+                    Todavía no se puede determinar la completitud documental
+                    de este aspirante.
+                  </p>
+                )
+              )}
+            </div>
+          </section>
 
           <section className="conduccion-tarjeta">
             <header className="conduccion-tarjeta-encabezado">
               <h2>Documentos registrados</h2>
             </header>
-
             <div className="conduccion-tarjeta-cuerpo">
               {cargandoDocumentacion && (
                 <p role="status">Cargando documentación…</p>
               )}
 
-              {errorDocumentacion && (
+              {!cargandoDocumentacion && errorDocumentacion && (
                 <p role="alert">{errorDocumentacion}</p>
               )}
+
+              {errorArchivo && <p role="alert">{errorArchivo}</p>}
 
               {!cargandoDocumentacion && !errorDocumentacion && (
                 documentos.length === 0 ? (
@@ -360,11 +499,27 @@ function ContenidoDetalle({
                   <ul>
                     {documentos.map((documento) => (
                       <li key={documento.id}>
-                        <button type="button" disabled={descargando !== null} onClick={() => void descargar(documento)}>
-                          {descargando === documento.id ? "Descargando…" : "Descargar PDF"}
+                        <button
+                          type="button"
+                          disabled={operacionDocumento !== null}
+                          onClick={() => void verDocumento(documento)}
+                        >
+                          {operacionDocumento?.id === documento.id &&
+                          operacionDocumento.accion === "ver"
+                            ? "Abriendo…"
+                            : "Ver PDF"}
                         </button>{" "}
-                        {nombresDocumentos[documento.tipo] ??
-                          documento.tipo}
+                        <button
+                          type="button"
+                          disabled={operacionDocumento !== null}
+                          onClick={() => void descargar(documento)}
+                        >
+                          {operacionDocumento?.id === documento.id &&
+                          operacionDocumento.accion === "descargar"
+                            ? "Descargando…"
+                            : "Descargar PDF"}
+                        </button>{" "}
+                        {nombresDocumentos[documento.tipo] ?? documento.tipo}
                         {" — "}
                         {mostrarFecha(documento.fecha)}
                       </li>
@@ -390,11 +545,7 @@ export default function DetalleLegajoPage() {
   const { user } = useAuth();
 
   if (!id || !user?.token) {
-    return (
-      <p role="alert">
-        No se pudo identificar el legajo o la sesión.
-      </p>
-    );
+    return <p role="alert">No se pudo identificar el legajo o la sesión.</p>;
   }
 
   return (
@@ -405,3 +556,4 @@ export default function DetalleLegajoPage() {
     />
   );
 }
+
