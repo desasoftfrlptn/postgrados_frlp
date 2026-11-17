@@ -9,7 +9,6 @@ os.environ["SECRET_KEY"] = (
 os.environ["DATABASE_URL"] = (
     "postgresql+asyncpg://test:test@127.0.0.1:1/test_no_conectar"
 )
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -60,6 +59,7 @@ def usuario():
         correo_electronico="ana@example.com",
         contrasena_hash=hash_password("ClavePrueba123!"),
         activo=True,
+        rol_id=uuid4(),
         debe_cambiar_contrasena=True,
         rol=SimpleNamespace(
             id=uuid4(),
