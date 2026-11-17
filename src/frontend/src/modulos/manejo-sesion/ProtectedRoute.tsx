@@ -4,9 +4,11 @@ import { Navigate, Outlet } from "react-router-dom";
 
 import { useAuth } from "./useAuth";
 import type { Rol } from "../../shared/tipos";
+import type { ReactNode } from "react";
 
 interface ProtectedRouteProps {
   rolesPermitidos?: Rol[];
+  children?: ReactNode;
 }
 
 const todosLosRoles: Rol[] = [
@@ -19,6 +21,7 @@ const todosLosRoles: Rol[] = [
 
 export default function ProtectedRoute({
   rolesPermitidos = todosLosRoles,
+  children,
 }: ProtectedRouteProps) {
   const { user } = useAuth();
 
@@ -30,5 +33,5 @@ export default function ProtectedRoute({
     return <Navigate to="/dashboard/general" replace />;
   }
 
-  return <Outlet />;
+  return children ?? <Outlet />;
 }

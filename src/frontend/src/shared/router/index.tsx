@@ -133,7 +133,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "dashboard",
-            element: <DashboardEstudiantePage />,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><DashboardEstudiantePage /></ProtectedRoute>,
           },
           {
             path: "dashboard/general",
@@ -145,29 +145,29 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard/estado-academico",
-            element: <EstadoAcademicoPage />,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><EstadoAcademicoPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/trabajo-final",
-            element: <TrabajoFinalPage />,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><TrabajoFinalPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/tutorias",
-            element: <TutoriasPage />,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><TutoriasPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/certificados",
-            element: <CertificadosPage />,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><CertificadosPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/asistencias",
-            element: <AsistenciasEstudiantePage />,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><AsistenciasEstudiantePage /></ProtectedRoute>,
           },
 
           // DOCENTE
           {
             path: "dashboard/docente",
-            element: <DashboardDocentePage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><DashboardDocentePage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/perfil",
@@ -175,31 +175,31 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard/docente/seminarios",
-            element: <MisSeminariosPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><MisSeminariosPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/estudiantes",
-            element: <EstudiantesPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><EstudiantesPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/asistencia",
-            element: <PanelAsistenciaPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><PanelAsistenciaPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/calificaciones",
-            element: <CalificacionesPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><CalificacionesPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/reportes",
-            element: <ReportesPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><ReportesPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/pendientes",
-            element: <PendientesPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><PendientesPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/docente/profesores", // <-- Conectamos la última ruta
-            element: <ProfesoresPage />,
+            element: <ProtectedRoute rolesPermitidos={["DOCENTE"]}><ProfesoresPage /></ProtectedRoute>,
           },
         ],
       },
