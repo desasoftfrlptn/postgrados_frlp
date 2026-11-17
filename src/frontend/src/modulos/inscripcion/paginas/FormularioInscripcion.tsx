@@ -1,10 +1,13 @@
 // Formulario público de preinscripción para aspirantes a carreras de posgrado.
 
 import { useEffect, useState } from "react";
+
 import {
   guardarBorrador,
   recuperarBorrador,
+  eliminarBorrador,
 } from "../borrador";
+
 import "./FormularioInscripcion.css";
 
 type CohorteDisponible = {
@@ -50,6 +53,7 @@ const provincias = [
 ];
 
 export default function FormularioInscripcion() {
+  const [inscripcionCompletada, setInscripcionCompletada] = useState(false);
   const [etapa, setEtapa] = useState(1);
   const [otroPais, setOtroPais] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -151,7 +155,7 @@ export default function FormularioInscripcion() {
   }, []);
 
   useEffect(() => {
-    if (cargandoBorrador) return;
+    if (cargandoBorrador || inscripcionCompletada) return;
 
     const temporizador = setTimeout(async () => {
       try {
@@ -170,7 +174,7 @@ export default function FormularioInscripcion() {
     }, 500);
 
     return () => clearTimeout(temporizador);
-  }, [datos, documentos, otroPais, etapa, cargandoBorrador]);
+  }, [datos, documentos, otroPais, etapa, cargandoBorrador, inscripcionCompletada]);
 
   const MAX_TAMANIO_PDF = 5 * 1024 * 1024;
 
@@ -340,17 +344,57 @@ const enviarFormulario = async (e: React.FormEvent) => {
 
     const resultado = await respuesta.json();
 
-    setNumeroSeguimiento(
-      resultado.numero_seguimiento ?? ""
-    );
+    setInscripcionCompletada(true);
 
-    setMensaje(
-      "Inscripción y documentación registradas correctamente."
-    );
-  } catch {
-    setMensaje("Error de conexión con el servidor.");
-  }
-};
+    try {
+      await eliminarBorrador();
+    } catch (error) {
+      console.error("No se pudo eliminar el borrador:", error);
+    }
+
+  setDatos({
+    dni: "",
+    apellido: "",
+    nombre: "",
+    email: "",
+    tipo_carrera: "",
+    nacionalidad: "",
+    telefono: "",
+    domicilio: "",
+    pais: "",
+    provincia: "",
+    ciudad: "",
+    titulo_anterior: "",
+    universidad_anterior: "",
+    correo_alternativo: "",
+    forma_conocio_ofertas: "",
+    motivos_cursar: "",
+    solicitud_beca: "",
+  });
+
+  setDocumentos({
+    formularioPreinscripcion: null,
+    formularioInscripcion: null,
+    dniPasaporte: null,
+    partidaNacimiento: null,
+    constanciaCuitCuil: null,
+    tituloGrado: null,
+    tituloPosgrado: null,
+    formularioBeca: null,
+  });
+
+  setOtroPais("");
+  setCohorteSeleccionada("");
+  setNumeroSeguimiento(resultado.numero_seguimiento ?? "");
+  setEtapa(1);
+
+  setMensaje(
+    "Inscripción y documentación registradas correctamente."
+  );
+    } catch {
+      setMensaje("Error de conexión con el servidor.");
+    }
+  };
 
 
   return (
@@ -390,6 +434,15 @@ const enviarFormulario = async (e: React.FormEvent) => {
             <span>{mensaje}</span>
           </p>
         )}
+
+        {numeroSeguimiento && (
+          <div className="inscripcion-numero-seguimiento">
+            <h3>Número de preinscripción</h3>
+            <p>{numeroSeguimiento}</p>
+            <span>Conservá este número para consultar tu inscripción.</span>
+          </div>
+        )}
+
 
         {etapa === 1 && (
           <form onSubmit={avanzarDesdeDatosPersonales}>
@@ -1232,14 +1285,6 @@ const enviarFormulario = async (e: React.FormEvent) => {
             <p>
               Revisá la información ingresada antes de confirmar la inscripción.
             </p>
-
-            {numeroSeguimiento && (
-              <div className="inscripcion-numero-seguimiento">
-                <h3>Número de seguimiento</h3>
-                <p>{numeroSeguimiento}</p>
-                <span>Conservá este número para consultar tu inscripción.</span>
-              </div>
-            )}
 
             <div className="inscripcion-resumen-grid">
               <section className="inscripcion-resumen">

@@ -165,7 +165,7 @@ async def inscribir_aspirante(
     universidad_anterior: str = Form(...),
     forma_conocio_ofertas: str = Form(...),
     motivos_cursar: str = Form(...),
-    solicitud_beca: Literal[30, 100] | None = Form(None),
+    solicitud_beca: Literal["30", "100"] | None = Form(None),
 
     formularioPreinscripcion: UploadFile = File(...),
     formularioInscripcion: UploadFile = File(...),
