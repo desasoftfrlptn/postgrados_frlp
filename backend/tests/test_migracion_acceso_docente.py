@@ -21,10 +21,16 @@ def test_migracion_docentes_desde_0009_y_reversion(tmp_path: Path, monkeypatch) 
     configuracion.set_main_option("script_location", str(carpeta_backend / "alembic"))
     monkeypatch.setattr(settings, "database_url", url)
 
-    command.upgrade(configuracion, "head")
+    command.upgrade(configuracion, "20261117_0010")
     assert {"seminarios", "inscripciones_seminario", "accesos_docente"} <= set(inspect(motor).get_table_names())
     with motor.connect() as conexion:
         assert conexion.scalar(text("SELECT version_num FROM alembic_version")) == "20261117_0010"
+    command.upgrade(configuracion, "20261117_0011")
+    inspector = inspect(motor)
+    assert {"clases_seminario", "asistencias_seminario"} <= set(inspector.get_table_names())
+    assert "nota" in {columna["name"] for columna in inspector.get_columns("inscripciones_seminario")}
+    command.downgrade(configuracion, "20261117_0010")
+    assert "clases_seminario" not in inspect(motor).get_table_names()
     command.downgrade(configuracion, "20261116_0009")
     assert "seminarios" not in inspect(motor).get_table_names()
     motor.dispose()

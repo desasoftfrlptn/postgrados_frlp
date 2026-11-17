@@ -112,13 +112,31 @@ credenciales o datos docentes llevan `Cache-Control: no-store`.
 
 La ruta de frontend incluida en el enlace todavía no está implementada: el
 backend puede consumirse directamente, pero abrir el enlace en el navegador no
-muestra aún la planilla. Clases, asistencia, notas y recordatorios pertenecen
-a las historias siguientes del módulo B.
+muestra aún la planilla.
+
+El docente puede usar `POST /api/v1/seminarios/{id}/clases`, `PATCH
+/api/v1/seminarios/{id}/clases/{clase_id}`, `PATCH
+/api/v1/seminarios/{id}/asistencias`, `PATCH /api/v1/seminarios/{id}/notas` y
+`GET /api/v1/seminarios/{id}/exportar`. La planilla incluye clases,
+asistencias, porcentaje y condición; solo cuentan las clases ya dictadas.
+Las notas admiten valores numéricos de 1 a 10 con hasta un decimal. El dueño
+del legajo y coordinación pueden consultar el resultado actualizado en `GET
+/api/v1/legajos/{id}/seminarios`.
+
+Coordinación puede clasificar un seminario por carrera y obligatoriedad mediante
+`PATCH /api/v1/seminarios/{id}/plan`, y configurar la fecha límite de notas con
+`PATCH /api/v1/seminarios/{id}/fecha-limite-notas`. La tarea diaria de las
+08:00 (hora local del servidor) envía recordatorios cuando faltan como máximo
+48 horas y quedan notas pendientes; se repiten cada 24 horas hasta el plazo.
+Los errores SMTP se registran; no existe una cola durable de recordatorios.
 
 Ejecutar `alembic upgrade head` para aplicar `20261117_0010`. Si la base fue
 usada con la antigua revisión `0008` o ya contiene tablas del módulo B, revisar
 el historial y el esquema antes de migrar; esta revisión crea esas tablas y no
 las modifica ni reemplaza automáticamente.
+La revisión `20261117_0011` agrega las tablas de clases y asistencia y los
+campos de notas, carrera y fecha límite; los seminarios existentes quedan sin
+clasificar hasta que coordinación los configure.
 
 ## Inscripción pública
 

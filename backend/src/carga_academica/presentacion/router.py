@@ -1,7 +1,9 @@
-from datetime import datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -13,26 +15,39 @@ from src.carga_academica.aplicacion.acceso import (
     enlace_planilla,
     obtener_acceso_vigente,
 )
+from src.carga_academica.dominio.reglas import calcular_condicion, calcular_porcentaje_asistencia
 from src.carga_academica.infraestructura.modelos import (
     AccesoDocente,
+    AsistenciaSeminario,
+    ClaseSeminario,
     InscripcionSeminario,
     Seminario,
 )
 from src.carga_academica.presentacion.esquemas import (
+    ActualizarPlanSeminario,
+    ActualizarFechaLimite,
+    CeldaAsistencia,
+    ClaseRespuesta,
+    CrearClase,
     CrearEnlace,
     CrearSeminario,
     EnlaceRespuesta,
     EstudianteRespuesta,
     InscribirEstudiantes,
+    LoteAsistencias,
+    LoteNotas,
     PlanillaRespuesta,
+    ResultadoSeminario,
     SeminarioRespuesta,
 )
 from src.db.session import get_db
 from src.inscripcion.application.acceso_propietario import obtener_legajo_por_token
 from src.inscripcion.infrastructure.models import Cohorte, Legajo
+from src.inscripcion.presentation.acceso_legajo import autorizar_dueno_o_coordinador, exigir_credencial
 from src.shared.auditoria.servicio import registrar_evento_auditoria
 from src.shared.autorizacion.permisos import requerir_roles
 from src.shared.http.ruta_api import ErrorRespuesta, RutaAPI
+from src.shared.http.excel import generar_excel
 
 router = APIRouter(
     prefix="/api/v1/seminarios",
@@ -46,6 +61,7 @@ router = APIRouter(
         422: {"model": ErrorRespuesta, "description": "Datos inválidos"},
     },
 )
+router_legajos = APIRouter(prefix="/api/v1/legajos", tags=["carga-academica"], route_class=RutaAPI)
 _ZONA_ARGENTINA = timezone(timedelta(hours=-3))
 
 
@@ -86,7 +102,14 @@ def _exigir_docente(
         raise HTTPException(status_code=403, detail="Este recurso requiere acceso docente")
     if acceso.seminario_id != id:
         raise HTTPException(status_code=403, detail="No tenés permisos para este seminario")
-    return _seminario(session, id)
+    seminario = _seminario(session, id, bloquear=True)
+    if obtener_acceso_vigente(session, credencial.credentials) is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Token docente ausente, inválido o vencido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return seminario
 
 
 def _auditar(
@@ -104,6 +127,56 @@ def _auditar(
         id_actor=usuario.id,
         rol_actor=usuario.role,
         detalles=detalles,
+    )
+
+
+def _planilla(session: Session, seminario: Seminario) -> PlanillaRespuesta:
+    clases = list(session.scalars(
+        select(ClaseSeminario)
+        .where(ClaseSeminario.seminario_id == seminario.id)
+        .order_by(ClaseSeminario.fecha, ClaseSeminario.id)
+    ))
+    inscripciones = list(session.execute(
+        select(InscripcionSeminario, Legajo)
+        .join(Legajo, Legajo.id == InscripcionSeminario.legajo_id)
+        .where(InscripcionSeminario.seminario_id == seminario.id, Legajo.estado != "Baja")
+        .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
+    ))
+    asistencias = list(session.scalars(
+        select(AsistenciaSeminario)
+        .join(ClaseSeminario, ClaseSeminario.id == AsistenciaSeminario.clase_id)
+        .where(ClaseSeminario.seminario_id == seminario.id)
+    ))
+    celdas = {(item.inscripcion_id, item.clase_id): item.presente for item in asistencias}
+    estudiantes = []
+    for inscripcion, legajo in inscripciones:
+        presentes = {
+            clase.fecha for clase in clases if celdas.get((inscripcion.id, clase.id), False)
+        }
+        porcentaje = calcular_porcentaje_asistencia(
+            [clase.fecha for clase in clases], presentes, date.today()
+        )
+        estudiantes.append(EstudianteRespuesta(
+            legajo_id=legajo.id,
+            numero_legajo=legajo.numero_legajo,
+            apellido=legajo.apellido,
+            nombre=legajo.nombre,
+            email=legajo.email,
+            titulo_grado=legajo.titulo_grado,
+            asistencias=[
+                CeldaAsistencia(
+                    clase_id=clase.id,
+                    presente=celdas.get((inscripcion.id, clase.id), False),
+                ) for clase in clases
+            ],
+            porcentaje_asistencia=porcentaje.quantize(Decimal("0.01")),
+            nota=inscripcion.nota,
+            condicion=calcular_condicion(inscripcion.nota, porcentaje),
+        ))
+    return PlanillaRespuesta(
+        seminario=SeminarioRespuesta.model_validate(seminario),
+        clases=[ClaseRespuesta.model_validate(clase) for clase in clases],
+        estudiantes=estudiantes,
     )
 
 
@@ -133,6 +206,39 @@ def listar_seminarios(
     if cohorte_id is not None:
         consulta = consulta.where(Seminario.cohorte_id == cohorte_id)
     return list(session.scalars(consulta))
+
+
+@router.patch("/{id}/plan", response_model=SeminarioRespuesta)
+def actualizar_plan_seminario(
+    id: UUID,
+    datos: ActualizarPlanSeminario,
+    session: Session = Depends(get_db),
+    usuario: User = Depends(requerir_roles("COORDINADOR")),
+) -> Seminario:
+    seminario = _seminario(session, id, bloquear=True)
+    seminario.carrera = datos.carrera
+    seminario.es_obligatorio = datos.es_obligatorio
+    _auditar(session, usuario, id, "actualizar_plan_seminario", datos.model_dump())
+    session.commit()
+    return seminario
+
+
+@router.patch("/{id}/fecha-limite-notas", response_model=SeminarioRespuesta)
+def actualizar_fecha_limite(
+    id: UUID,
+    datos: ActualizarFechaLimite,
+    session: Session = Depends(get_db),
+    usuario: User = Depends(requerir_roles("COORDINADOR")),
+) -> Seminario:
+    seminario = _seminario(session, id, bloquear=True)
+    seminario.fecha_limite_notas = datos.fecha_limite_notas
+    seminario.ultimo_recordatorio_en = None
+    _auditar(
+        session, usuario, id, "actualizar_fecha_limite_notas",
+        {"fecha_limite_notas": datos.fecha_limite_notas.isoformat() if datos.fecha_limite_notas else None},
+    )
+    session.commit()
+    return seminario
 
 
 @router.post("/{id}/inscripciones", status_code=status.HTTP_204_NO_CONTENT)
@@ -203,24 +309,199 @@ def listar_estudiantes(
     seminario: Seminario = Depends(_exigir_docente),
     session: Session = Depends(get_db),
 ) -> PlanillaRespuesta:
-    legajos = session.scalars(
-        select(Legajo)
-        .join(InscripcionSeminario, InscripcionSeminario.legajo_id == Legajo.id)
-        .where(InscripcionSeminario.seminario_id == seminario.id, Legajo.estado != "Baja")
-        .order_by(Legajo.apellido, Legajo.nombre, Legajo.id)
-    )
     response.headers["Cache-Control"] = "private, no-store"
-    return PlanillaRespuesta(
-        seminario=SeminarioRespuesta.model_validate(seminario),
-        estudiantes=[
-            EstudianteRespuesta(
-                legajo_id=legajo.id,
-                numero_legajo=legajo.numero_legajo,
-                apellido=legajo.apellido,
-                nombre=legajo.nombre,
-                email=legajo.email,
-                titulo_grado=legajo.titulo_grado,
-            )
-            for legajo in legajos
-        ],
+    return _planilla(session, seminario)
+
+
+@router.post("/{id}/clases", response_model=ClaseRespuesta, status_code=201)
+def crear_clase(
+    id: UUID,
+    datos: CrearClase,
+    _: Seminario = Depends(_exigir_docente),
+    session: Session = Depends(get_db),
+) -> ClaseSeminario:
+    _seminario(session, id, bloquear=True)
+    if session.scalar(select(ClaseSeminario.id).where(
+        ClaseSeminario.seminario_id == id, ClaseSeminario.fecha == datos.fecha
+    )):
+        raise HTTPException(status_code=409, detail="Ya existe una clase para esa fecha")
+    clase = ClaseSeminario(seminario_id=id, fecha=datos.fecha)
+    session.add(clase)
+    registrar_evento_auditoria(
+        session, accion="crear_clase", tipo_recurso="seminario", id_recurso=id,
+        rol_actor="DOCENTE", detalles={"fecha": datos.fecha.isoformat()},
     )
+    session.commit()
+    return clase
+
+
+@router.patch("/{id}/clases/{clase_id}", response_model=ClaseRespuesta)
+def cambiar_fecha_clase(
+    id: UUID,
+    clase_id: UUID,
+    datos: CrearClase,
+    _: Seminario = Depends(_exigir_docente),
+    session: Session = Depends(get_db),
+) -> ClaseSeminario:
+    _seminario(session, id, bloquear=True)
+    clase = session.scalar(select(ClaseSeminario).where(
+        ClaseSeminario.id == clase_id, ClaseSeminario.seminario_id == id
+    ))
+    if clase is None:
+        raise HTTPException(status_code=404, detail="No se encontró la clase del seminario")
+    if session.scalar(select(ClaseSeminario.id).where(
+        ClaseSeminario.seminario_id == id,
+        ClaseSeminario.fecha == datos.fecha,
+        ClaseSeminario.id != clase_id,
+    )):
+        raise HTTPException(status_code=409, detail="Ya existe una clase para esa fecha")
+    anterior = clase.fecha
+    clase.fecha = datos.fecha
+    registrar_evento_auditoria(
+        session, accion="cambiar_fecha_clase", tipo_recurso="seminario", id_recurso=id,
+        rol_actor="DOCENTE", detalles={
+            "clase_id": str(clase_id), "fecha_anterior": anterior.isoformat(),
+            "fecha_nueva": datos.fecha.isoformat(),
+        },
+    )
+    session.commit()
+    return clase
+
+
+@router.patch("/{id}/asistencias", response_model=PlanillaRespuesta)
+def registrar_asistencias(
+    id: UUID,
+    datos: LoteAsistencias,
+    _: Seminario = Depends(_exigir_docente),
+    session: Session = Depends(get_db),
+) -> PlanillaRespuesta:
+    seminario = _seminario(session, id, bloquear=True)
+    pares = {(item.clase_id, item.legajo_id) for item in datos.asistencias}
+    if len(pares) != len(datos.asistencias):
+        raise HTTPException(status_code=422, detail="Hay asistencias duplicadas en el lote")
+    clases = set(session.scalars(select(ClaseSeminario.id).where(
+        ClaseSeminario.seminario_id == id,
+        ClaseSeminario.id.in_({item.clase_id for item in datos.asistencias}),
+    )))
+    inscripciones = {
+        inscripcion.legajo_id: inscripcion
+        for inscripcion in session.scalars(
+            select(InscripcionSeminario).join(Legajo, Legajo.id == InscripcionSeminario.legajo_id)
+            .where(InscripcionSeminario.seminario_id == id, Legajo.estado != "Baja")
+        )
+    }
+    if any(item.clase_id not in clases or item.legajo_id not in inscripciones for item in datos.asistencias):
+        raise HTTPException(status_code=422, detail="Todas las clases y estudiantes deben pertenecer al seminario")
+    existentes = {
+        (item.clase_id, item.inscripcion_id): item
+        for item in session.scalars(select(AsistenciaSeminario).where(
+            AsistenciaSeminario.clase_id.in_(clases),
+            AsistenciaSeminario.inscripcion_id.in_([item.id for item in inscripciones.values()]),
+        ))
+    }
+    ahora = datetime.now(timezone.utc)
+    for registro in datos.asistencias:
+        inscripcion = inscripciones[registro.legajo_id]
+        asistencia = existentes.get((registro.clase_id, inscripcion.id))
+        if asistencia is None:
+            session.add(AsistenciaSeminario(
+                clase_id=registro.clase_id, inscripcion_id=inscripcion.id,
+                presente=registro.presente,
+            ))
+        else:
+            asistencia.presente = registro.presente
+        inscripcion.ultimo_avance_en = ahora
+    registrar_evento_auditoria(
+        session, accion="registrar_asistencias", tipo_recurso="seminario", id_recurso=id,
+        rol_actor="DOCENTE", detalles={"cantidad": len(datos.asistencias)},
+    )
+    session.commit()
+    return _planilla(session, seminario)
+
+
+@router.patch("/{id}/notas", response_model=PlanillaRespuesta)
+def registrar_notas(
+    id: UUID,
+    datos: LoteNotas,
+    _: Seminario = Depends(_exigir_docente),
+    session: Session = Depends(get_db),
+) -> PlanillaRespuesta:
+    seminario = _seminario(session, id, bloquear=True)
+    ids = {item.legajo_id for item in datos.notas}
+    if len(ids) != len(datos.notas):
+        raise HTTPException(status_code=422, detail="Hay notas duplicadas en el lote")
+    inscripciones = {
+        item.legajo_id: item
+        for item in session.scalars(select(InscripcionSeminario)
+            .join(Legajo, Legajo.id == InscripcionSeminario.legajo_id)
+            .where(InscripcionSeminario.seminario_id == id, Legajo.estado != "Baja"))
+    }
+    if not ids.issubset(inscripciones):
+        raise HTTPException(status_code=422, detail="Todos los estudiantes deben pertenecer al seminario")
+    ahora = datetime.now(timezone.utc)
+    for registro in datos.notas:
+        inscripciones[registro.legajo_id].nota = registro.nota
+        inscripciones[registro.legajo_id].ultimo_avance_en = ahora
+    registrar_evento_auditoria(
+        session, accion="registrar_notas", tipo_recurso="seminario", id_recurso=id,
+        rol_actor="DOCENTE", detalles={"legajo_ids": [str(item) for item in sorted(ids)]},
+    )
+    session.commit()
+    return _planilla(session, seminario)
+
+
+@router.get("/{id}/exportar")
+def exportar_planilla(
+    seminario: Seminario = Depends(_exigir_docente),
+    session: Session = Depends(get_db),
+) -> StreamingResponse:
+    planilla = _planilla(session, seminario)
+    filas = [[
+        "Apellido", "Nombre", "Email", "Carrera de grado",
+        *[clase.fecha.isoformat() for clase in planilla.clases], "% Asistencia",
+    ]]
+    for estudiante in planilla.estudiantes:
+        filas.append([
+            estudiante.apellido, estudiante.nombre, estudiante.email, estudiante.titulo_grado,
+            *["P" if celda.presente else "A" for celda in estudiante.asistencias],
+            str(estudiante.porcentaje_asistencia),
+        ])
+    return StreamingResponse(
+        generar_excel(filas, "Asistencia"),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="seminario-{seminario.id}.xlsx"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+@router_legajos.get("/{id}/seminarios", response_model=list[ResultadoSeminario])
+def consultar_resultados_legajo(
+    id: UUID,
+    response: Response,
+    credencial: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    session: Session = Depends(get_db),
+) -> list[ResultadoSeminario]:
+    credencial = exigir_credencial(credencial)
+    legajo = session.get(Legajo, id)
+    if legajo is None:
+        raise HTTPException(status_code=404, detail="No se encontró el legajo")
+    autorizar_dueno_o_coordinador(legajo, credencial, session)
+    seminarios = list(session.scalars(
+        select(Seminario).join(InscripcionSeminario, InscripcionSeminario.seminario_id == Seminario.id)
+        .where(InscripcionSeminario.legajo_id == id).order_by(Seminario.nombre, Seminario.id)
+    ))
+    resultados = []
+    for seminario in seminarios:
+        estudiante = next((item for item in _planilla(session, seminario).estudiantes if item.legajo_id == id), None)
+        if estudiante is not None:
+            resultados.append(ResultadoSeminario(
+                seminario_id=seminario.id,
+                nombre=seminario.nombre,
+                porcentaje_asistencia=estudiante.porcentaje_asistencia,
+                nota=estudiante.nota,
+                condicion=estudiante.condicion,
+            ))
+    response.headers["Cache-Control"] = "private, no-store"
+    return resultados

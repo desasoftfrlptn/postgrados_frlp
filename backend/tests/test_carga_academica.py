@@ -2,8 +2,11 @@ import base64
 import hashlib
 from collections.abc import Generator
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from io import BytesIO
 from pathlib import Path
 from uuid import UUID, uuid4
+from zipfile import ZipFile
 
 import pytest
 from fastapi.testclient import TestClient
@@ -14,6 +17,7 @@ from main import app
 from src.authentication.application.security import create_token_pair
 from src.authentication.infrastructure.models import User
 from src.carga_academica.infraestructura.modelos import AccesoDocente
+from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db
@@ -210,3 +214,76 @@ def test_cors_preflight(entorno) -> None:
     )
     assert respuesta.status_code == 200
     assert respuesta.headers["access-control-allow-origin"] == settings.cors_origin
+
+
+def test_clases_asistencias_notas_y_exportacion(entorno) -> None:
+    cliente, _, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.patch(
+        f"/api/v1/seminarios/{seminario}/plan", headers=coord,
+        json={"carrera": "Maestría", "es_obligatorio": True},
+    ).status_code == 200
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones", headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    ).status_code == 204
+    enlace = _enlace(cliente, seminario, tokens)
+    docente = {"Authorization": f"Bearer {enlace['token']}"}
+    clases = []
+    for fecha in (date.today() - timedelta(days=1), date.today(), date.today() + timedelta(days=1)):
+        respuesta = cliente.post(
+            f"/api/v1/seminarios/{seminario}/clases", headers=docente,
+            json={"fecha": fecha.isoformat()},
+        )
+        assert respuesta.status_code == 201
+        clases.append(respuesta.json()["id"])
+    ruta_asistencias = f"/api/v1/seminarios/{seminario}/asistencias"
+    asistencias = [
+        {"clase_id": clases[0], "legajo_id": str(legajo.id), "presente": True},
+        {"clase_id": clases[2], "legajo_id": str(legajo.id), "presente": True},
+    ]
+    assert cliente.patch(ruta_asistencias, headers=docente, json={"asistencias": asistencias}).status_code == 200
+    ruta_notas = f"/api/v1/seminarios/{seminario}/notas"
+    for nota in (0, 11, 7.55, "4", True):
+        assert cliente.patch(ruta_notas, headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": nota}]}).status_code == 422
+    respuesta = cliente.patch(ruta_notas, headers=docente, json={"notas": [{"legajo_id": str(legajo.id), "nota": 4}]})
+    assert respuesta.status_code == 200
+    estudiante = respuesta.json()["estudiantes"][0]
+    assert Decimal(estudiante["porcentaje_asistencia"]) == 50
+    assert estudiante["condicion"] == "Libre"
+    assert cliente.patch(ruta_asistencias, headers=docente, json={"asistencias": [
+        {"clase_id": clases[1], "legajo_id": str(legajo.id), "presente": True},
+        {"clase_id": clases[1], "legajo_id": str(uuid4()), "presente": True},
+    ]}).status_code == 422
+    assert cliente.patch(ruta_asistencias, headers=docente, json={"asistencias": [
+        {"clase_id": clases[1], "legajo_id": str(legajo.id), "presente": True},
+    ]}).json()["estudiantes"][0]["condicion"] == "Aprobado"
+    historial = cliente.get(f"/api/v1/legajos/{legajo.id}/seminarios", headers=coord)
+    assert historial.status_code == 200
+    assert historial.json()[0]["condicion"] == "Aprobado"
+    descarga = cliente.get(f"/api/v1/seminarios/{seminario}/exportar", headers=docente)
+    assert descarga.status_code == 200
+    with ZipFile(BytesIO(descarga.content)) as archivo:
+        hoja = archivo.read("xl/worksheets/sheet1.xml")
+        assert b"Ana" in hoja and b"100.00" in hoja
+
+
+def test_recordatorios_notas_respetan_plazo_y_frecuencia(entorno, monkeypatch) -> None:
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    cliente.post(f"/api/v1/seminarios/{seminario}/inscripciones", headers=coord, json={"legajo_ids": [str(legajo.id)]})
+    ahora = datetime.now(timezone.utc)
+    assert cliente.patch(
+        f"/api/v1/seminarios/{seminario}/fecha-limite-notas",
+        headers=coord, json={"fecha_limite_notas": (ahora + timedelta(hours=47)).isoformat()},
+    ).status_code == 200
+    mensajes = []
+    monkeypatch.setattr("src.carga_academica.aplicacion.recordatorios.enviar_mensaje_correo", mensajes.append)
+    assert enviar_recordatorios(session, ahora) == 1
+    assert "Metodología" in mensajes[0].get_content()
+    assert "1 estudiante" in mensajes[0].get_content()
+    assert "#token=" in mensajes[0].get_content()
+    assert enviar_recordatorios(session, ahora + timedelta(hours=23)) == 0
+    assert enviar_recordatorios(session, ahora + timedelta(hours=24)) == 1
