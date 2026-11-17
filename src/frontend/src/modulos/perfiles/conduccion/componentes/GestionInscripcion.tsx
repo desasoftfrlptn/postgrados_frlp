@@ -57,7 +57,7 @@ const accionesPorEstado: Record<
     { accion: "RECHAZAR", texto: "Rechazar inscripción" },
   ],
   COMPLETADO: [
-    { accion: "MATRICULAR", texto: "Matricular estudiante" },
+    { accion: "MATRICULAR", texto: "Autorizar matrícula" },
   ],
   ACTIVO: [
     { accion: "DAR_BAJA", texto: "Dar de baja" },
@@ -158,9 +158,20 @@ export default function GestionInscripcion({
   }, [base, token, onEstadoActualizado]);
 
   useEffect(() => {
-    void cargar();
+    let cancelado = false;
+
+    async function iniciarCarga() {
+      await Promise.resolve();
+
+      if (!cancelado) {
+        await cargar();
+      }
+    }
+
+    void iniciarCarga();
 
     return () => {
+      cancelado = true;
       solicitudActual.current += 1;
     };
   }, [cargar]);
