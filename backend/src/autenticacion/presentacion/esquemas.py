@@ -1,19 +1,28 @@
+import re
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field, field_validator
 
 UserRole = Literal["COORDINADOR", "CPR", "ADMIN"]
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str = Field(min_length=3, max_length=254)
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validar_email(cls, value: str) -> str:
+        email = value.strip().lower()
+        if re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) is None:
+            raise ValueError("Ingresá un email válido")
+        return email
 
 
 class UserResponse(BaseModel):
     id: UUID
-    email: EmailStr
+    email: str = Field(min_length=3, max_length=254)
     role: UserRole
 
 

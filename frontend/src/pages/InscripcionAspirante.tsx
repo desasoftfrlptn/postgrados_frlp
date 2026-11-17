@@ -342,7 +342,7 @@ export default function InscripcionAspirante() {
         }
 
         try {
-            const response = await fetch(`${API_URL}/inscripciones`, {
+            const response = await fetch(`${API_URL}/legajos`, {
                 method: 'POST',
                 body: formulario,
             });

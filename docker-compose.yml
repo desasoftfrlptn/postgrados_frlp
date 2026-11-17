@@ -55,6 +55,16 @@ services:
       - "${PORT:-8000}:${PORT:-8000}"
     volumes:
       - backend_uploads:${STORAGE_PATH:-/var/postgrado-storage}
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/api/docs', timeout=5)"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     networks:
       - postgrados_network
 
@@ -66,7 +76,8 @@ services:
       target: development
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
     ports:
