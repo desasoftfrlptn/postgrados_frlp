@@ -119,11 +119,6 @@ export default function EstadoInscripcionPage() {
           </section>
         )}
       </section>
-<<<<<<< Updated upstream
-
-=======
-      
->>>>>>> Stashed changes
     </main>
   );
 }
