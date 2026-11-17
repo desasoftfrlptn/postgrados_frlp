@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/useAuth';
 
@@ -13,16 +13,31 @@ export default function AuthLanding() {
                 <p className="text-slate-700">
                     {session?.user.email} · {session?.user.role}
                 </p>
-                <p className="mt-4 text-sm text-slate-600">
-                    El espacio de trabajo para este rol todavía no está disponible en la aplicación.
-                </p>
-                <button
-                    type="button"
-                    onClick={() => void logout().then(() => navigate('/inscripcion', { replace: true }))}
-                    className="mt-6 rounded border border-slate-400 px-4 py-2 font-semibold hover:bg-slate-50"
-                >
-                    Cerrar sesión
-                </button>
+                <div className="mt-6 flex flex-wrap gap-3">
+                    {session?.user.role === 'COORDINADOR' && (
+                        <Link
+                            to="/coordinador"
+                            className="rounded bg-[#2a3441] px-4 py-2 font-semibold text-white hover:bg-slate-700"
+                        >
+                            Ir al panel de coordinación
+                        </Link>
+                    )}
+                    {session?.user.role === 'CPR' && (
+                        <Link
+                            to="/cpr/trabajos-finales"
+                            className="rounded bg-[#2a3441] px-4 py-2 font-semibold text-white hover:bg-slate-700"
+                        >
+                            Ir a Trabajos Finales (CPR)
+                        </Link>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => void logout().then(() => navigate('/inscripcion', { replace: true }))}
+                        className="rounded border border-slate-400 px-4 py-2 font-semibold hover:bg-slate-50"
+                    >
+                        Cerrar sesión
+                    </button>
+                </div>
             </section>
         </main>
     );

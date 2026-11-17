@@ -13,6 +13,9 @@ export default function MainLayout() {
                 {session?.user.role === 'COORDINADOR' && (
                     <Link to="/coordinador" className="hover:underline">Gestión de coordinación</Link>
                 )}
+                {session?.user.role === 'CPR' && (
+                    <Link to="/cpr/trabajos-finales" className="hover:underline">Trabajos Finales (CPR)</Link>
+                )}
             </nav>
             <header className="flex justify-between items-center p-4 border-b-2 border-slate-800">
                 <Link to="/" className="w-12 h-12 border-2 border-slate-800 flex flex-col items-center justify-center font-bold text-xs leading-none hover:bg-slate-50 transition-colors">
