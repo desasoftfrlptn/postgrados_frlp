@@ -40,6 +40,7 @@ import ConfiguracionGeneralPage from "../../modulos/perfiles/administrador/pagin
 import PanelConduccionPage from "../../modulos/perfiles/conduccion/paginas/PanelConduccionPage";
 import ListadoAspirantesPage from "../../modulos/perfiles/conduccion/paginas/ListadoAspirantesPage";
 import DetalleLegajoPage from "../../modulos/perfiles/conduccion/paginas/DetalleLegajoPage";
+import PeriodosInscripcionPage from "../../modulos/perfiles/conduccion/paginas/PeriodosInscripcionPage";
 
 // AUTENTICACIÓN
 import LoginPage from "../../modulos/manejo-sesion/paginas/LoginPage";
@@ -232,6 +233,10 @@ export const router = createBrowserRouter([
             path: "dashboard/conduccion/legajos/:id",
             element: <DetalleLegajoPage />,
           },
+          {
+            path: "dashboard/conduccion/periodos-inscripcion",
+            element: <PeriodosInscripcionPage />,
+          },
         ],
       },
     ],
@@ -301,3 +306,4 @@ export const router = createBrowserRouter([
 
 
 ]);
+
