@@ -966,6 +966,7 @@ PATCH  /api/v1/seminarios/{id}/notas            [DOCENTE] → notas finales
 # Seguimiento de graduación (Módulo C)
 POST   /api/v1/legajos/{id}/trabajo-final       [CPR]
 PATCH  /api/v1/trabajos-finales/{id}            [CPR]
+GET    /api/v1/legajos/{id}/trabajo-final       [CPR, COORDINADOR] → trabajos del legajo
 GET    /api/v1/legajos/{id}/semaforo            [COORDINADOR]
 GET    /api/v1/graduacion/en-riesgo             [COORDINADOR] → lista semáforo rojo
 
