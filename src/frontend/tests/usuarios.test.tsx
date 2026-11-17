@@ -226,3 +226,142 @@ describe("UsuariosPage - Alta de usuarios", () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 });
+
+function simularUsuarioExistente(activo = true) {
+  vi.mocked(api.get).mockImplementation(
+    async <T,>(): Promise<T> => {
+      return [
+        {
+          id: "usuario-1",
+          nombre: "Ana",
+          apellido: "Perez",
+          dni: "12345678",
+          correo_electronico: "ana@example.com",
+          tipo_usuario: "ALUMNO",
+          activo,
+          debe_cambiar_contrasena: false,
+        },
+      ] as T;
+    },
+  );
+}
+
+describe("UsuariosPage - Edicion y estado", () => {
+  it("permite editar los datos y el rol de un usuario", async () => {
+    simularUsuarioExistente();
+
+    render(<UsuariosPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Editar",
+      }),
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Editar usuario",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Nombre"), {
+      target: { value: "Ana Maria" },
+    });
+
+    fireEvent.change(screen.getByLabelText("Rol"), {
+      target: { value: "DOCENTE" },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Guardar cambios",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(api.put).toHaveBeenCalledWith(
+        "/autenticacion/usuarios/usuario-1",
+        {
+          nombre: "Ana Maria",
+          apellido: "Perez",
+          dni: "12345678",
+          correo_electronico: "ana@example.com",
+          tipo_usuario: "DOCENTE",
+        },
+        "token-admin-prueba",
+      );
+    });
+  });
+
+  it("permite desactivar un usuario", async () => {
+    simularUsuarioExistente(true);
+
+    const confirmar = vi
+      .spyOn(window, "confirm")
+      .mockReturnValue(true);
+
+    render(<UsuariosPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Desactivar",
+      }),
+    );
+
+    confirmar.mockRestore();
+
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith(
+        "/autenticacion/usuarios/usuario-1/estado",
+        { activo: false },
+        "token-admin-prueba",
+      );
+    });
+  });
+
+  it("permite activar un usuario", async () => {
+    simularUsuarioExistente(false);
+
+    const confirmar = vi
+      .spyOn(window, "confirm")
+      .mockReturnValue(true);
+
+    render(<UsuariosPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Activar",
+      }),
+    );
+
+    confirmar.mockRestore();
+
+    await waitFor(() => {
+      expect(api.patch).toHaveBeenCalledWith(
+        "/autenticacion/usuarios/usuario-1/estado",
+        { activo: true },
+        "token-admin-prueba",
+      );
+    });
+  });
+
+  it("no cambia el estado si se cancela", async () => {
+    simularUsuarioExistente(true);
+
+    const confirmar = vi
+      .spyOn(window, "confirm")
+      .mockReturnValue(false);
+
+    render(<UsuariosPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Desactivar",
+      }),
+    );
+
+    confirmar.mockRestore();
+
+    expect(api.patch).not.toHaveBeenCalled();
+  });
+});
