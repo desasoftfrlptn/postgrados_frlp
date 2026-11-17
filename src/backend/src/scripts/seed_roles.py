@@ -14,7 +14,7 @@ ROLES = (
     "ASPIRANTE",
     "DOCENTE",
     "COORDINADOR",
-    "EQUIPO PRODUCCION",
+    "CPR",
     "ADMIN",
 )
 
