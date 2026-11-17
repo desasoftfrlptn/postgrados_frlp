@@ -6,7 +6,7 @@ from email.message import EmailMessage
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.core.config import settings
 from src.inscripcion.infrastructure.models import Legajo
 from src.seguimiento_graduacion.infraestructura.modelos import (

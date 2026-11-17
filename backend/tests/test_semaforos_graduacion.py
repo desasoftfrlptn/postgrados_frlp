@@ -11,8 +11,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from main import app
-from src.authentication.application.security import create_token_pair
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import create_token_pair
+from src.autenticacion.infraestructura.modelos import User
 from src.db.base import Base
 from src.db.session import get_db
 from src.inscripcion.infrastructure.models import Cohorte, Legajo
@@ -286,3 +286,17 @@ def test_alerta_se_posterga_hasta_recalcular_plan_reconfirmado(entorno, monkeypa
     _confirmar(cliente, cohorte, "Especialización", tokens)
     assert enviar_alertas_pendientes(session) == 0
     assert mensajes == []
+
+
+def test_estadisticas_conduccion_retorna_las_cinco_metricas(entorno) -> None:
+    cliente, _, _, _, tokens, _ = entorno
+    resp = cliente.get("/api/v1/graduacion/estadisticas", headers=_cabecera(tokens))
+    assert resp.status_code == 200
+    datos = resp.json()
+    assert datos["total_inscriptos"] == 1
+    assert datos["tasa_retencion"] == 100.0
+    assert datos["desgranamiento"] == 0.0
+    assert datos["promedio_tiempo_graduacion_dias"] is None
+    assert datos["estudiantes_en_riesgo"] == 0
+    assert len(datos["por_cohorte"]) == 1
+    assert datos["por_cohorte"][0]["total_inscriptos"] == 1

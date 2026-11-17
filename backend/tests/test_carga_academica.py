@@ -14,8 +14,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from main import app
-from src.authentication.application.security import create_token_pair
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import create_token_pair
+from src.autenticacion.infraestructura.modelos import User
 from src.carga_academica.infraestructura.modelos import AccesoDocente, InscripcionSeminario
 from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
 from src.core.config import settings
@@ -304,3 +304,88 @@ def test_asistencia_futura_no_registra_avance_anticipado(entorno) -> None:
         "asistencias": [{"clase_id": clase, "legajo_id": str(legajo.id), "presente": True}],
     }).status_code == 200
     assert session.scalar(select(InscripcionSeminario)).ultimo_avance_en is None
+
+
+def test_importar_notas_desde_excel(entorno) -> None:
+    from src.shared.http.excel import generar_excel
+
+    cliente, _, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones",
+        headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    ).status_code == 204
+    docente = {"Authorization": f"Bearer {_enlace(cliente, seminario, tokens)['token']}"}
+
+    clase = cliente.post(
+        f"/api/v1/seminarios/{seminario}/clases",
+        headers=docente,
+        json={"fecha": date.today().isoformat()},
+    ).json()["id"]
+    assert cliente.patch(
+        f"/api/v1/seminarios/{seminario}/asistencias",
+        headers=docente,
+        json={"asistencias": [{"clase_id": clase, "legajo_id": str(legajo.id), "presente": True}]},
+    ).status_code == 200
+
+    excel_valido = generar_excel([["Email", "Nota"], [legajo.email, "8.5"]], "Notas").getvalue()
+    resp = cliente.post(
+        f"/api/v1/seminarios/{seminario}/importar-notas",
+        headers=docente,
+        files={"archivo": ("notas.xlsx", excel_valido, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 200
+    est = resp.json()["estudiantes"][0]
+    assert Decimal(est["nota"]) == Decimal("8.5")
+    assert est["condicion"] == "Aprobado"
+
+    excel_invalido = generar_excel([["Email", "Nota"], [legajo.email, "11"]], "Notas").getvalue()
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/importar-notas",
+        headers=docente,
+        files={"archivo": ("notas.xlsx", excel_invalido, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    ).status_code == 422
+
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/importar-notas",
+        headers=docente,
+        files={"archivo": ("notas.xlsx", b"no-es-un-zip", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    ).status_code == 422
+
+    descarga = cliente.get(f"/api/v1/seminarios/{seminario}/exportar", headers=docente)
+    assert descarga.status_code == 200
+    with ZipFile(BytesIO(descarga.content)) as archivo:
+        assert "xl/worksheets/sheet2.xml" in archivo.namelist()
+        hoja = archivo.read("xl/worksheets/sheet1.xml")
+        metadatos = archivo.read("xl/worksheets/sheet2.xml")
+        assert b"<cols>" in hoja
+        assert b"Fecha de generaci" in metadatos
+
+
+def test_recordatorios_asistencia_sin_carga_en_mas_de_dos_semanas(entorno, monkeypatch) -> None:
+    from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios_asistencia
+
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones",
+        headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    ).status_code == 204
+    docente = {"Authorization": f"Bearer {_enlace(cliente, seminario, tokens)['token']}"}
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/clases",
+        headers=docente,
+        json={"fecha": (date.today() - timedelta(days=15)).isoformat()},
+    ).status_code == 201
+
+    mensajes = []
+    monkeypatch.setattr("src.carga_academica.aplicacion.recordatorios.enviar_mensaje_correo", mensajes.append)
+    ahora = datetime.now(timezone.utc)
+    assert enviar_recordatorios_asistencia(session, ahora) == 1
+    assert "asistencia" in mensajes[0]["Subject"].lower()
+    assert enviar_recordatorios_asistencia(session, ahora + timedelta(days=2)) == 0
+    assert enviar_recordatorios_asistencia(session, ahora + timedelta(days=8)) == 1

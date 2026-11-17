@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.inscripcion.infrastructure.models import Cohorte, Legajo
 from src.shared.auditoria.servicio import registrar_evento_auditoria
 

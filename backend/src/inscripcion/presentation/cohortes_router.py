@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
+from src.autenticacion.infraestructura.modelos import User
 from src.db.session import get_db
 from src.inscripcion.infrastructure.models import Cohorte
 from src.inscripcion.presentation.schemas import (

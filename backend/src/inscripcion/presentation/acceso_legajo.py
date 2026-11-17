@@ -2,8 +2,8 @@ from fastapi import HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from src.authentication.application.security import get_current_user
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import get_current_user
+from src.autenticacion.infraestructura.modelos import User
 from src.inscripcion.application.acceso_propietario import (
     validar_token_propietario,
 )

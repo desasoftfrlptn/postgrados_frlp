@@ -5,8 +5,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.authentication.application.security import bearer_scheme, get_current_user
-from src.authentication.infrastructure.models import User
+from src.autenticacion.aplicacion.seguridad import bearer_scheme, get_current_user
+from src.autenticacion.infraestructura.modelos import User
 from src.carga_academica.aplicacion.acceso import obtener_acceso_vigente
 from src.db.session import get_db
 from src.inscripcion.application.acceso_propietario import obtener_legajo_por_token

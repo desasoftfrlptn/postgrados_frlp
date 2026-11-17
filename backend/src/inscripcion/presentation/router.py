@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 
 from src.core.config import settings
 from src.db.session import get_db
+from src.inscripcion.application.estado_documental import obtener_documentos_requeridos
 from src.inscripcion.application.gestion_documentos import (
     CargaDocumentalNoPermitida,
     DocumentoDuplicado,
@@ -257,12 +258,15 @@ async def crear_inscripcion(
         "archivo_posgrado": archivo_posgrado,
         "archivo_beca": archivo_beca,
     }
+    requeridos = set(
+        obtener_documentos_requeridos(
+            solicita_beca=data.solicita_beca,
+            titulo_posgrado=data.titulo_posgrado,
+        )
+    )
     documentos: list[DocumentoValidado] = []
-    for field, (tipo, required) in TIPOS_DOCUMENTO.items():
-        is_required = required or (
-            field == "archivo_posgrado" and bool(data.titulo_posgrado)
-        ) or (field == "archivo_beca" and data.solicita_beca)
-        documento = await _validar_documento(uploads[field], tipo, is_required)
+    for field, (tipo, _) in TIPOS_DOCUMENTO.items():
+        documento = await _validar_documento(uploads[field], tipo, tipo in requeridos)
         if documento is not None:
             documentos.append(documento)
 

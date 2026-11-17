@@ -10,12 +10,15 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from src.authentication.application.security import get_current_user
-from src.authentication.infrastructure.models import User
-from src.authentication.presentation.router import router as autenticacion_router
+from src.autenticacion.aplicacion.seguridad import get_current_user
+from src.autenticacion.infraestructura.modelos import User
+from src.autenticacion.presentacion.router import router as autenticacion_router
 from src.carga_academica.presentacion.router import router as seminarios_router
 from src.carga_academica.presentacion.router import router_legajos as carga_legajos_router
-from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
+from src.carga_academica.aplicacion.recordatorios import (
+    enviar_recordatorios,
+    enviar_recordatorios_asistencia,
+)
 from src.core.config import settings
 from src.db.session import SessionLocal
 from src.inscripcion.application.vencer_reservas import vencer_reservas
@@ -92,6 +95,7 @@ async def _ejecutar_tarea_diaria() -> None:
 def _procesar_recordatorios_docentes() -> None:
     with SessionLocal() as session:
         enviar_recordatorios(session)
+        enviar_recordatorios_asistencia(session)
 
 
 async def _ejecutar_recordatorios_docentes() -> None:

@@ -11,7 +11,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from main import app
-from src.authentication.infrastructure.models import AuthRefreshSession, User
+from src.autenticacion.infraestructura.modelos import AuthRefreshSession, User
 from src.core.config import settings
 from src.db.base import Base
 from src.db.session import get_db
