@@ -27,6 +27,16 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchSimulado);
 });
 
+it("descarga un documento con Bearer y conserva la respuesta binaria", async () => {
+  fetchSimulado.mockResolvedValueOnce(new Response("%PDF-1.4", {
+    headers: { "Content-Type": "application/pdf" },
+  }));
+  const archivo = await api.descargar("/documentos/1/download", "token-prueba");
+  expect(await archivo.text()).toBe("%PDF-1.4");
+  expect(new Headers(fetchSimulado.mock.calls[0][1]?.headers).get("Authorization"))
+    .toBe("Bearer token-prueba");
+});
+
 describe("Cliente HTTP", () => {
   it("envía el token en Authorization", async () => {
     fetchSimulado.mockResolvedValueOnce(

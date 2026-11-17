@@ -158,9 +158,11 @@ export default function GestionInscripcion({
   }, [base, token, onEstadoActualizado]);
 
   useEffect(() => {
-    void cargar();
+    // Programar la consulta permite cancelar el inicio al desmontar la vista.
+    const inicio = window.setTimeout(() => void cargar(), 0);
 
     return () => {
+      window.clearTimeout(inicio);
       solicitudActual.current += 1;
     };
   }, [cargar]);

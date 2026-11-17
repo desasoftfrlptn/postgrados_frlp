@@ -112,6 +112,25 @@ function ContenidoDetalle({
   const [cargandoDocumentacion, setCargandoDocumentacion] =
     useState(true);
   const [errorDocumentacion, setErrorDocumentacion] = useState("");
+  const [descargando, setDescargando] = useState<string | null>(null);
+
+  const descargar = async (documento: DocumentoLegajo) => {
+    setDescargando(documento.id);
+    setErrorDocumentacion("");
+    try {
+      const archivo = await api.descargar(`/documentos/${documento.id}/download`, token);
+      const url = URL.createObjectURL(archivo);
+      const enlace = document.createElement("a");
+      enlace.href = url;
+      enlace.download = `${documento.tipo}.pdf`;
+      enlace.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setErrorDocumentacion(error instanceof Error ? error.message : "No se pudo descargar el documento.");
+    } finally {
+      setDescargando(null);
+    }
+  };
 
   useEffect(() => {
     let activo = true;
@@ -341,6 +360,9 @@ function ContenidoDetalle({
                   <ul>
                     {documentos.map((documento) => (
                       <li key={documento.id}>
+                        <button type="button" disabled={descargando !== null} onClick={() => void descargar(documento)}>
+                          {descargando === documento.id ? "Descargando…" : "Descargar PDF"}
+                        </button>{" "}
                         {nombresDocumentos[documento.tipo] ??
                           documento.tipo}
                         {" — "}
