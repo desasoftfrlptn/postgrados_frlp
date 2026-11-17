@@ -112,3 +112,7 @@ class LegajoActualizarPerfil(BaseModel):
     provincia: Optional[str] = None
     pais: Optional[str] = None
     nacionalidad: Optional[str] = None
+
+class EstadoInscripcionRespuesta(BaseModel):
+    numero_seguimiento: str
+    estado: str

@@ -49,6 +49,7 @@ from src.inscripcion.infraestructura.repositorio import (
 )
 from src.inscripcion.presentacion.esquemas import (
     DocumentacionLegajoRespuesta,
+    EstadoInscripcionRespuesta,
     LegajoActualizarPerfil,
     LegajoCrear,
     LegajoRespuesta,
@@ -533,6 +534,32 @@ async def actualizar_mi_legajo(
     await db.refresh(legajo_actualizado)
     return legajo_actualizado
 
+@enrutador.get(
+    "/seguimiento/{numero_seguimiento}",
+    response_model=EstadoInscripcionRespuesta,
+)
+async def consultar_estado_inscripcion(
+    numero_seguimiento: str,
+    dni_pasaporte: str,
+    db: AsyncSession = Depends(get_db),
+):
+    legajo = await db.scalar(
+        select(LegajoORM).where(
+            LegajoORM.numero_seguimiento == numero_seguimiento,
+            LegajoORM.dni_pasaporte == dni_pasaporte,
+        )
+    )
+
+    if legajo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontró una inscripción con esos datos.",
+        )
+
+    return EstadoInscripcionRespuesta(
+        numero_seguimiento=legajo.numero_seguimiento,
+        estado=legajo.estado,
+    )
 
 @enrutador.get(
     "/{legajo_id}",
