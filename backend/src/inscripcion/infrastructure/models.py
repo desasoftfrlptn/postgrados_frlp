@@ -29,6 +29,7 @@ class Cohorte(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
     fecha_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
+    fecha_proxima_apertura: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     legajos: Mapped[list["Legajo"]] = relationship(back_populates="cohorte")
 

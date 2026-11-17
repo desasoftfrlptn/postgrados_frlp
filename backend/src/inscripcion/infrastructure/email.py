@@ -136,3 +136,34 @@ def enviar_email_aprobacion(
         ),
     )
     _enviar(mensaje, "el aviso de aprobación del legajo")
+
+
+def enviar_email_vencimiento_reservas(
+    destinatario: str,
+    legajos: list[tuple[str, str]],
+) -> None:
+    listado_texto = "\n".join(
+        f"- {numero or identificador} (ID: {identificador})"
+        for numero, identificador in legajos
+    )
+    listado_html = "".join(
+        f"<li>{escape(numero or identificador)} "
+        f"(ID: {escape(identificador)})</li>"
+        for numero, identificador in legajos
+    )
+    texto = (
+        "Se venció la reserva de vacante de los siguientes legajos, "
+        "que pasaron de Completado a Vencido:\n\n"
+        f"{listado_texto}\n"
+    )
+    mensaje = _crear_mensaje(
+        destinatario,
+        "Vencimiento de reservas de vacante - Posgrado UTN FRLP",
+        texto,
+        (
+            "<p>Se venció la reserva de vacante de los siguientes legajos, "
+            "que pasaron de <strong>Completado</strong> a <strong>Vencido</strong>:</p>"
+            f"<ul>{listado_html}</ul>"
+        ),
+    )
+    _enviar(mensaje, "el aviso de vencimiento de reservas")

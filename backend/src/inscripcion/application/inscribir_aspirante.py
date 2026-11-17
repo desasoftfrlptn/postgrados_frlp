@@ -47,12 +47,12 @@ def inscribir_aspirante(
     data: InscripcionCreate,
     documentos: list[DocumentoValidado],
 ) -> Legajo:
-    cohorte = session.scalar(
-        select(Cohorte)
-        .where(Cohorte.inscripcion_abierta.is_(True))
-        .order_by(Cohorte.anio.desc())
-        .limit(1)
-    )
+    consulta_cohorte = select(Cohorte).where(Cohorte.inscripcion_abierta.is_(True))
+    if data.cohorte_id is not None:
+        consulta_cohorte = consulta_cohorte.where(Cohorte.id == data.cohorte_id)
+    else:
+        consulta_cohorte = consulta_cohorte.order_by(Cohorte.anio.desc()).limit(1)
+    cohorte = session.scalar(consulta_cohorte)
     if cohorte is None:
         raise InscripcionNoDisponible
 

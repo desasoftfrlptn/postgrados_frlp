@@ -42,13 +42,27 @@ todavía no está disponible. Las rutas API pueden exigir roles con
 `requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
 con el Módulo B cuando exista el modelo de seminarios.
 
-`GET /api/v1/legajos` devuelve el listado básico para coordinación y requiere un
-JWT válido con rol `COORDINADOR`. Incluye los datos de identificación del legajo,
-`solicita_beca`, `tipo_beca` y, si existe, el tipo del documento `FORM_BECA`;
-nunca expone rutas de almacenamiento ni URLs de archivos.
-Admite combinar los filtros opcionales `estado`, `cohorte_id` (UUID), `carrera`
-y `tiene_beca` (booleano, `true`/`false`); este último filtra por
+`GET /api/v1/legajos`, `GET /api/v1/legajos/{id}`,
+`GET /api/v1/legajos/exportar` y las rutas de gestión de cohortes requieren un
+JWT válido con rol `COORDINADOR`. El listado incluye los datos de identificación
+del legajo, `solicita_beca`, `tipo_beca` y, si existe, el tipo del documento
+`FORM_BECA`; nunca expone rutas de almacenamiento ni checksums.
+Los filtros combinables son `estado`, `cohorte_id` (UUID), `carrera`,
+`tiene_beca` (`true`/`false`), `dni` exacto y `apellido` parcial
+case-insensitive (mínimo tres caracteres). `tiene_beca` filtra por
 `solicita_beca` y, si se omite, no limita los resultados.
+
+`GET /api/v1/cohortes` es público y devuelve únicamente las cohortes abiertas y
+los datos mínimos para elegir una en el formulario. `GET
+/api/v1/cohortes/proxima-apertura` devuelve la fecha pública más próxima que
+informó coordinación. `GET /api/v1/cohortes/gestion`, `POST /api/v1/cohortes` y
+`PATCH /api/v1/cohortes/{id}/inscripcion` requieren `COORDINADOR`; al cerrar un
+período se debe informar la fecha prevista de reapertura. Las cohortes mantienen
+períodos independientes.
+
+La exportación aplica los mismos filtros del listado, genera un XLSX de hasta
+500 resultados con encabezados en negrita, anchos ajustados y autofiltro. Su
+nombre incluye cohorte y fecha cuando se filtra por cohorte.
 
 En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
 desde `backend` para crear cuentas locales:
@@ -76,10 +90,14 @@ son `archivo_preinscripcion`, `archivo_dni`, `archivo_titulo`,
 `archivo_partida` y `archivo_cuit`. `archivo_posgrado` es obligatorio si se
 informa `titulo_posgrado`; `archivo_beca` si se solicita beca.
 
-Se aceptan PDFs de hasta el límite configurado y se comprueba tanto el MIME
+El campo opcional `cohorte_id` selecciona una cohorte específica; si se omite,
+se mantiene la selección automática de la cohorte abierta más reciente. Se
+aceptan PDFs de hasta el límite configurado y se comprueba tanto el MIME
 declarado como la firma del contenido. Una respuesta `201` contiene el código
 de seguimiento y el estado inicial `Pendiente`; se devuelve `409` para DNI/email
 duplicados o si no hay cohorte abierta.
+La ruta admite hasta 10 envíos por IP en una ventana fija de una hora; al superar
+el límite responde `429` con el encabezado `Retry-After`.
 
 Al recibir una inscripción, el backend envía una confirmación HTML y de texto al
 email principal usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
@@ -100,6 +118,15 @@ una alternativa de texto para clientes de correo que no renderizan HTML. Se
 envían mediante `BackgroundTasks` y el cliente SMTP compartido; los errores se
 registran sin bloquear la operación. Como documenta ADR-006, estas tareas no
 son una cola durable y no tienen reintentos persistentes.
+
+Cada día a las 03:00 (hora local del servidor), la tarea del ciclo de vida de
+FastAPI vence las reservas que llevan 30 días en `Completado` sin una transición
+posterior. El cambio queda auditado y se envía un correo con los legajos
+afectados a cada usuario activo con rol `COORDINADOR`.
+
+Todas las respuestas HTTP incluyen los encabezados de seguridad configurados
+por `MiddlewareEncabezadosSeguridad`. CORS permite el origen definido en
+`CORS_ORIGIN`.
 
 ## Servicios compartidos
 

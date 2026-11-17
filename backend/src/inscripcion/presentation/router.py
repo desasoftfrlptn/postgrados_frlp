@@ -33,10 +33,16 @@ from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
 from src.inscripcion.infrastructure.models import DocumentoInscripcion
 from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
 from src.shared.autorizacion.permisos import requerir_roles
+from src.shared.limite_solicitudes.servicio import dependencia_limite_solicitudes
 
 router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
 documentos_router = APIRouter(prefix="/api/v1/documentos", tags=["documentos"])
 _LOGGER = logging.getLogger(__name__)
+_limite_inscripciones = dependencia_limite_solicitudes(
+    limite=10,
+    segundos_ventana=3600,
+    alcance="inscripcion",
+)
 
 
 @documentos_router.get("/{documento_id}/download")
@@ -134,7 +140,12 @@ async def _validar_documento(
     return DocumentoValidado(tipo=tipo, contenido=contenido)
 
 
-@router.post("", response_model=InscripcionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=InscripcionResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_limite_inscripciones)],
+)
 async def crear_inscripcion(
     tareas_fondo: BackgroundTasks,
     carreras: str = Form(...),
@@ -156,6 +167,7 @@ async def crear_inscripcion(
     titulo_posgrado: str | None = Form(default=None),
     solicita_beca: bool = Form(default=False),
     tipo_beca: str | None = Form(default=None),
+    cohorte_id: str | None = Form(default=None),
     archivo_preinscripcion: UploadFile | None = File(default=None),
     archivo_dni: UploadFile | None = File(default=None),
     archivo_titulo: UploadFile | None = File(default=None),
@@ -190,6 +202,7 @@ async def crear_inscripcion(
                 "motivacion": motivacion,
                 "solicita_beca": solicita_beca,
                 "tipo_beca": tipo_beca,
+                "cohorte_id": cohorte_id,
             }
         )
     except JSONDecodeError as error:
@@ -231,7 +244,11 @@ async def crear_inscripcion(
     except InscripcionNoDisponible as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No hay una cohorte con inscripción abierta",
+            detail=(
+                "La cohorte indicada no existe o no tiene inscripción abierta"
+                if data.cohorte_id is not None
+                else "No hay una cohorte con inscripción abierta"
+            ),
         ) from error
     except InscripcionDuplicada as error:
         messages = {

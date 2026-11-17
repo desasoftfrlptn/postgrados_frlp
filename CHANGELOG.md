@@ -19,6 +19,11 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 - Endpoint público de inscripción con validación de datos, unicidad por cohorte y almacenamiento privado de PDFs
 - Formulario web conectado al endpoint de inscripción, con selección de beca, errores del servidor y código de seguimiento
 - Punto de entrada FastAPI ubicado en `backend/main.py`, de acuerdo con la arquitectura del backend
+- Listado, detalle y búsqueda combinable de legajos; exportación XLSX filtrada con límite de 500 filas
+- Gestión de cohortes y fechas públicas de próxima apertura, con selección opcional de cohorte al inscribirse
+- Límite persistente de 10 inscripciones por IP por hora y encabezados de seguridad HTTP globales
+- Vencimiento diario de reservas tras 30 días en `Completado`, con auditoría y aviso por email a coordinadores activos
+- Migración para registrar la próxima fecha de apertura por cohorte y reparación de la cadena Alembic
 - Reglas de Git para excluir archivos de bytecode de Python del repositorio
 - Reglas de exclusión centralizadas en el `.gitignore` raíz y agrupadas por capa
 

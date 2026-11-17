@@ -938,20 +938,23 @@ POST   /api/v1/auth/refresh
 POST   /api/v1/auth/logout
 
 # Cohortes
-GET    /api/v1/cohortes
+GET    /api/v1/cohortes                         [Público] → cohortes abiertas mínimas
+GET    /api/v1/cohortes/proxima-apertura        [Público] → fecha prevista
+GET    /api/v1/cohortes/gestion                 [COORDINADOR] → listado completo
 POST   /api/v1/cohortes                         [COORDINADOR]
 PATCH  /api/v1/cohortes/{id}/inscripcion        [COORDINADOR] → abre/cierra
 
 # Legajos (Módulo Core)
-POST   /api/v1/legajos                          [Público] → inscripción
+POST   /api/v1/inscripciones                    [Público] → inscripción
 GET    /api/v1/legajos                          [COORDINADOR] → listado con filtros
-GET    /api/v1/legajos/{id}                     [COORDINADOR, dueño]
-PATCH  /api/v1/legajos/{id}/estado              [COORDINADOR] → transición
+GET    /api/v1/legajos/{id}                     [COORDINADOR] → detalle
+POST   /api/v1/legajos/{id}/transiciones        [COORDINADOR] → transición
+POST   /api/v1/legajos/{id}/correccion          [Público] → corrección con token
 GET    /api/v1/legajos/exportar                 [COORDINADOR] → Excel
 
 # Documentos (Módulo Core)
 POST   /api/v1/legajos/{id}/documentos          [Aspirante dueño] → upload
-GET    /api/v1/documentos/{id}/download         [COORDINADOR, dueño] → PDF stream
+GET    /api/v1/documentos/{id}/download         [COORDINADOR] → PDF stream
 
 # Seminarios y carga académica (Módulo B)
 GET    /api/v1/seminarios/{id}/estudiantes      [DOCENTE del seminario]
@@ -978,7 +981,7 @@ GET    /api/v1/analytics/exportar               [COORDINADOR] → Excel
 | Job | Horario | Responsabilidad | FastAPI | NestJS |
 |-----|:-------:|----------------|:-------:|:------:|
 | `recalcular_semaforos` | 2:00 AM | Recalcula el semáforo de todos los estudiantes activos | APScheduler | `@Cron('0 2 * * *')` |
-| `vencer_reservas` | 3:00 AM | Pasa a "Vencido" los legajos "Completados" hace >30 días | APScheduler | `@Cron('0 3 * * *')` |
+| `vencer_reservas` | 3:00 AM | Pasa a "Vencido" los legajos "Completados" hace ≥30 días y notifica | FastAPI lifespan (asyncio) | `@Cron('0 3 * * *')` |
 | `recordatorio_docentes` | 8:00 AM | Email a docentes sin cargar notas (faltando ≤48hs) | APScheduler | `@Cron('0 8 * * *')` |
 
 ---
