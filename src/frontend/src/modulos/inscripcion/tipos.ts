@@ -31,3 +31,8 @@ export interface DatosInscripcion {
   solicitudBeca: string;
 }
   */
+
+export interface EstadoInscripcion {
+  numero_seguimiento: string;
+  estado: string;
+}
