@@ -25,6 +25,8 @@ from src.seguimiento_graduacion.presentacion.esquemas import (
     ConfirmarPlan,
     CrearAsignacion,
     CrearAvance,
+    EstadisticaCohorteRespuesta,
+    EstadisticasConduccionRespuesta,
     MarcarVerde,
     PlanRespuesta,
     RecalculoRespuesta,
@@ -32,6 +34,8 @@ from src.seguimiento_graduacion.presentacion.esquemas import (
     SemaforoRespuesta,
 )
 from src.seguimiento_graduacion.presentacion.router import exigir_cpr
+from src.inscripcion.presentation.schemas import Carrera
+from src.shared.auditoria.modelos import EventoAuditoria
 from src.shared.auditoria.servicio import registrar_evento_auditoria
 from src.shared.autorizacion.permisos import requerir_roles
 from src.shared.http.excel import generar_excel
@@ -335,4 +339,115 @@ def ejecutar_recalculo(
         cambios=cambios,
         alertas_enviadas=enviados,
         alertas_pendientes=pendientes_sin_destinatario + entregas_pendientes,
+    )
+
+
+@router.get("/graduacion/estadisticas", response_model=EstadisticasConduccionRespuesta)
+def obtener_estadisticas_conduccion(
+    cohorte_id: UUID | None = None,
+    carrera: Carrera | None = None,
+    session: Session = Depends(get_db),
+    _: User = Depends(requerir_roles("COORDINADOR")),
+) -> EstadisticasConduccionRespuesta:
+    consulta_cohortes = select(Cohorte).order_by(Cohorte.anio.asc())
+    if cohorte_id is not None:
+        consulta_cohortes = consulta_cohortes.where(Cohorte.id == cohorte_id)
+    cohortes = {c.id: c for c in session.scalars(consulta_cohortes)}
+
+    consulta_legajos = select(Legajo)
+    if cohorte_id is not None:
+        consulta_legajos = consulta_legajos.where(Legajo.cohorte_id == cohorte_id)
+    legajos = [
+        legajo
+        for legajo in session.scalars(consulta_legajos)
+        if carrera is None or carrera in legajo.carreras
+    ]
+
+    estados_desgranamiento = {"Baja", "Vencido", "Rechazado"}
+    estados_retenidos = {"Activo", "En Riesgo", "Graduado", "Completado"}
+
+    por_cohorte_map: dict[UUID, list[Legajo]] = {cid: [] for cid in cohortes}
+    for legajo in legajos:
+        if legajo.cohorte_id in por_cohorte_map:
+            por_cohorte_map[legajo.cohorte_id].append(legajo)
+
+    por_cohorte: list[EstadisticaCohorteRespuesta] = []
+    for cid, cohorte in cohortes.items():
+        grupo = por_cohorte_map[cid]
+        total = len(grupo)
+        graduados = sum(1 for item in grupo if item.estado == "Graduado")
+        activos = sum(1 for item in grupo if item.estado in {"Activo", "En Riesgo"})
+        desgranados = sum(1 for item in grupo if item.estado in estados_desgranamiento)
+        retenidos = sum(1 for item in grupo if item.estado in estados_retenidos)
+        por_cohorte.append(
+            EstadisticaCohorteRespuesta(
+                cohorte_id=cid,
+                cohorte_nombre=cohorte.nombre,
+                anio=cohorte.anio,
+                total_inscriptos=total,
+                activos=activos,
+                graduados=graduados,
+                desgranamiento_cantidad=desgranados,
+                tasa_retencion=round((retenidos / total) * 100, 1) if total else 0.0,
+                desgranamiento=round((desgranados / total) * 100, 1) if total else 0.0,
+            )
+        )
+
+    total_inscriptos = len(legajos)
+    total_graduados = sum(1 for item in legajos if item.estado == "Graduado")
+    total_desgranados = sum(1 for item in legajos if item.estado in estados_desgranamiento)
+    total_retenidos = sum(1 for item in legajos if item.estado in estados_retenidos)
+
+    # Promedio de tiempo de graduación (días desde fecha_inscripcion hasta evento Graduado)
+    ids_graduados = {str(item.id): item for item in legajos if item.estado == "Graduado"}
+    promedio_dias: float | None = None
+    if ids_graduados:
+        eventos_grad = list(
+            session.scalars(
+                select(EventoAuditoria)
+                .where(
+                    EventoAuditoria.tipo_recurso == "legajo",
+                    EventoAuditoria.id_recurso.in_(ids_graduados.keys()),
+                )
+                .order_by(EventoAuditoria.creado_en.desc())
+            )
+        )
+        fecha_grad_por_legajo: dict[str, datetime] = {}
+        for evento in eventos_grad:
+            if (
+                evento.id_recurso
+                and evento.id_recurso not in fecha_grad_por_legajo
+                and (evento.detalles or {}).get("estado_nuevo") == "Graduado"
+            ):
+                fecha_grad_por_legajo[evento.id_recurso] = evento.creado_en
+
+        duraciones: list[float] = []
+        for lid, legajo in ids_graduados.items():
+            fecha_fin = fecha_grad_por_legajo.get(lid)
+            if fecha_fin is not None:
+                inicio = legajo.fecha_inscripcion
+                if inicio.tzinfo is None:
+                    inicio = inicio.replace(tzinfo=timezone.utc)
+                if fecha_fin.tzinfo is None:
+                    fecha_fin = fecha_fin.replace(tzinfo=timezone.utc)
+                duraciones.append(max(0.0, (fecha_fin - inicio).total_seconds() / 86400))
+        if duraciones:
+            promedio_dias = round(sum(duraciones) / len(duraciones), 1)
+
+    ids_legajos_filtrados = {item.id for item in legajos}
+    en_riesgo = sum(
+        1
+        for item in _listado_riesgo(session)
+        if item.legajo_id in ids_legajos_filtrados
+        and (carrera is None or item.carrera == carrera)
+    )
+
+    return EstadisticasConduccionRespuesta(
+        total_inscriptos=total_inscriptos,
+        total_graduados=total_graduados,
+        tasa_retencion=round((total_retenidos / total_inscriptos) * 100, 1) if total_inscriptos else 0.0,
+        desgranamiento=round((total_desgranados / total_inscriptos) * 100, 1) if total_inscriptos else 0.0,
+        promedio_tiempo_graduacion_dias=promedio_dias,
+        estudiantes_en_riesgo=en_riesgo,
+        por_cohorte=por_cohorte,
     )

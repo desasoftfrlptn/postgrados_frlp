@@ -212,3 +212,25 @@ export interface AsignacionCoordinador {
     carrera: TipoCarrera;
     usuario_id: string;
 }
+
+export interface EstadisticaCohorte {
+    cohorte_id: string;
+    cohorte_nombre: string;
+    anio: number;
+    total_inscriptos: number;
+    activos: number;
+    graduados: number;
+    desgranamiento_cantidad: number;
+    tasa_retencion: number;
+    desgranamiento: number;
+}
+
+export interface EstadisticasConduccion {
+    total_inscriptos: number;
+    total_graduados: number;
+    tasa_retencion: number;
+    desgranamiento: number;
+    promedio_tiempo_graduacion_dias: number | null;
+    estudiantes_en_riesgo: number;
+    por_cohorte: EstadisticaCohorte[];
+}

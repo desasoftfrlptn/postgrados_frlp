@@ -177,5 +177,12 @@ def exportar_planilla_excel(planilla: PlanillaRespuesta) -> BytesIO:
             *["P" if celda.presente else "A" for celda in estudiante.asistencias],
             str(estudiante.porcentaje_asistencia),
         ])
-    return generar_excel(filas, "Asistencia")
+    return generar_excel(
+        filas,
+        "Asistencia",
+        metadatos={
+            "Seminario": planilla.seminario.nombre,
+            "Docente": planilla.seminario.docente_nombre,
+        },
+    )
 

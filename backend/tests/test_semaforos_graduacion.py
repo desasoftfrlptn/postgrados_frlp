@@ -286,3 +286,17 @@ def test_alerta_se_posterga_hasta_recalcular_plan_reconfirmado(entorno, monkeypa
     _confirmar(cliente, cohorte, "Especialización", tokens)
     assert enviar_alertas_pendientes(session) == 0
     assert mensajes == []
+
+
+def test_estadisticas_conduccion_retorna_las_cinco_metricas(entorno) -> None:
+    cliente, _, _, _, tokens, _ = entorno
+    resp = cliente.get("/api/v1/graduacion/estadisticas", headers=_cabecera(tokens))
+    assert resp.status_code == 200
+    datos = resp.json()
+    assert datos["total_inscriptos"] == 1
+    assert datos["tasa_retencion"] == 100.0
+    assert datos["desgranamiento"] == 0.0
+    assert datos["promedio_tiempo_graduacion_dias"] is None
+    assert datos["estudiantes_en_riesgo"] == 0
+    assert len(datos["por_cohorte"]) == 1
+    assert datos["por_cohorte"][0]["total_inscriptos"] == 1

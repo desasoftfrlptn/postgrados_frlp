@@ -13,7 +13,7 @@ import {
 import { Line } from 'react-chartjs-2';
 
 import { extraerErrorApi, useApiClient } from '../shared/api/useApiClient';
-import type { Cohorte, EstudianteEnRiesgo, LegajoListado } from '../types';
+import type { Cohorte, EstadisticasConduccion } from '../types';
 
 ChartJS.register(
     CategoryScale,
@@ -26,24 +26,13 @@ ChartJS.register(
     Filler,
 );
 
-const ESTADOS_ORDENADOS = [
-    'Pendiente',
-    'En Revisión',
-    'Observado',
-    'Completado',
-    'Activo',
-    'En Riesgo',
-    'Graduado',
-];
-
 export default function PanelConduccion() {
     const { solicitar, descargarArchivo } = useApiClient();
 
     const [cohortes, setCohortes] = useState<Cohorte[]>([]);
     const [cohorteSeleccionada, setCohorteSeleccionada] = useState('Todas');
     const [carreraSeleccionada, setCarreraSeleccionada] = useState('Todas');
-    const [legajos, setLegajos] = useState<LegajoListado[]>([]);
-    const [enRiesgo, setEnRiesgo] = useState<EstudianteEnRiesgo[]>([]);
+    const [estadisticas, setEstadisticas] = useState<EstadisticasConduccion | null>(null);
     const [cargando, setCargando] = useState(true);
     const [exportando, setExportando] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -80,23 +69,13 @@ export default function PanelConduccion() {
                 if (carreraSeleccionada !== 'Todas') params.set('carrera', carreraSeleccionada);
                 const qs = params.toString() ? `?${params.toString()}` : '';
 
-                const [respLegajos, respRiesgo] = await Promise.all([
-                    solicitar(`/legajos${qs}`),
-                    solicitar('/graduacion/en-riesgo?limit=500'),
-                ]);
-
-                if (!respLegajos.ok) {
-                    throw new Error(await extraerErrorApi(respLegajos, 'No se pudieron cargar los legajos.'));
+                const resp = await solicitar(`/graduacion/estadisticas${qs}`);
+                if (!resp.ok) {
+                    throw new Error(await extraerErrorApi(resp, 'No se pudieron cargar las estadísticas.'));
                 }
-                if (!respRiesgo.ok) {
-                    throw new Error(await extraerErrorApi(respRiesgo, 'No se pudieron cargar los estudiantes en riesgo.'));
-                }
-
-                const datosLegajos: LegajoListado[] = await respLegajos.json();
-                const datosRiesgo: EstudianteEnRiesgo[] = await respRiesgo.json();
+                const datos: EstadisticasConduccion = await resp.json();
                 if (!cancelado) {
-                    setLegajos(datosLegajos);
-                    setEnRiesgo(datosRiesgo);
+                    setEstadisticas(datos);
                     setError(null);
                 }
             } catch (err) {
@@ -115,36 +94,14 @@ export default function PanelConduccion() {
         };
     }, [carreraSeleccionada, cohorteSeleccionada, solicitar]);
 
-    const totalInscriptos = legajos.length;
-    const graduados = useMemo(
-        () => legajos.filter((legajo) => legajo.estado === 'Graduado').length,
-        [legajos],
-    );
-    const estudiantesEnRiesgo = useMemo(() => {
-        const filtrados = carreraSeleccionada === 'Todas'
-            ? enRiesgo
-            : enRiesgo.filter((item) => item.carrera === carreraSeleccionada);
-        if (cohorteSeleccionada === 'Todas') {
-            return filtrados.length;
-        }
-        const idsCohorte = new Set(legajos.map((item) => item.id));
-        return filtrados.filter((item) => idsCohorte.has(item.legajo_id)).length;
-    }, [carreraSeleccionada, cohorteSeleccionada, enRiesgo, legajos]);
-
     const chartData = useMemo(() => {
-        const conteoPorEstado = new Map<string, number>();
-        for (const estado of ESTADOS_ORDENADOS) {
-            conteoPorEstado.set(estado, 0);
-        }
-        for (const legajo of legajos) {
-            conteoPorEstado.set(legajo.estado, (conteoPorEstado.get(legajo.estado) ?? 0) + 1);
-        }
+        const porCohorte = estadisticas?.por_cohorte ?? [];
         return {
-            labels: ESTADOS_ORDENADOS,
+            labels: porCohorte.map((item) => `${item.cohorte_nombre} (${item.anio})`),
             datasets: [
                 {
-                    label: 'Legajos',
-                    data: ESTADOS_ORDENADOS.map((estado) => conteoPorEstado.get(estado) ?? 0),
+                    label: 'Inscriptos por cohorte',
+                    data: porCohorte.map((item) => item.total_inscriptos),
                     borderColor: '#2a3441',
                     backgroundColor: 'rgba(42, 52, 65, 0.08)',
                     fill: true,
@@ -155,7 +112,7 @@ export default function PanelConduccion() {
                 },
             ],
         };
-    }, [legajos]);
+    }, [estadisticas]);
 
     const chartOptions = {
         responsive: true,
@@ -195,7 +152,7 @@ export default function PanelConduccion() {
 
     return (
         <div className="flex flex-col flex-grow bg-white font-sans text-slate-800 p-8">
-            <main className="max-w-4xl mx-auto w-full flex-grow flex flex-col">
+            <main className="max-w-5xl mx-auto w-full flex-grow flex flex-col">
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-bold mb-2">Panel de Conducción</h1>
                     <h2 className="text-xl text-slate-500">Estadísticas y Reportes Académicos</h2>
@@ -239,34 +196,86 @@ export default function PanelConduccion() {
                     </div>
                 </div>
 
-                {/* Indicadores dinámicos */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center shadow-sm">
-                        <span className="text-sm font-bold text-slate-500 mb-2">Total Inscriptos</span>
-                        <span className="text-5xl font-extrabold text-[#2a3441]">
-                            {cargando ? '...' : totalInscriptos}
+                {/* 5 Métricas Requeridas (RF-REP-001) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <div className="border border-slate-200 rounded-lg p-5 flex flex-col items-center justify-center shadow-sm text-center">
+                        <span className="text-xs font-bold text-slate-500 mb-2 uppercase">Total Inscriptos</span>
+                        <span className="text-4xl font-extrabold text-[#2a3441]">
+                            {cargando ? '...' : (estadisticas?.total_inscriptos ?? 0)}
                         </span>
                     </div>
-                    <div className="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center shadow-sm">
-                        <span className="text-sm font-bold text-slate-500 mb-2">Graduados</span>
-                        <span className="text-5xl font-extrabold text-[#2a3441]">
-                            {cargando ? '...' : graduados}
+                    <div className="border border-slate-200 rounded-lg p-5 flex flex-col items-center justify-center shadow-sm text-center">
+                        <span className="text-xs font-bold text-slate-500 mb-2 uppercase">Tasa de Retención</span>
+                        <span className="text-4xl font-extrabold text-[#2a3441]">
+                            {cargando ? '...' : `${estadisticas?.tasa_retencion ?? 0}%`}
                         </span>
                     </div>
-                    <div className="border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center shadow-sm">
-                        <span className="text-sm font-bold text-slate-500 mb-2">Estudiantes en Riesgo</span>
-                        <span className="text-5xl font-extrabold text-[#2a3441]">
-                            {cargando ? '...' : estudiantesEnRiesgo}
+                    <div className="border border-slate-200 rounded-lg p-5 flex flex-col items-center justify-center shadow-sm text-center">
+                        <span className="text-xs font-bold text-slate-500 mb-2 uppercase">Prom. Graduación</span>
+                        <span className="text-3xl font-extrabold text-[#2a3441]">
+                            {cargando
+                                ? '...'
+                                : estadisticas?.promedio_tiempo_graduacion_dias !== null && estadisticas?.promedio_tiempo_graduacion_dias !== undefined
+                                    ? `${estadisticas.promedio_tiempo_graduacion_dias} d`
+                                    : 'N/D'}
+                        </span>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg p-5 flex flex-col items-center justify-center shadow-sm text-center">
+                        <span className="text-xs font-bold text-slate-500 mb-2 uppercase">En Riesgo (Rojo)</span>
+                        <span className="text-4xl font-extrabold text-red-700">
+                            {cargando ? '...' : (estadisticas?.estudiantes_en_riesgo ?? 0)}
+                        </span>
+                    </div>
+                    <div className="border border-slate-200 rounded-lg p-5 flex flex-col items-center justify-center shadow-sm text-center">
+                        <span className="text-xs font-bold text-slate-500 mb-2 uppercase">Desgranamiento</span>
+                        <span className="text-4xl font-extrabold text-[#2a3441]">
+                            {cargando ? '...' : `${estadisticas?.desgranamiento ?? 0}%`}
                         </span>
                     </div>
                 </div>
 
                 {/* Gráfico Real con Chart.js */}
-                <div className="border border-slate-200 rounded-lg p-6 shadow-sm mb-12">
-                    <h3 className="text-sm font-bold mb-6">Distribución de legajos por estado</h3>
+                <div className="border border-slate-200 rounded-lg p-6 shadow-sm mb-8">
+                    <h3 className="text-sm font-bold mb-6">Inscriptos por cohorte</h3>
                     <div className="h-64 w-full">
                         <Line data={chartData} options={chartOptions} />
                     </div>
+                </div>
+
+                {/* Desglose por cohorte (Inscriptos, Retención, Desgranamiento) */}
+                <div className="border border-slate-200 rounded-lg overflow-x-auto shadow-sm mb-8">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-[#2a3441] text-white text-xs uppercase font-bold">
+                            <tr>
+                                <th className="p-3">Cohorte</th>
+                                <th className="p-3 text-center">Inscriptos</th>
+                                <th className="p-3 text-center">Activos</th>
+                                <th className="p-3 text-center">Graduados</th>
+                                <th className="p-3 text-center">Retención</th>
+                                <th className="p-3 text-center">Desgranamiento</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                            {(estadisticas?.por_cohorte ?? []).length === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="p-6 text-center text-slate-500">
+                                        No hay datos para los filtros seleccionados.
+                                    </td>
+                                </tr>
+                            ) : (
+                                estadisticas?.por_cohorte.map((item) => (
+                                    <tr key={item.cohorte_id} className="border-b border-slate-100 hover:bg-slate-50">
+                                        <td className="p-3 font-medium">{item.cohorte_nombre} ({item.anio})</td>
+                                        <td className="p-3 text-center">{item.total_inscriptos}</td>
+                                        <td className="p-3 text-center">{item.activos}</td>
+                                        <td className="p-3 text-center">{item.graduados}</td>
+                                        <td className="p-3 text-center font-semibold text-green-700">{item.tasa_retencion}%</td>
+                                        <td className="p-3 text-center font-semibold text-amber-700">{item.desgranamiento}%</td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* Botón de exportación */}

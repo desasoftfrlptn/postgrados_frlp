@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from io import BytesIO
 from xml.sax.saxutils import escape
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -11,30 +12,74 @@ def _columna(indice: int) -> str:
     return letras
 
 
-def generar_excel(filas: list[list[str]], nombre_hoja: str) -> BytesIO:
+def _limpiar_xml(valor: str) -> str:
+    return "".join(
+        caracter
+        for caracter in valor
+        if caracter in "\t\n\r"
+        or 32 <= ord(caracter) <= 0xD7FF
+        or 0xE000 <= ord(caracter) <= 0xFFFD
+        or 0x10000 <= ord(caracter) <= 0x10FFFF
+    )
+
+
+def _construir_hoja_xml(filas: list[list[str]], *, con_autofiltro: bool) -> str:
+    cantidad_columnas = max((len(fila) for fila in filas), default=1)
+    anchos = [
+        min(
+            max(
+                (len(str(fila[indice])) for fila in filas if indice < len(fila)),
+                default=10,
+            ) + 2,
+            50,
+        )
+        for indice in range(cantidad_columnas)
+    ]
+    columnas_xml = "".join(
+        f'<col min="{indice}" max="{indice}" width="{ancho}" customWidth="1"/>'
+        for indice, ancho in enumerate(anchos, start=1)
+    )
     renglones = []
     for numero, fila in enumerate(filas, 1):
         celdas = []
         for indice, valor in enumerate(fila, 1):
-            texto = "".join(
-                caracter for caracter in valor
-                if caracter in "\t\n\r" or 32 <= ord(caracter) <= 0xD7FF
-                or 0xE000 <= ord(caracter) <= 0xFFFD
-                or 0x10000 <= ord(caracter) <= 0x10FFFF
-            )
+            texto = _limpiar_xml(str(valor))
             estilo = ' s="1"' if numero == 1 else ""
             celdas.append(
                 f'<c r="{_columna(indice)}{numero}" t="inlineStr"{estilo}>'
                 f'<is><t xml:space="preserve">{escape(texto)}</t></is></c>'
             )
         renglones.append(f'<row r="{numero}">{"".join(celdas)}</row>')
-    ultimo = _columna(len(filas[0])) if filas and filas[0] else "A"
-    hoja = (
+    ultimo = _columna(cantidad_columnas)
+    autofiltro = (
+        f'<autoFilter ref="A1:{ultimo}{max(len(filas), 1)}"/>'
+        if con_autofiltro
+        else ""
+    )
+    return (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"<cols>{columnas_xml}</cols>"
         f'<sheetData>{"".join(renglones)}</sheetData>'
-        f'<autoFilter ref="A1:{ultimo}{max(len(filas), 1)}"/></worksheet>'
+        f"{autofiltro}</worksheet>"
     )
+
+
+def generar_excel(
+    filas: list[list[str]],
+    nombre_hoja: str,
+    metadatos: dict[str, str] | None = None,
+) -> BytesIO:
+    hoja_datos = _construir_hoja_xml(filas, con_autofiltro=True)
+    filas_metadatos = [
+        ["Campo", "Valor"],
+        ["Fecha de generación", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")],
+    ]
+    if metadatos:
+        for clave, valor in metadatos.items():
+            filas_metadatos.append([clave, valor])
+    hoja_metadatos = _construir_hoja_xml(filas_metadatos, con_autofiltro=False)
+
     salida = BytesIO()
     with ZipFile(salida, "w", ZIP_DEFLATED) as archivo:
         archivo.writestr("[Content_Types].xml", (
@@ -43,6 +88,7 @@ def generar_excel(filas: list[list[str]], nombre_hoja: str) -> BytesIO:
             '<Default Extension="xml" ContentType="application/xml"/>'
             '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
             '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            '<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
             '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
             '</Types>'
         ))
@@ -54,12 +100,16 @@ def generar_excel(filas: list[list[str]], nombre_hoja: str) -> BytesIO:
         archivo.writestr("xl/workbook.xml", (
             '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
             'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-            f'<sheets><sheet name="{escape(nombre_hoja, {chr(34): "&quot;"})}" sheetId="1" r:id="rId1"/></sheets></workbook>'
+            '<sheets>'
+            f'<sheet name="{escape(nombre_hoja, {chr(34): "&quot;"})}" sheetId="1" r:id="rId1"/>'
+            '<sheet name="Metadatos" sheetId="2" r:id="rId2"/>'
+            '</sheets></workbook>'
         ))
         archivo.writestr("xl/_rels/workbook.xml.rels", (
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-            '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>'
+            '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
             '</Relationships>'
         ))
         archivo.writestr("xl/styles.xml", (
@@ -73,6 +123,7 @@ def generar_excel(filas: list[list[str]], nombre_hoja: str) -> BytesIO:
             '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>'
             '</styleSheet>'
         ))
-        archivo.writestr("xl/worksheets/sheet1.xml", hoja)
+        archivo.writestr("xl/worksheets/sheet1.xml", hoja_datos)
+        archivo.writestr("xl/worksheets/sheet2.xml", hoja_metadatos)
     salida.seek(0)
     return salida

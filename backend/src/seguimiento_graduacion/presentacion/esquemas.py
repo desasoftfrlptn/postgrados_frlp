@@ -156,3 +156,25 @@ class RecalculoRespuesta(BaseModel):
     cambios: int
     alertas_enviadas: int
     alertas_pendientes: int
+
+
+class EstadisticaCohorteRespuesta(BaseModel):
+    cohorte_id: UUID
+    cohorte_nombre: str
+    anio: int
+    total_inscriptos: int
+    activos: int
+    graduados: int
+    desgranamiento_cantidad: int
+    tasa_retencion: float
+    desgranamiento: float
+
+
+class EstadisticasConduccionRespuesta(BaseModel):
+    total_inscriptos: int
+    total_graduados: int
+    tasa_retencion: float
+    desgranamiento: float
+    promedio_tiempo_graduacion_dias: float | None
+    estudiantes_en_riesgo: int
+    por_cohorte: list[EstadisticaCohorteRespuesta]

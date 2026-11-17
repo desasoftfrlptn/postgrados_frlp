@@ -353,3 +353,39 @@ def test_importar_notas_desde_excel(entorno) -> None:
         headers=docente,
         files={"archivo": ("notas.xlsx", b"no-es-un-zip", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
     ).status_code == 422
+
+    descarga = cliente.get(f"/api/v1/seminarios/{seminario}/exportar", headers=docente)
+    assert descarga.status_code == 200
+    with ZipFile(BytesIO(descarga.content)) as archivo:
+        assert "xl/worksheets/sheet2.xml" in archivo.namelist()
+        hoja = archivo.read("xl/worksheets/sheet1.xml")
+        metadatos = archivo.read("xl/worksheets/sheet2.xml")
+        assert b"<cols>" in hoja
+        assert b"Fecha de generaci" in metadatos
+
+
+def test_recordatorios_asistencia_sin_carga_en_mas_de_dos_semanas(entorno, monkeypatch) -> None:
+    from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios_asistencia
+
+    cliente, session, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones",
+        headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    ).status_code == 204
+    docente = {"Authorization": f"Bearer {_enlace(cliente, seminario, tokens)['token']}"}
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/clases",
+        headers=docente,
+        json={"fecha": (date.today() - timedelta(days=15)).isoformat()},
+    ).status_code == 201
+
+    mensajes = []
+    monkeypatch.setattr("src.carga_academica.aplicacion.recordatorios.enviar_mensaje_correo", mensajes.append)
+    ahora = datetime.now(timezone.utc)
+    assert enviar_recordatorios_asistencia(session, ahora) == 1
+    assert "asistencia" in mensajes[0]["Subject"].lower()
+    assert enviar_recordatorios_asistencia(session, ahora + timedelta(days=2)) == 0
+    assert enviar_recordatorios_asistencia(session, ahora + timedelta(days=8)) == 1
