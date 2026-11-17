@@ -261,77 +261,97 @@ export default function FormularioInscripcion() {
     siguienteEtapa();
   };
 
-  const enviarFormulario = async (e: React.FormEvent) => {
-    e.preventDefault();
 
-    if (!cohorteSeleccionada || !datos.tipo_carrera) {
-      setMensaje("Seleccioná una carrera y una cohorte disponible.");
-      setEtapa(1);
+const enviarFormulario = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!cohorteSeleccionada || !datos.tipo_carrera) {
+    setMensaje("Seleccioná una carrera y una cohorte disponible.");
+    setEtapa(1);
+    return;
+  }
+
+  const formulario = new FormData();
+
+  formulario.append("cohorte_id", cohorteSeleccionada);
+  formulario.append("carrera_elegida", datos.tipo_carrera);
+  formulario.append("apellido", datos.apellido);
+  formulario.append("nombre", datos.nombre);
+  formulario.append("nacionalidad", datos.nacionalidad);
+  formulario.append("dni_pasaporte", datos.dni);
+  formulario.append("correo_electronico", datos.email);
+  formulario.append("telefono_movil", datos.telefono);
+  if (datos.correo_alternativo.trim()) {
+  formulario.append("correo_alternativo", datos.correo_alternativo);
+}
+  formulario.append("domicilio", datos.domicilio);
+  formulario.append(
+    "pais",
+    datos.pais === "Otro" ? otroPais : datos.pais
+  );
+  formulario.append("provincia", datos.provincia);
+  formulario.append("ciudad", datos.ciudad);
+  formulario.append("titulo_anterior", datos.titulo_anterior);
+  formulario.append("universidad_anterior", datos.universidad_anterior);
+  formulario.append("forma_conocio_ofertas", datos.forma_conocio_ofertas);
+  formulario.append("motivos_cursar", datos.motivos_cursar);
+
+  if (datos.solicitud_beca) {
+    formulario.append("solicitud_beca", datos.solicitud_beca);
+  }
+
+  const documentosFormulario = [
+    ["formularioPreinscripcion", documentos.formularioPreinscripcion],
+    ["formularioInscripcion", documentos.formularioInscripcion],
+    ["dniPasaporte", documentos.dniPasaporte],
+    ["partidaNacimiento", documentos.partidaNacimiento],
+    ["constanciaCuitCuil", documentos.constanciaCuitCuil],
+    ["tituloGrado", documentos.tituloGrado],
+    ["tituloPosgrado", documentos.tituloPosgrado],
+    ["formularioBeca", documentos.formularioBeca],
+  ] as const;
+
+  documentosFormulario.forEach(([campo, archivo]) => {
+    if (archivo) {
+      formulario.append(campo, archivo);
+    }
+  });
+
+  try {
+    const respuesta = await fetch(
+      "http://localhost:8000/api/v1/inscripcion/",
+      {
+        method: "POST",
+        body: formulario,
+      }
+    );
+
+    if (!respuesta.ok) {
+      const error: { detail?: string | unknown[] } =
+        await respuesta.json();
+
+      setMensaje(
+        typeof error.detail === "string"
+          ? error.detail
+          : "No se pudo registrar la inscripción. Verificá los datos."
+      );
       return;
     }
 
-    // El endpoint actual acepta JSON de legajo, no archivos PDF.
-   const datosFormulario = {
-    cohorte_id: cohorteSeleccionada,
-    carrera_elegida: datos.tipo_carrera,
-    apellido: datos.apellido,
-    nombre: datos.nombre,
-    nacionalidad: datos.nacionalidad,
-    dni_pasaporte: datos.dni,
-    telefono_movil: datos.telefono,
-    correo_electronico: datos.email,
-    correo_alternativo: datos.correo_alternativo,
-    domicilio: datos.domicilio,
-    pais: datos.pais === "Otro" ? otroPais : datos.pais,
-    provincia: datos.provincia,
-    ciudad: datos.ciudad,
-    titulo_anterior: datos.titulo_anterior,
-    universidad_anterior: datos.universidad_anterior,
-    forma_conocio_ofertas: datos.forma_conocio_ofertas,
-    motivos_cursar: datos.motivos_cursar,
-    solicitud_beca: datos.solicitud_beca
-      ? Number(datos.solicitud_beca)
-      : null,
-  };
+    const resultado = await respuesta.json();
 
-    try {
-      const respuesta = await fetch(
-        "http://localhost:8000/api/v1/inscripcion/",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(datosFormulario),
-        }
-      );
+    setNumeroSeguimiento(
+      resultado.numero_seguimiento ?? ""
+    );
 
+    setMensaje(
+      "Inscripción y documentación registradas correctamente."
+    );
+  } catch {
+    setMensaje("Error de conexión con el servidor.");
+  }
+};
 
-      if (!respuesta.ok) {
-        const error: { detail?: string | unknown[] } =
-          await respuesta.json();
-
-        setMensaje(
-          typeof error.detail === "string"
-            ? error.detail
-            : "No se pudo registrar la inscripción. Verificá los datos."
-        );
-        return;
-      }
-
-      const resultado = await respuesta.json();
-
-      setNumeroSeguimiento(
-        resultado.numero_seguimiento ?? ""
-      );
-
-      setMensaje(
-        "Datos de inscripción registrados. Importante: los PDF aún no fueron " +
-        "enviados; falta integrar la carga de documentación."
-      );
-
-    } catch {
-      setMensaje("Error de conexión con el servidor.");
-    }
-  };
 
   return (
     <section className="inscripcion" aria-labelledby="titulo-inscripcion">

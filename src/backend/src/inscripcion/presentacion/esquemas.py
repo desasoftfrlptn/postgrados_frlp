@@ -14,7 +14,7 @@ class LegajoCrear(BaseModel):
     dni_pasaporte: str
     correo_electronico: EmailStr
     telefono_movil: str
-    correo_alternativo: EmailStr
+    correo_alternativo: Optional[EmailStr] = None
     domicilio: str
     pais: str
     provincia: str

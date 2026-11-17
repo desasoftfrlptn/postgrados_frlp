@@ -1,8 +1,28 @@
+import hashlib
+import os
+
 from datetime import datetime
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Literal
+
+from pydantic import EmailStr
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+)
+
+from src.inscripcion.infraestructura.documentos_modelos import (
+    DocumentoLegajoORM,
+)
+
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +62,68 @@ enrutador = APIRouter(
     tags=["Inscripción"],
 )
 
+CARPETA_DOCUMENTOS = (
+    Path(os.getenv("STORAGE_PATH", "uploads"))
+    / "legajos"
+)
+
+TAMANIO_MAXIMO_PDF = 5 * 1024 * 1024
+
+async def validar_pdf(
+    archivo: UploadFile | None,
+    nombre_documento: str,
+    obligatorio: bool = True,
+) -> bytes | None:
+    if archivo is None:
+        if obligatorio:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Falta adjuntar: {nombre_documento}.",
+            )
+        return None
+
+    if archivo.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=422,
+            detail=f"{nombre_documento} debe ser un archivo PDF.",
+        )
+
+    contenido = await archivo.read()
+
+    if len(contenido) > TAMANIO_MAXIMO_PDF:
+        raise HTTPException(
+            status_code=422,
+            detail=f"{nombre_documento} supera el límite de 5 MB.",
+        )
+
+    if not contenido.startswith(b"%PDF-"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"El archivo de {nombre_documento} no es un PDF válido.",
+        )
+
+    return contenido
+
+def guardar_pdf(
+    contenido: bytes,
+    legajo_id: UUID,
+    tipo: str,
+) -> tuple[str, str]:
+    carpeta = CARPETA_DOCUMENTOS / str(legajo_id)
+
+    carpeta.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    nombre_archivo = f"{tipo}_{uuid4()}.pdf"
+    ruta_archivo = carpeta / nombre_archivo
+
+    ruta_archivo.write_bytes(contenido)
+
+    checksum = hashlib.sha256(contenido).hexdigest()
+
+    return str(ruta_archivo), checksum
 
 async def coordinador_actual(
     usuario: UsuarioORM = Depends(usuario_actual),
@@ -59,15 +141,103 @@ async def coordinador_actual(
     return usuario
 
 
+
 @enrutador.post(
     "/",
     response_model=LegajoRespuesta,
     status_code=201,
 )
 async def inscribir_aspirante(
-    datos: LegajoCrear,
+    cohorte_id: UUID = Form(...),
+    carrera_elegida: str = Form(...),
+    apellido: str = Form(...),
+    nombre: str = Form(...),
+    nacionalidad: str = Form(...),
+    dni_pasaporte: str = Form(...),
+    correo_electronico: EmailStr = Form(...),
+    telefono_movil: str = Form(...),
+    correo_alternativo: EmailStr | None = Form(None),
+    domicilio: str = Form(...),
+    pais: str = Form(...),
+    provincia: str = Form(...),
+    ciudad: str = Form(...),
+    titulo_anterior: str = Form(...),
+    universidad_anterior: str = Form(...),
+    forma_conocio_ofertas: str = Form(...),
+    motivos_cursar: str = Form(...),
+    solicitud_beca: Literal[30, 100] | None = Form(None),
+
+    formularioPreinscripcion: UploadFile = File(...),
+    formularioInscripcion: UploadFile = File(...),
+    dniPasaporte: UploadFile = File(...),
+    partidaNacimiento: UploadFile = File(...),
+    constanciaCuitCuil: UploadFile = File(...),
+    tituloGrado: UploadFile = File(...),
+    tituloPosgrado: UploadFile | None = File(None),
+    formularioBeca: UploadFile | None = File(None),
+
     db: AsyncSession = Depends(get_db),
 ):
+    datos = LegajoCrear(
+        cohorte_id=cohorte_id,
+        carrera_elegida=carrera_elegida,
+        apellido=apellido,
+        nombre=nombre,
+        nacionalidad=nacionalidad,
+        dni_pasaporte=dni_pasaporte,
+        correo_electronico=correo_electronico,
+        telefono_movil=telefono_movil,
+        correo_alternativo=correo_alternativo,
+        domicilio=domicilio,
+        pais=pais,
+        provincia=provincia,
+        ciudad=ciudad,
+        titulo_anterior=titulo_anterior,
+        universidad_anterior=universidad_anterior,
+        forma_conocio_ofertas=forma_conocio_ofertas,
+        motivos_cursar=motivos_cursar,
+        solicitud_beca=solicitud_beca,
+    )
+
+    # Validar los ocho documentos antes de iniciar el registro.
+    archivos = {
+        "FORMULARIO_PREINSCRIPCION": await validar_pdf(
+            formularioPreinscripcion,
+            "Formulario de preinscripción",
+        ),
+        "FORMULARIO_INSCRIPCION": await validar_pdf(
+            formularioInscripcion,
+            "Formulario de inscripción",
+        ),
+        "DNI_PASAPORTE": await validar_pdf(
+            dniPasaporte,
+            "DNI o pasaporte",
+        ),
+        "PARTIDA_NACIMIENTO": await validar_pdf(
+            partidaNacimiento,
+            "Partida de nacimiento",
+        ),
+        "CONSTANCIA_CUIT_CUIL": await validar_pdf(
+            constanciaCuitCuil,
+            "Constancia CUIT/CUIL",
+        ),
+        "TITULO_GRADO": await validar_pdf(
+            tituloGrado,
+            "Título de grado",
+        ),
+        "TITULO_POSGRADO": await validar_pdf(
+            tituloPosgrado,
+            "Título de posgrado",
+            obligatorio=False,
+        ),
+        "FORMULARIO_BECA": await validar_pdf(
+            formularioBeca,
+            "Formulario de beca",
+            obligatorio=solicitud_beca is not None,
+        ),
+    }
+
+    # Comprobar cohorte.
     resultado = await db.execute(
         select(CohorteORM)
         .where(CohorteORM.id == datos.cohorte_id)
@@ -87,6 +257,7 @@ async def inscribir_aspirante(
             detail="La inscripción a esta cohorte está cerrada.",
         )
 
+    # Comprobar carrera.
     carrera = await db.get(CarreraORM, cohorte.carrera_id)
 
     if carrera is None or not carrera.activo:
@@ -101,6 +272,7 @@ async def inscribir_aspirante(
             detail="La carrera elegida no corresponde a la cohorte.",
         )
 
+    # Comprobar correo duplicado.
     correo_existente = await db.scalar(
         select(LegajoORM.id).where(
             LegajoORM.correo_electronico == datos.correo_electronico
@@ -113,6 +285,7 @@ async def inscribir_aspirante(
             detail="Ya existe una inscripción con ese correo electrónico.",
         )
 
+    # Comprobar DNI duplicado en la cohorte.
     dni_existente = await db.scalar(
         select(LegajoORM.id).where(
             LegajoORM.dni_pasaporte == datos.dni_pasaporte,
@@ -126,6 +299,7 @@ async def inscribir_aspirante(
             detail="El documento ya está registrado en esta cohorte.",
         )
 
+    # Comprobar cupo.
     cantidad = await db.scalar(
         select(func.count(LegajoORM.id)).where(
             LegajoORM.cohorte_id == datos.cohorte_id
@@ -142,7 +316,10 @@ async def inscribir_aspirante(
         ZoneInfo("America/Argentina/Buenos_Aires")
     ).year
 
+    archivos_guardados = []
+
     try:
+        # Generar número de seguimiento.
         resultado_contador = await db.execute(
             text(
                 """
@@ -171,10 +348,39 @@ async def inscribir_aspirante(
 
         db.add(nuevo_legajo)
 
+        # Obtener el ID antes de guardar los documentos.
+        await db.flush()
+
+        # Guardar los PDF y registrar sus metadatos.
+        for tipo, contenido in archivos.items():
+            if contenido is None:
+                continue
+
+            ruta, checksum = guardar_pdf(
+                contenido,
+                nuevo_legajo.id,
+                tipo,
+            )
+
+            archivos_guardados.append(ruta)
+
+            documento = DocumentoLegajoORM(
+                legajo_id=nuevo_legajo.id,
+                tipo=tipo,
+                path=ruta,
+                checksum=checksum,
+            )
+
+            db.add(documento)
+
+        # Confirmar legajo y documentos juntos.
         await db.commit()
 
     except IntegrityError as exc:
         await db.rollback()
+
+        for ruta in archivos_guardados:
+            Path(ruta).unlink(missing_ok=True)
 
         raise HTTPException(
             status_code=409,
@@ -183,10 +389,16 @@ async def inscribir_aspirante(
 
     except Exception:
         await db.rollback()
+
+        for ruta in archivos_guardados:
+            Path(ruta).unlink(missing_ok=True)
+
         raise
 
     await db.refresh(nuevo_legajo)
+
     return nuevo_legajo
+
 
 
 @enrutador.get(

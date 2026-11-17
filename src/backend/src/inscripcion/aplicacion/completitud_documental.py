@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 DOCUMENTOS_OBLIGATORIOS = {
     "FORMULARIO_PREINSCRIPCION": "Formulario de preinscripción firmado",
+    "FORMULARIO_INSCRIPCION": "Formulario de inscripción firmado",
     "DNI_PASAPORTE": "Copia de DNI o pasaporte",
     "TITULO_GRADO": "Copia del título de grado",
     "PARTIDA_NACIMIENTO": "Partida de nacimiento",
