@@ -7,6 +7,15 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 Carrera = Literal["Especialización", "Maestría", "Doctorado"]
 CanalDifusion = Literal["redes", "colegas", "web", "egresados", "otro"]
 TipoBeca = Literal["30%", "100%"]
+TipoDocumento = Literal[
+    "FORM_INSCRIPCION",
+    "DNI",
+    "TITULO",
+    "PARTIDA",
+    "CUIT",
+    "TITULO_POSGRADO",
+    "FORM_BECA",
+]
 
 
 class InscripcionCreate(BaseModel):

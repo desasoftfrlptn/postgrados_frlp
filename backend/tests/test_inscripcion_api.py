@@ -1,7 +1,7 @@
 import hashlib
 import json
 from collections.abc import Generator
-from datetime import date
+from datetime import date, datetime, timezone
 from io import BytesIO
 from pathlib import Path
 from uuid import UUID
@@ -51,7 +51,7 @@ def client(
     app.dependency_overrides[get_db] = override_get_db
     monkeypatch.setattr(
         "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
-        lambda email, nombre, codigo: None,
+        lambda email, nombre, codigo, token, expira_en: None,
     )
     with TestClient(app) as test_client:
         yield test_client, session, cohorte
@@ -147,7 +147,7 @@ def test_public_enrollment_saves_legajo_and_private_documents(
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=valid_files(),
     )
@@ -186,15 +186,17 @@ def test_public_enrollment_sends_confirmation_email(
     client: tuple[TestClient, Session, Cohorte],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    test_client, _, _ = client
-    sent: list[tuple[str, str, str]] = []
+    test_client, session, _ = client
+    sent: list[tuple[str, str, str, str, datetime]] = []
     monkeypatch.setattr(
         "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
-        lambda email, nombre, codigo: sent.append((email, nombre, codigo)),
+        lambda email, nombre, codigo, token, expira_en: sent.append(
+            (email, nombre, codigo, token, expira_en)
+        ),
     )
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=valid_files(),
     )
@@ -202,7 +204,25 @@ def test_public_enrollment_sends_confirmation_email(
     assert response.status_code == 201
     assert response.json()["estado"] == "Pendiente"
     assert "confirmación a tu email" in response.json()["mensaje"]
-    assert sent == [("ana@example.com", "Ana", response.json()["codigo_seguimiento"])]
+    assert len(sent) == 1
+    email, nombre, codigo, token, expira_en = sent[0]
+    assert (email, nombre, codigo) == (
+        "ana@example.com",
+        "Ana",
+        response.json()["codigo_seguimiento"],
+    )
+    legajo = session.scalar(select(Legajo))
+    assert legajo is not None
+    assert legajo.token_propietario_hash == hashlib.sha256(
+        token.encode("ascii")
+    ).hexdigest()
+    expira_en_db = legajo.token_propietario_expira_en
+    assert expira_en_db is not None
+    if expira_en_db.tzinfo is None:
+        expira_en_db = expira_en_db.replace(tzinfo=timezone.utc)
+    assert expira_en_db == expira_en
+    assert token not in response.text
+    assert expira_en > datetime.now(timezone.utc)
 
 
 @pytest.mark.parametrize(
@@ -224,11 +244,11 @@ def test_duplicate_identity_is_rejected_without_saving_a_second_legajo(
     message: str,
 ) -> None:
     test_client, session, _ = client
-    test_client.post("/api/v1/inscripciones", data=valid_form(), files=valid_files())
+    test_client.post("/api/v1/legajos", data=valid_form(), files=valid_files())
     duplicate = valid_form(**duplicate_fields)
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=duplicate,
         files=valid_files(),
     )
@@ -247,7 +267,7 @@ def test_invalid_pdf_is_rejected_before_persistence(
     files = valid_files(archivo_dni=("dni.pdf", b"no es un PDF", "application/pdf"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -264,7 +284,7 @@ def test_rechaza_mime_incorrecto_sin_persistir(
     files = valid_files(archivo_dni=("dni.pdf", PDF, "application/octet-stream"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -285,7 +305,7 @@ def test_rechaza_archivo_mayor_a_5_mb_sin_persistir(
     files = valid_files(archivo_dni=("dni.pdf", contenido, "application/pdf"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -306,7 +326,7 @@ def test_acepta_archivo_del_tamano_maximo(
     files = valid_files(archivo_dni=("dni.pdf", contenido, "application/pdf"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -340,7 +360,7 @@ def test_requiere_cada_documento_obligatorio(
     files.pop(campo)
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -374,7 +394,7 @@ def test_requiere_documentos_segun_condiciones_de_inscripcion(
     files.pop(campo_archivo, None)
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(**campos_formulario),
         files=files,
     )
@@ -399,7 +419,7 @@ def test_rechaza_falla_de_base_de_datos_sin_persistencia_parcial(
 
     with pytest.raises(SQLAlchemyError, match="Falla simulada"):
         test_client.post(
-            "/api/v1/inscripciones",
+            "/api/v1/legajos",
             data=valid_form(),
             files=valid_files(),
         )
@@ -417,7 +437,7 @@ def test_beca_requires_percentage_and_signed_document(
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true", tipo_beca=tipo_beca),
         files=valid_files(archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")),
     )
@@ -448,7 +468,7 @@ def test_scholarship_request_without_form_is_rejected_without_partial_persistenc
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true", tipo_beca="30%"),
         files=valid_files(),
     )
@@ -468,7 +488,7 @@ def test_scholarship_request_without_percentage_is_rejected_without_partial_pers
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true"),
         files=valid_files(
             archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
@@ -490,7 +510,7 @@ def test_scholarship_type_without_request_is_rejected_without_partial_persistenc
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(tipo_beca="30%"),
         files=valid_files(),
     )
@@ -510,7 +530,7 @@ def test_scholarship_request_rejects_unsupported_percentage(
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true", tipo_beca="50%"),
         files=valid_files(
             archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
@@ -533,7 +553,7 @@ def test_enrollment_requires_an_open_cohort(
     session.commit()
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=valid_files(),
     )
@@ -795,7 +815,7 @@ def test_inscripcion_puede_seleccionar_cohorte_abierta(
     session.commit()
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(cohorte_id=str(cohorte_seleccionada.id)),
         files=valid_files(),
     )
@@ -933,7 +953,7 @@ def test_inscripcion_rechaza_el_decimo_primer_envio_por_ip(
     test_client, _, _ = client
     respuestas = [
         test_client.post(
-            "/api/v1/inscripciones",
+            "/api/v1/legajos",
             data=valid_form(),
             files=valid_files(),
         )

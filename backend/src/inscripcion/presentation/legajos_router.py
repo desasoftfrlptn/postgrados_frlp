@@ -10,6 +10,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import Select, String, cast, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -20,6 +21,11 @@ from src.inscripcion.presentation.schemas import (
     Carrera,
     LegajoDetalleResponse,
     LegajoListadoResponse,
+)
+from src.inscripcion.presentation.acceso_legajo import (
+    autorizar_dueno_o_coordinador,
+    bearer_scheme,
+    exigir_credencial,
 )
 from src.shared.autorizacion.permisos import requerir_roles
 
@@ -344,22 +350,24 @@ def exportar_legajos(
     )
 
 
-@router.get("/{legajo_id}", response_model=LegajoDetalleResponse)
+@router.get("/{id}", response_model=LegajoDetalleResponse)
 def obtener_legajo(
-    legajo_id: UUID,
+    id: UUID,
     session: Session = Depends(get_db),
-    _: User = Depends(requerir_roles("COORDINADOR")),
+    credenciales: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> LegajoDetalleResponse:
+    credenciales = exigir_credencial(credenciales)
     legajo = session.scalar(
         select(Legajo)
         .options(selectinload(Legajo.documentos))
-        .where(Legajo.id == legajo_id)
+        .where(Legajo.id == id)
     )
     if legajo is None:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
             detail="No se encontró el legajo solicitado",
         )
+    autorizar_dueno_o_coordinador(legajo, credenciales, session)
     return LegajoDetalleResponse(
         id=legajo.id,
         numero_legajo=legajo.numero_legajo,

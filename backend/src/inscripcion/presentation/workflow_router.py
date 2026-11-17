@@ -27,9 +27,9 @@ from src.shared.autorizacion.permisos import requerir_roles
 router = APIRouter(prefix="/api/v1/legajos", tags=["legajos-workflow"])
 
 
-@router.post("/{legajo_id}/transiciones", response_model=LegajoEstadoResponse)
+@router.patch("/{id}/estado", response_model=LegajoEstadoResponse)
 def cambiar_estado_legajo(
-    legajo_id: UUID,
+    id: UUID,
     solicitud: TransicionLegajoRequest,
     tareas_fondo: BackgroundTasks,
     session: Session = Depends(get_db),
@@ -38,7 +38,7 @@ def cambiar_estado_legajo(
     try:
         resultado = transicionar_legajo(
             session,
-            legajo_id=legajo_id,
+            legajo_id=id,
             usuario=usuario,
             accion=solicitud.accion,
             comentario=solicitud.comentario,

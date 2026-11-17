@@ -716,7 +716,8 @@ enum TipoCarrera { Especializacion Maestria Doctorado }
 **Reglas no negociables:**
 - El directorio de storage **no está servido por el web server**. No existe ninguna URL que apunte directamente a un archivo.
 - El nombre del archivo en disco es **siempre un UUID** generado por el servidor. El nombre original se guarda solo en la base de datos para mostrárselo al usuario.
-- Todo acceso va por el endpoint autenticado `GET /api/v1/documentos/{id}/download` que verifica permisos antes de hacer streaming del archivo.
+- Todo acceso va por el endpoint autenticado `GET /api/v1/documentos/{id}/download`, que permite JWT de `COORDINADOR` o token del dueño del legajo antes de hacer streaming.
+- El token de propietario se envía al email de inscripción, se almacena como hash y vence a los 30 días.
 
 ### 9.2 Validación de PDFs — Python
 
@@ -945,16 +946,16 @@ POST   /api/v1/cohortes                         [COORDINADOR]
 PATCH  /api/v1/cohortes/{id}/inscripcion        [COORDINADOR] → abre/cierra
 
 # Legajos (Módulo Core)
-POST   /api/v1/inscripciones                    [Público] → inscripción
+POST   /api/v1/legajos                          [Público] → inscripción y documentos
 GET    /api/v1/legajos                          [COORDINADOR] → listado con filtros
-GET    /api/v1/legajos/{id}                     [COORDINADOR] → detalle
-POST   /api/v1/legajos/{id}/transiciones        [COORDINADOR] → transición
+GET    /api/v1/legajos/{id}                     [COORDINADOR, dueño] → detalle
+PATCH  /api/v1/legajos/{id}/estado             [COORDINADOR] → transición
 POST   /api/v1/legajos/{id}/correccion          [Público] → corrección con token
 GET    /api/v1/legajos/exportar                 [COORDINADOR] → Excel
 
 # Documentos (Módulo Core)
 POST   /api/v1/legajos/{id}/documentos          [Aspirante dueño] → upload
-GET    /api/v1/documentos/{id}/download         [COORDINADOR] → PDF stream
+GET    /api/v1/documentos/{id}/download         [COORDINADOR, dueño] → PDF stream
 
 # Seminarios y carga académica (Módulo B)
 GET    /api/v1/seminarios/{id}/estudiantes      [DOCENTE del seminario]

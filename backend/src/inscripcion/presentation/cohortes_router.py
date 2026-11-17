@@ -96,14 +96,14 @@ def crear_cohorte(
     return cohorte
 
 
-@router.patch("/{cohorte_id}/inscripcion", response_model=CohorteResponse)
+@router.patch("/{id}/inscripcion", response_model=CohorteResponse)
 def actualizar_inscripcion_cohorte(
-    cohorte_id: UUID,
+    id: UUID,
     solicitud: CohorteInscripcionUpdate,
     session: Session = Depends(get_db),
     _: User = Depends(requerir_roles("COORDINADOR")),
 ) -> Cohorte:
-    cohorte = session.get(Cohorte, cohorte_id)
+    cohorte = session.get(Cohorte, id)
     if cohorte is None:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,

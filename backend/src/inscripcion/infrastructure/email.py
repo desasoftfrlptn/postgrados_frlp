@@ -1,5 +1,6 @@
 import logging
 import smtplib
+from datetime import datetime, timezone
 from email.message import EmailMessage
 from html import escape
 
@@ -60,12 +61,24 @@ def _enviar(mensaje: EmailMessage, contexto: str) -> None:
         logger.exception("No se pudo enviar %s", contexto)
 
 
-def enviar_confirmacion_inscripcion(destinatario: str, nombre: str, codigo: str) -> None:
+def enviar_confirmacion_inscripcion(
+    destinatario: str,
+    nombre: str,
+    codigo: str,
+    token_propietario: str,
+    token_expira_en: datetime,
+) -> None:
+    fecha_expiracion = token_expira_en.astimezone(timezone.utc).strftime(
+        "%d/%m/%Y %H:%M UTC"
+    )
     texto = (
         f"Hola {nombre},\n\n"
         "Recibimos tu inscripción. Su estado inicial es Pendiente.\n"
         f"Tu código de seguimiento es: {codigo}\n\n"
-        "Conservá este código para futuras consultas.\n"
+        "Para consultar tu legajo y cargar o descargar documentos, usá este "
+        "token como Bearer en el encabezado Authorization:\n"
+        f"{token_propietario}\n"
+        f"El token vence el {fecha_expiracion}.\n"
     )
     mensaje = _crear_mensaje(
         destinatario,
@@ -76,7 +89,10 @@ def enviar_confirmacion_inscripcion(destinatario: str, nombre: str, codigo: str)
             "<p>Recibimos tu inscripción. Su estado inicial es "
             "<strong>Pendiente</strong>.</p>"
             f"<p>Tu código de seguimiento es: <strong>{escape(codigo)}</strong></p>"
-            "<p>Conservá este código para futuras consultas.</p>"
+            "<p>Para consultar tu legajo y cargar o descargar documentos, "
+            "usá este token como Bearer en el encabezado Authorization:</p>"
+            f"<p><code>{escape(token_propietario)}</code></p>"
+            f"<p>El token vence el {escape(fecha_expiracion)}.</p>"
         ),
     )
     _enviar(mensaje, "una confirmación de inscripción")

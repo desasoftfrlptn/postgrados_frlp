@@ -107,8 +107,8 @@ def test_observar_envia_detalle_html_y_aspirante_puede_corregir_con_token(
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    revisar = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    revisar = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "REVISAR"},
         headers=headers,
     )
@@ -116,8 +116,8 @@ def test_observar_envia_detalle_html_y_aspirante_puede_corregir_con_token(
     assert revisar.json()["estado"] == "En Revisión"
     assert not emails_sent
 
-    observar = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    observar = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "OBSERVAR", "comentario": "Falta el título"},
         headers=headers,
     )
@@ -173,8 +173,8 @@ def test_aprobar_envia_email_html_con_estado_y_numero_de_legajo(
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    response = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    response = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "APROBAR"},
         headers=headers,
     )
@@ -208,8 +208,8 @@ def test_coordinador_aprueba_legajos_con_numeracion_secuencial(
 
     numeros: list[str] = []
     for legajo in legajos:
-        response = client.post(
-            f"/api/v1/legajos/{legajo.id}/transiciones",
+        response = client.patch(
+            f"/api/v1/legajos/{legajo.id}/estado",
             json={"accion": "APROBAR"},
             headers=headers,
         )
@@ -232,8 +232,8 @@ def test_solo_coordinador_puede_transicionar_y_no_se_permiten_saltos(
         "Authorization": f"Bearer {_token(client, cpr.email, 'CprExample123!')}"
     }
 
-    denegado = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    denegado = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "REVISAR"},
         headers=cpr_headers,
     )
@@ -242,8 +242,8 @@ def test_solo_coordinador_puede_transicionar_y_no_se_permiten_saltos(
     headers = {
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
-    salto = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    salto = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "APROBAR"},
         headers=headers,
     )
@@ -263,8 +263,8 @@ def test_no_se_puede_aprobar_sin_pasar_por_revision(
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    response = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    response = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "APROBAR"},
         headers=headers,
     )
@@ -285,8 +285,8 @@ def test_observar_exige_motivo(
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    response = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    response = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "OBSERVAR"},
         headers=headers,
     )

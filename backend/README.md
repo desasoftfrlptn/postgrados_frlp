@@ -36,17 +36,18 @@ token (por defecto, 7 días) se rota en cada uso y se almacena como hash; logout
 revoca toda la familia de tokens de esa sesión. Los usuarios se almacenan con
 bcrypt (cost factor 12) y no existe registro público.
 
-La inscripción (`POST /api/v1/inscripciones`) permanece pública. La interfaz de
+La inscripción (`POST /api/v1/legajos`) permanece pública. La interfaz de
 coordinación exige el rol `COORDINADOR`; `CPR` puede autenticarse, pero su módulo
 todavía no está disponible. Las rutas API pueden exigir roles con
 `requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
 con el Módulo B cuando exista el modelo de seminarios.
 
-`GET /api/v1/legajos`, `GET /api/v1/legajos/{id}`,
-`GET /api/v1/legajos/exportar` y las rutas de gestión de cohortes requieren un
-JWT válido con rol `COORDINADOR`. El listado incluye los datos de identificación
-del legajo, `solicita_beca`, `tipo_beca` y, si existe, el tipo del documento
-`FORM_BECA`; nunca expone rutas de almacenamiento ni checksums.
+`GET /api/v1/legajos`, `GET /api/v1/legajos/exportar` y las rutas de gestión de
+cohortes requieren un JWT válido con rol `COORDINADOR`. `GET
+/api/v1/legajos/{id}` y `GET /api/v1/documentos/{id}/download` admiten al
+coordinador o al dueño del legajo. El listado incluye los datos de
+identificación del legajo, `solicita_beca`, `tipo_beca` y, si existe, el tipo
+del documento `FORM_BECA`; nunca expone rutas de almacenamiento ni checksums.
 Los filtros combinables son `estado`, `cohorte_id` (UUID), `carrera`,
 `tiene_beca` (`true`/`false`), `dni` exacto y `apellido` parcial
 case-insensitive (mínimo tres caracteres). `tiene_beca` filtra por
@@ -83,7 +84,7 @@ el comando solicita la contraseña sin mostrarla y almacena únicamente su hash.
 
 ## Inscripción pública
 
-`POST /api/v1/inscripciones` recibe `multipart/form-data` y no requiere
+`POST /api/v1/legajos` recibe `multipart/form-data` y no requiere
 autenticación. `carreras` se envía como una lista JSON; el resto de los campos
 coincide con los nombres del formulario web. Los cinco documentos obligatorios
 son `archivo_preinscripcion`, `archivo_dni`, `archivo_titulo`,
@@ -99,15 +100,34 @@ duplicados o si no hay cohorte abierta.
 La ruta admite hasta 10 envíos por IP en una ventana fija de una hora; al superar
 el límite responde `429` con el encabezado `Retry-After`.
 
-Al recibir una inscripción, el backend envía una confirmación HTML y de texto al
-email principal usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+Al recibir una inscripción, el backend genera un token privado aleatorio del
+dueño, guarda solo su hash y lo envía al email principal en una confirmación
+HTML y de texto. El token vence a los 30 días y se envía en el encabezado
+`Authorization: Bearer <token>` para consultar el detalle y operar con los
+documentos de ese legajo. No se devuelve en la respuesta HTTP.
+La migración no emite tokens para legajos ya existentes; estos siguen
+disponibles para coordinación, y el acceso de propietario se habilita
+automáticamente para nuevas inscripciones.
+
+`POST /api/v1/legajos/{id}/documentos` recibe `multipart/form-data` con
+`tipo` y `archivo`. Solo acepta los tipos documentales del Core, verifica MIME,
+firma PDF y tamaño máximo, y almacena el archivo con nombre UUID y checksum
+SHA-256. El dueño puede agregar o reemplazar documentos mientras el legajo está
+`Pendiente` u `Observado`; reemplazar devuelve `200`, agregar devuelve `201` y
+otros estados responden `409`. Los títulos de posgrado y formularios de beca
+solo se admiten si fueron declarados en la inscripción.
+
+`GET /api/v1/documentos/{id}/download` transmite el PDF en línea al
+coordinador o al dueño autenticado del legajo, sin exponer la ruta privada.
+
+Los emails se envían usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
 `SMTP_PASSWORD`, `SMTP_STARTTLS` y `EMAIL_FROM`). En Docker, MailHog captura los
 mensajes de desarrollo en `http://localhost:8025`. Los errores de entrega quedan
 registrados en el log del backend.
 
 ## Notificaciones por cambios de estado
 
-`POST /api/v1/legajos/{legajo_id}/transiciones` requiere el rol
+`PATCH /api/v1/legajos/{legajo_id}/estado` requiere el rol
 `COORDINADOR`. Al ejecutar `OBSERVAR`, envía al aspirante el motivo registrado;
 al ejecutar `APROBAR`, cambia el estado a `Completado`, asigna el número de
 legajo y envía el aviso de aprobación. La confirmación de inscripción se envía

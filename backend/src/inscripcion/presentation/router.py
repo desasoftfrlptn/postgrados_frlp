@@ -12,17 +12,24 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Response,
     UploadFile,
     status,
 )
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from src.authentication.infrastructure.models import User
 from src.core.config import settings
 from src.db.session import get_db
+from src.inscripcion.application.gestion_documentos import (
+    CargaDocumentalNoPermitida,
+    DocumentoDuplicado,
+    LegajoDocumentalNoEncontrado,
+    agregar_o_reemplazar_documento,
+)
 from src.inscripcion.application.inscribir_aspirante import (
     DocumentoValidado,
     InscripcionDuplicada,
@@ -30,12 +37,22 @@ from src.inscripcion.application.inscribir_aspirante import (
     inscribir_aspirante,
 )
 from src.inscripcion.infrastructure.email import enviar_confirmacion_inscripcion
-from src.inscripcion.infrastructure.models import DocumentoInscripcion
-from src.inscripcion.presentation.schemas import InscripcionCreate, InscripcionResponse
-from src.shared.autorizacion.permisos import requerir_roles
+from src.inscripcion.infrastructure.models import DocumentoInscripcion, Legajo
+from src.inscripcion.presentation.acceso_legajo import (
+    autorizar_dueno,
+    autorizar_dueno_o_coordinador,
+    bearer_scheme,
+    exigir_credencial,
+)
+from src.inscripcion.presentation.schemas import (
+    DocumentoResumenResponse,
+    InscripcionCreate,
+    InscripcionResponse,
+    TipoDocumento,
+)
 from src.shared.limite_solicitudes.servicio import dependencia_limite_solicitudes
 
-router = APIRouter(prefix="/api/v1/inscripciones", tags=["inscripciones"])
+router = APIRouter(prefix="/api/v1/legajos", tags=["legajos"])
 documentos_router = APIRouter(prefix="/api/v1/documentos", tags=["documentos"])
 _LOGGER = logging.getLogger(__name__)
 _limite_inscripciones = dependencia_limite_solicitudes(
@@ -45,21 +62,31 @@ _limite_inscripciones = dependencia_limite_solicitudes(
 )
 
 
-@documentos_router.get("/{documento_id}/download")
+@documentos_router.get("/{id}/download")
 def descargar_documento(
-    documento_id: UUID,
+    id: UUID,
     sesion: Session = Depends(get_db),
-    usuario: User = Depends(requerir_roles("COORDINADOR")),
+    credenciales: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ) -> FileResponse:
+    credenciales = exigir_credencial(credenciales)
     documento = sesion.scalar(
-        select(DocumentoInscripcion).where(DocumentoInscripcion.id == documento_id)
+        select(DocumentoInscripcion).where(DocumentoInscripcion.id == id)
     )
     if documento is None:
-        _LOGGER.warning("Documento no disponible documento_id=%s", documento_id)
+        _LOGGER.warning("Documento no disponible documento_id=%s", id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No se encontro el documento solicitado",
         )
+
+    legajo = sesion.get(Legajo, documento.legajo_id)
+    if legajo is None:
+        _LOGGER.warning("Legajo del documento no disponible documento_id=%s", id)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No se encontro el documento solicitado",
+        )
+    autorizar_dueno_o_coordinador(legajo, credenciales, sesion)
 
     try:
         raiz_almacenamiento = settings.storage_path.resolve()
@@ -68,23 +95,23 @@ def descargar_documento(
         ).resolve()
         ruta_documento.relative_to(raiz_almacenamiento)
     except (OSError, RuntimeError, ValueError):
-        _LOGGER.warning("Ruta privada invalida documento_id=%s", documento_id)
+        _LOGGER.warning("Ruta privada invalida documento_id=%s", id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No se encontro el documento solicitado",
         ) from None
 
     if not ruta_documento.is_file():
-        _LOGGER.warning("Archivo privado ausente documento_id=%s", documento_id)
+        _LOGGER.warning("Archivo privado ausente documento_id=%s", id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No se encontro el documento solicitado",
         )
 
     _LOGGER.info(
-        "Acceso a documento permitido documento_id=%s usuario_id=%s",
-        documento_id,
-        usuario.id,
+        "Acceso a documento permitido documento_id=%s legajo_id=%s",
+        id,
+        legajo.id,
     )
     return FileResponse(
         ruta_documento,
@@ -240,7 +267,7 @@ async def crear_inscripcion(
             documentos.append(documento)
 
     try:
-        legajo = inscribir_aspirante(session, data, documentos)
+        resultado = inscribir_aspirante(session, data, documentos)
     except InscripcionNoDisponible as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -261,14 +288,93 @@ async def crear_inscripcion(
             detail=messages[error.field],
         ) from error
 
+    legajo = resultado.legajo
     tareas_fondo.add_task(
         enviar_confirmacion_inscripcion,
         str(data.email),
         data.nombre,
         str(legajo.id),
+        resultado.credencial_propietario.token,
+        resultado.credencial_propietario.expira_en,
     )
     return InscripcionResponse(
         codigo_seguimiento=str(legajo.id),
         estado=legajo.estado,
         mensaje="La inscripción fue recibida correctamente. Enviaremos una confirmación a tu email.",
+    )
+
+
+@router.post(
+    "/{id}/documentos",
+    response_model=DocumentoResumenResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_200_OK: {
+            "model": DocumentoResumenResponse,
+            "description": "Se reemplazó el documento existente",
+        }
+    },
+)
+async def subir_documento(
+    id: UUID,
+    respuesta: Response,
+    tipo: TipoDocumento = Form(...),
+    archivo: UploadFile = File(...),
+    session: Session = Depends(get_db),
+    credenciales: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> DocumentoResumenResponse:
+    credenciales = exigir_credencial(credenciales)
+    legajo = session.scalar(
+        select(Legajo).where(Legajo.id == id).with_for_update()
+    )
+    if legajo is None:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="No se encontró el legajo solicitado",
+        )
+    autorizar_dueno(legajo, credenciales, session)
+
+    if tipo == "TITULO_POSGRADO" and not legajo.titulo_posgrado:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail="No se puede cargar un título de posgrado no declarado",
+        )
+    if tipo == "FORM_BECA" and not legajo.solicita_beca:
+        raise HTTPException(
+            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+            detail="No se puede cargar un formulario de beca no solicitado",
+        )
+
+    documento_validado = await _validar_documento(archivo, tipo, requerido=True)
+    if documento_validado is None:
+        raise RuntimeError("Un documento requerido debe ser validado")
+
+    try:
+        documento, reemplazado = agregar_o_reemplazar_documento(
+            session,
+            legajo_id=id,
+            documento_validado=documento_validado,
+        )
+    except LegajoDocumentalNoEncontrado as error:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="No se encontró el legajo solicitado",
+        ) from error
+    except CargaDocumentalNoPermitida as error:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail="Solo se pueden cargar documentos en estados Pendiente u Observado",
+        ) from error
+    except DocumentoDuplicado as error:
+        raise HTTPException(
+            status_code=HTTPStatus.CONFLICT,
+            detail="Ya existe un documento de este tipo para el legajo",
+        ) from error
+
+    if reemplazado:
+        respuesta.status_code = status.HTTP_200_OK
+    return DocumentoResumenResponse(
+        id=documento.id,
+        tipo=documento.tipo,
+        fecha_subida=documento.fecha_subida,
     )

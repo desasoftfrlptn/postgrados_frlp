@@ -20,11 +20,12 @@ Los documentos subidos por los aspirantes (DNI, títulos, partidas de nacimiento
 Un usuario malintencionado construye la URL `https://app.example/uploads/dni-30456789.pdf` y accede al documento sin autenticación.
 
 **Escenario correcto:**  
-El mismo intento devuelve HTTP 404 o 403. Los archivos no están servidos desde el webroot. Solo son accesibles via `GET /api/v1/documentos/{id}/download` con JWT válido y verificación de que el solicitante tiene permisos sobre ese documento.
+El mismo intento devuelve HTTP 404 o 403. Los archivos no están servidos desde el webroot. Solo son accesibles via `GET /api/v1/documentos/{id}/download`: con JWT de `COORDINADOR` o con el token secreto del dueño del legajo, enviado al email de inscripción, almacenado como hash y válido por 30 días.
 
 **Decisión de diseño:**  
 - Almacenamiento en directorio fuera del webroot: `/var/postgrado-storage/uploads/`
 - Servicio de descarga como endpoint autenticado
+- Token de propietario aleatorio, con vencimiento, almacenado únicamente como hash
 - Nombre de archivo en disco: UUID generado por el servidor (nunca el nombre original)
 - Logging de todos los accesos a documentos
 

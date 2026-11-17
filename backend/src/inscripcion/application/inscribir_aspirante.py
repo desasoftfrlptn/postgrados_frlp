@@ -8,6 +8,10 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from src.inscripcion.application.acceso_propietario import (
+    CredencialPropietario,
+    crear_credencial_propietario,
+)
 from src.core.config import settings
 from src.inscripcion.infrastructure.models import Cohorte, DocumentoInscripcion, Legajo
 from src.inscripcion.presentation.schemas import InscripcionCreate
@@ -34,6 +38,12 @@ class DocumentoValidado:
         return sha256(self.contenido).hexdigest()
 
 
+@dataclass(frozen=True)
+class ResultadoInscripcion:
+    legajo: Legajo
+    credencial_propietario: CredencialPropietario
+
+
 def _remove_staged_files(paths: list[Path]) -> None:
     for path in paths:
         try:
@@ -46,7 +56,7 @@ def inscribir_aspirante(
     session: Session,
     data: InscripcionCreate,
     documentos: list[DocumentoValidado],
-) -> Legajo:
+) -> ResultadoInscripcion:
     consulta_cohorte = select(Cohorte).where(Cohorte.inscripcion_abierta.is_(True))
     if data.cohorte_id is not None:
         consulta_cohorte = consulta_cohorte.where(Cohorte.id == data.cohorte_id)
@@ -70,6 +80,7 @@ def inscribir_aspirante(
     staged_paths: list[Path] = []
     try:
         storage_dir.mkdir(parents=True, exist_ok=True)
+        credencial_propietario = crear_credencial_propietario()
         legajo = Legajo(
             cohorte_id=cohorte.id,
             estado="Pendiente",
@@ -92,6 +103,8 @@ def inscribir_aspirante(
             motivacion=data.motivacion,
             solicita_beca=data.solicita_beca,
             tipo_beca=data.tipo_beca,
+            token_propietario_hash=credencial_propietario.token_hash,
+            token_propietario_expira_en=credencial_propietario.expira_en,
         )
         session.add(legajo)
         session.flush()
@@ -111,7 +124,10 @@ def inscribir_aspirante(
             )
 
         session.commit()
-        return legajo
+        return ResultadoInscripcion(
+            legajo=legajo,
+            credencial_propietario=credencial_propietario,
+        )
     except IntegrityError as error:
         session.rollback()
         _remove_staged_files(staged_paths)

@@ -22,6 +22,7 @@ from src.inscripcion.infrastructure.models import (
 )
 
 PDF_PRUEBA = b"%PDF-1.4\ncontenido privado\n%%EOF"
+TOKEN_PROPIETARIO = "token-propietario-de-prueba"
 
 
 @pytest.fixture
@@ -53,6 +54,8 @@ def documentos_api(
         titulo_grado="Ingeniería",
         como_conocio="web",
         motivacion="Quiero profundizar mis conocimientos en esta disciplina.",
+        token_propietario_hash=sha256(TOKEN_PROPIETARIO.encode("ascii")).hexdigest(),
+        token_propietario_expira_en=datetime.now(timezone.utc) + timedelta(days=30),
     )
     sesion.add(legajo)
     sesion.flush()
@@ -138,6 +141,10 @@ def encabezados_autorizacion(
     return {"Authorization": f"Bearer {crear_token(sesion, rol)}"}
 
 
+def encabezados_propietario(token: str = TOKEN_PROPIETARIO) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_coordinador_descarga_pdf_en_linea_sin_exponer_ruta(
     documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
 ) -> None:
@@ -157,6 +164,129 @@ def test_coordinador_descarga_pdf_en_linea_sin_exponer_ruta(
     assert respuesta.headers["cache-control"] == "private, no-store"
     assert respuesta.headers["x-content-type-options"] == "nosniff"
     assert str(raiz_almacenamiento) not in respuesta.text
+
+
+def test_dueno_consulta_legajo_y_descarga_su_documento(
+    documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
+) -> None:
+    cliente, _, documento, _ = documentos_api
+    headers = encabezados_propietario()
+
+    detalle = cliente.get(
+        f"/api/v1/legajos/{documento.legajo_id}",
+        headers=headers,
+    )
+    descarga = cliente.get(
+        f"/api/v1/documentos/{documento.id}/download",
+        headers=headers,
+    )
+
+    assert detalle.status_code == 200
+    assert detalle.json()["id"] == str(documento.legajo_id)
+    assert descarga.status_code == 200
+    assert descarga.content == PDF_PRUEBA
+
+
+def test_token_incorrecto_o_vencido_no_autoriza(
+    documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
+) -> None:
+    cliente, sesion, documento, _ = documentos_api
+    incorrecto = cliente.get(
+        f"/api/v1/documentos/{documento.id}/download",
+        headers=encabezados_propietario("token-de-otro-legajo"),
+    )
+    legajo = sesion.get(Legajo, documento.legajo_id)
+    assert legajo is not None
+    legajo.token_propietario_expira_en = datetime.now(timezone.utc) - timedelta(seconds=1)
+    sesion.commit()
+    vencido = cliente.get(
+        f"/api/v1/legajos/{documento.legajo_id}",
+        headers=encabezados_propietario(),
+    )
+
+    assert incorrecto.status_code == 401
+    assert vencido.status_code == 401
+
+
+@pytest.mark.parametrize("estado", ["Pendiente", "Observado"])
+def test_dueno_reemplaza_documento_en_estado_editable(
+    documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
+    estado: str,
+) -> None:
+    cliente, sesion, documento, raiz_almacenamiento = documentos_api
+    legajo = sesion.get(Legajo, documento.legajo_id)
+    assert legajo is not None
+    legajo.estado = estado
+    sesion.commit()
+    ruta_anterior = raiz_almacenamiento / documento.path_storage
+    contenido_nuevo = b"%PDF-1.7\ncontenido corregido\n%%EOF"
+
+    respuesta = cliente.post(
+        f"/api/v1/legajos/{documento.legajo_id}/documentos",
+        data={"tipo": "DNI"},
+        files={"archivo": ("dni-corregido.pdf", contenido_nuevo, "application/pdf")},
+        headers=encabezados_propietario(),
+    )
+
+    sesion.refresh(documento)
+    assert respuesta.status_code == 200
+    assert respuesta.json()["id"] == str(documento.id)
+    assert documento.checksum_sha256 == sha256(contenido_nuevo).hexdigest()
+    assert not ruta_anterior.exists()
+    assert (raiz_almacenamiento / documento.path_storage).read_bytes() == contenido_nuevo
+    assert "path_storage" not in respuesta.json()
+    assert "checksum_sha256" not in respuesta.json()
+
+
+def test_dueno_agrega_tipo_de_documento_ausente(
+    documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
+) -> None:
+    cliente, sesion, documento, raiz_almacenamiento = documentos_api
+    respuesta = cliente.post(
+        f"/api/v1/legajos/{documento.legajo_id}/documentos",
+        data={"tipo": "PARTIDA"},
+        files={"archivo": ("partida.pdf", PDF_PRUEBA, "application/pdf")},
+        headers=encabezados_propietario(),
+    )
+
+    assert respuesta.status_code == 201
+    assert respuesta.json()["tipo"] == "PARTIDA"
+    agregado = sesion.scalar(
+        select(DocumentoInscripcion).where(
+            DocumentoInscripcion.legajo_id == documento.legajo_id,
+            DocumentoInscripcion.tipo == "PARTIDA",
+        )
+    )
+    assert agregado is not None
+    assert (raiz_almacenamiento / agregado.path_storage).is_file()
+
+
+def test_carga_documental_exige_dueno_y_estado_editable(
+    documentos_api: tuple[TestClient, Session, DocumentoInscripcion, Path],
+) -> None:
+    cliente, sesion, documento, _ = documentos_api
+    headers = {
+        "Authorization": f"Bearer {crear_token(sesion, 'COORDINADOR')}"
+    }
+    no_dueno = cliente.post(
+        f"/api/v1/legajos/{documento.legajo_id}/documentos",
+        data={"tipo": "PARTIDA"},
+        files={"archivo": ("partida.pdf", PDF_PRUEBA, "application/pdf")},
+        headers=headers,
+    )
+    legajo = sesion.get(Legajo, documento.legajo_id)
+    assert legajo is not None
+    legajo.estado = "Completado"
+    sesion.commit()
+    estado_cerrado = cliente.post(
+        f"/api/v1/legajos/{documento.legajo_id}/documentos",
+        data={"tipo": "PARTIDA"},
+        files={"archivo": ("partida.pdf", PDF_PRUEBA, "application/pdf")},
+        headers=encabezados_propietario(),
+    )
+
+    assert no_dueno.status_code == 403
+    assert estado_cerrado.status_code == 409
 
 
 def test_descarga_requiere_token(

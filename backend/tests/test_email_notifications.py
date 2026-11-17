@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import datetime, timezone
 from email.message import EmailMessage
 
 import pytest
@@ -11,7 +12,13 @@ from src.inscripcion.infrastructure import email as notificaciones
     [
         (
             notificaciones.enviar_confirmacion_inscripcion,
-            ("ana@example.com", "Ana", "seguimiento-123"),
+            (
+                "ana@example.com",
+                "Ana",
+                "seguimiento-123",
+                "token-propietario",
+                datetime(2026, 12, 16, tzinfo=timezone.utc),
+            ),
             "Pendiente",
         ),
         (
@@ -29,7 +36,7 @@ from src.inscripcion.infrastructure import email as notificaciones
 def test_notificaciones_se_envian_con_html_logo_y_version_de_texto(
     monkeypatch: pytest.MonkeyPatch,
     enviar: Callable[..., None],
-    argumentos: tuple[str, ...],
+    argumentos: tuple[object, ...],
     frase_esperada: str,
 ) -> None:
     mensajes: list[EmailMessage] = []
@@ -47,6 +54,11 @@ def test_notificaciones_se_envian_con_html_logo_y_version_de_texto(
     assert "Logo UTN Facultad Regional La Plata" in html
     assert "https://www.frlp.utn.edu.ar/themes/custom/b5frlp/logo.svg" in html
     assert frase_esperada in texto
+    if enviar is notificaciones.enviar_confirmacion_inscripcion:
+        assert "token-propietario" in html
+        assert "token-propietario" in texto
+        assert "Bearer en el encabezado Authorization" in texto
+        assert "16/12/2026 00:00 UTC" in html
     if "<script>" in argumentos:
         assert "&lt;script&gt;motivo&lt;/script&gt;" in html
         assert "<script>motivo</script>" not in html
