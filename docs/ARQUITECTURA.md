@@ -716,7 +716,8 @@ enum TipoCarrera { Especializacion Maestria Doctorado }
 **Reglas no negociables:**
 - El directorio de storage **no está servido por el web server**. No existe ninguna URL que apunte directamente a un archivo.
 - El nombre del archivo en disco es **siempre un UUID** generado por el servidor. El nombre original se guarda solo en la base de datos para mostrárselo al usuario.
-- Todo acceso va por el endpoint autenticado `GET /api/v1/documentos/{id}/download` que verifica permisos antes de hacer streaming del archivo.
+- Todo acceso va por el endpoint autenticado `GET /api/v1/documentos/{id}/download`, que permite JWT de `COORDINADOR` o token del dueño del legajo antes de hacer streaming.
+- El token de propietario se envía al email de inscripción, se almacena como hash y vence a los 30 días.
 
 ### 9.2 Validación de PDFs — Python
 
@@ -938,15 +939,18 @@ POST   /api/v1/auth/refresh
 POST   /api/v1/auth/logout
 
 # Cohortes
-GET    /api/v1/cohortes
+GET    /api/v1/cohortes                         [Público] → cohortes abiertas mínimas
+GET    /api/v1/cohortes/proxima-apertura        [Público] → fecha prevista
+GET    /api/v1/cohortes/gestion                 [COORDINADOR] → listado completo
 POST   /api/v1/cohortes                         [COORDINADOR]
 PATCH  /api/v1/cohortes/{id}/inscripcion        [COORDINADOR] → abre/cierra
 
 # Legajos (Módulo Core)
-POST   /api/v1/legajos                          [Público] → inscripción
+POST   /api/v1/legajos                          [Público] → inscripción y documentos
 GET    /api/v1/legajos                          [COORDINADOR] → listado con filtros
-GET    /api/v1/legajos/{id}                     [COORDINADOR, dueño]
-PATCH  /api/v1/legajos/{id}/estado              [COORDINADOR] → transición
+GET    /api/v1/legajos/{id}                     [COORDINADOR, dueño] → detalle
+PATCH  /api/v1/legajos/{id}/estado             [COORDINADOR] → transición
+POST   /api/v1/legajos/{id}/correccion          [Público] → corrección con token
 GET    /api/v1/legajos/exportar                 [COORDINADOR] → Excel
 
 # Documentos (Módulo Core)
@@ -978,7 +982,7 @@ GET    /api/v1/analytics/exportar               [COORDINADOR] → Excel
 | Job | Horario | Responsabilidad | FastAPI | NestJS |
 |-----|:-------:|----------------|:-------:|:------:|
 | `recalcular_semaforos` | 2:00 AM | Recalcula el semáforo de todos los estudiantes activos | APScheduler | `@Cron('0 2 * * *')` |
-| `vencer_reservas` | 3:00 AM | Pasa a "Vencido" los legajos "Completados" hace >30 días | APScheduler | `@Cron('0 3 * * *')` |
+| `vencer_reservas` | 3:00 AM | Pasa a "Vencido" los legajos "Completados" hace ≥30 días y notifica | FastAPI lifespan (asyncio) | `@Cron('0 3 * * *')` |
 | `recordatorio_docentes` | 8:00 AM | Email a docentes sin cargar notas (faltando ≤48hs) | APScheduler | `@Cron('0 8 * * *')` |
 
 ---

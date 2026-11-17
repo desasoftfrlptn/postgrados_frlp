@@ -29,6 +29,7 @@ class Cohorte(Base):
         Boolean, nullable=False, default=False, server_default="false"
     )
     fecha_inicio: Mapped[date | None] = mapped_column(Date, nullable=True)
+    fecha_proxima_apertura: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     legajos: Mapped[list["Legajo"]] = relationship(back_populates="cohorte")
 
@@ -38,6 +39,10 @@ class Legajo(Base):
     __table_args__ = (
         UniqueConstraint("cohorte_id", "dni", name="uq_legajos_cohorte_dni"),
         UniqueConstraint("cohorte_id", "email", name="uq_legajos_cohorte_email"),
+        UniqueConstraint(
+            "token_propietario_hash",
+            name="uq_legajos_token_propietario_hash",
+        ),
         Index("ix_legajos_cohorte_estado", "cohorte_id", "estado"),
     )
 
@@ -70,6 +75,12 @@ class Legajo(Base):
     tipo_beca: Mapped[str | None] = mapped_column(String(10), nullable=True)
     token_correccion_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     token_correccion_expira_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    token_propietario_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    token_propietario_expira_en: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     fecha_inscripcion: Mapped[datetime] = mapped_column(

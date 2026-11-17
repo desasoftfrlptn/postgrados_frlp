@@ -36,37 +36,34 @@ token (por defecto, 7 días) se rota en cada uso y se almacena como hash; logout
 revoca toda la familia de tokens de esa sesión. Los usuarios se almacenan con
 bcrypt (cost factor 12) y no existe registro público.
 
-La inscripción (`POST /api/v1/inscripciones`) permanece pública. La interfaz de
+La inscripción (`POST /api/v1/legajos`) permanece pública. La interfaz de
 coordinación exige el rol `COORDINADOR`; `CPR` puede autenticarse, pero su módulo
 todavía no está disponible. Las rutas API pueden exigir roles con
 `requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
 con el Módulo B cuando exista el modelo de seminarios.
 
-**Estado del listado de legajos:** `GET /api/v1/legajos` y sus filtros todavía no
-están implementados en la API activa. La pantalla de gestión correspondiente
-usa datos locales de ejemplo; no debe tomarse como un listado conectado a la
-base de datos. El contrato funcional previsto está descrito en el PRD, pero aún
-no está disponible para consumidores de la API.
+`GET /api/v1/legajos`, `GET /api/v1/legajos/exportar` y las rutas de gestión de
+cohortes requieren un JWT válido con rol `COORDINADOR`. `GET
+/api/v1/legajos/{id}` y `GET /api/v1/documentos/{id}/download` admiten al
+coordinador o al dueño del legajo. El listado incluye los datos de
+identificación del legajo, `solicita_beca`, `tipo_beca` y, si existe, el tipo
+del documento `FORM_BECA`; nunca expone rutas de almacenamiento ni checksums.
+Los filtros combinables son `estado`, `cohorte_id` (UUID), `carrera`,
+`tiene_beca` (`true`/`false`), `dni` exacto y `apellido` parcial
+case-insensitive (mínimo tres caracteres). `tiene_beca` filtra por
+`solicita_beca` y, si se omite, no limita los resultados.
 
-## Workflow del legajo
+`GET /api/v1/cohortes` es público y devuelve únicamente las cohortes abiertas y
+los datos mínimos para elegir una en el formulario. `GET
+/api/v1/cohortes/proxima-apertura` devuelve la fecha pública más próxima que
+informó coordinación. `GET /api/v1/cohortes/gestion`, `POST /api/v1/cohortes` y
+`PATCH /api/v1/cohortes/{id}/inscripcion` requieren `COORDINADOR`; al cerrar un
+período se debe informar la fecha prevista de reapertura. Las cohortes mantienen
+períodos independientes.
 
-Las transiciones administrativas requieren JWT con rol `COORDINADOR`:
-
-- `POST /api/v1/legajos/{id}/transiciones` acepta `REVISAR`,
-  `OBSERVAR`, `APROBAR`, `RECHAZAR`, `MATRICULAR` o `DAR_DE_BAJA`.
-- `OBSERVAR` exige `comentario`; el sistema envía ese motivo al email del
-  aspirante y genera un token de corrección aleatorio, de un solo uso y válido
-  por 72 horas. Solo se almacena el hash del token.
-- `POST /api/v1/legajos/{id}/correccion` acepta `{"token": "..."}` sin JWT y
-  permite únicamente la transición `Observado` → `Pendiente`. Al usarlo, el
-  token se invalida.
-- `APROBAR` realiza `En Revisión` → `Completado` según RF-CORE-003 y genera el
-  número de legajo `AA-CCC-NNN`. Como el modelo admite una cohorte por año, el
-  componente de cohorte es `001`.
-
-Cada transición registra actor/rol, estado anterior y nuevo y acción en
-`eventos_auditoria`, dentro de la misma transacción del cambio. Aplicar
-`alembic upgrade head` para crear las columnas de vigencia y hash del token.
+La exportación aplica los mismos filtros del listado, genera un XLSX de hasta
+500 resultados con encabezados en negrita, anchos ajustados y autofiltro. Su
+nombre incluye cohorte y fecha cuando se filtra por cohorte.
 
 En desarrollo, ejecutar `alembic upgrade head` y luego `python -m scripts.seed`
 desde `backend` para crear cuentas locales:
@@ -87,23 +84,69 @@ el comando solicita la contraseña sin mostrarla y almacena únicamente su hash.
 
 ## Inscripción pública
 
-`POST /api/v1/inscripciones` recibe `multipart/form-data` y no requiere
+`POST /api/v1/legajos` recibe `multipart/form-data` y no requiere
 autenticación. `carreras` se envía como una lista JSON; el resto de los campos
 coincide con los nombres del formulario web. Los cinco documentos obligatorios
 son `archivo_preinscripcion`, `archivo_dni`, `archivo_titulo`,
 `archivo_partida` y `archivo_cuit`. `archivo_posgrado` es obligatorio si se
 informa `titulo_posgrado`; `archivo_beca` si se solicita beca.
 
-Se aceptan PDFs de hasta el límite configurado y se comprueba tanto el MIME
+El campo opcional `cohorte_id` selecciona una cohorte específica; si se omite,
+se mantiene la selección automática de la cohorte abierta más reciente. Se
+aceptan PDFs de hasta el límite configurado y se comprueba tanto el MIME
 declarado como la firma del contenido. Una respuesta `201` contiene el código
 de seguimiento y el estado inicial `Pendiente`; se devuelve `409` para DNI/email
 duplicados o si no hay cohorte abierta.
+La ruta admite hasta 10 envíos por IP en una ventana fija de una hora; al superar
+el límite responde `429` con el encabezado `Retry-After`.
 
-Al recibir una inscripción, el backend envía una confirmación HTML y de texto al
-email principal usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+Al recibir una inscripción, el backend genera un token privado aleatorio del
+dueño, guarda solo su hash y lo envía al email principal en una confirmación
+HTML y de texto. El token vence a los 30 días y se envía en el encabezado
+`Authorization: Bearer <token>` para consultar el detalle y operar con los
+documentos de ese legajo. No se devuelve en la respuesta HTTP.
+La migración no emite tokens para legajos ya existentes; estos siguen
+disponibles para coordinación, y el acceso de propietario se habilita
+automáticamente para nuevas inscripciones.
+
+`POST /api/v1/legajos/{id}/documentos` recibe `multipart/form-data` con
+`tipo` y `archivo`. Solo acepta los tipos documentales del Core, verifica MIME,
+firma PDF y tamaño máximo, y almacena el archivo con nombre UUID y checksum
+SHA-256. El dueño puede agregar o reemplazar documentos mientras el legajo está
+`Pendiente` u `Observado`; reemplazar devuelve `200`, agregar devuelve `201` y
+otros estados responden `409`. Los títulos de posgrado y formularios de beca
+solo se admiten si fueron declarados en la inscripción.
+
+`GET /api/v1/documentos/{id}/download` transmite el PDF en línea al
+coordinador o al dueño autenticado del legajo, sin exponer la ruta privada.
+
+Los emails se envían usando SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
 `SMTP_PASSWORD`, `SMTP_STARTTLS` y `EMAIL_FROM`). En Docker, MailHog captura los
 mensajes de desarrollo en `http://localhost:8025`. Los errores de entrega quedan
 registrados en el log del backend.
+
+## Notificaciones por cambios de estado
+
+`PATCH /api/v1/legajos/{legajo_id}/estado` requiere el rol
+`COORDINADOR`. Al ejecutar `OBSERVAR`, envía al aspirante el motivo registrado;
+al ejecutar `APROBAR`, cambia el estado a `Completado`, asigna el número de
+legajo y envía el aviso de aprobación. La confirmación de inscripción se envía
+al crear el legajo en estado `Pendiente`.
+
+Los tres correos comparten una plantilla HTML con el logo público de UTN FRLP y
+una alternativa de texto para clientes de correo que no renderizan HTML. Se
+envían mediante `BackgroundTasks` y el cliente SMTP compartido; los errores se
+registran sin bloquear la operación. Como documenta ADR-006, estas tareas no
+son una cola durable y no tienen reintentos persistentes.
+
+Cada día a las 03:00 (hora local del servidor), la tarea del ciclo de vida de
+FastAPI vence las reservas que llevan 30 días en `Completado` sin una transición
+posterior. El cambio queda auditado y se envía un correo con los legajos
+afectados a cada usuario activo con rol `COORDINADOR`.
+
+Todas las respuestas HTTP incluyen los encabezados de seguridad configurados
+por `MiddlewareEncabezadosSeguridad`. CORS permite el origen definido en
+`CORS_ORIGIN`.
 
 ## Servicios compartidos
 

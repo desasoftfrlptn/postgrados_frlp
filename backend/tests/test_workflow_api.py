@@ -96,7 +96,7 @@ def _token(client: TestClient, email: str, password: str) -> str:
     return response.json()["access_token"]
 
 
-def test_coordinador_observa_y_aspirante_corrige_con_token_de_un_solo_uso(
+def test_observar_envia_detalle_html_y_aspirante_puede_corregir_con_token(
     workflow_client: tuple[
         TestClient, Session, User, User, Cohorte, list[EmailMessage]
     ],
@@ -107,16 +107,17 @@ def test_coordinador_observa_y_aspirante_corrige_con_token_de_un_solo_uso(
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    revisar = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    revisar = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "REVISAR"},
         headers=headers,
     )
     assert revisar.status_code == 200
     assert revisar.json()["estado"] == "En Revisión"
+    assert not emails_sent
 
-    observar = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    observar = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "OBSERVAR", "comentario": "Falta el título"},
         headers=headers,
     )
@@ -124,6 +125,9 @@ def test_coordinador_observa_y_aspirante_corrige_con_token_de_un_solo_uso(
     assert observar.json()["estado"] == "Observado"
     assert len(emails_sent) == 1
     mensaje = emails_sent[0]
+    html = mensaje.get_body(preferencelist=("html",)).get_content()
+    assert "Falta el título" in html
+    assert "Logo UTN Facultad Regional La Plata" in html
     texto_correo = mensaje.get_body(preferencelist=("plain",)).get_content()
     token_correccion = texto_correo.split("token de un solo uso ", 1)[1].split(".", 1)[0]
 
@@ -142,8 +146,7 @@ def test_coordinador_observa_y_aspirante_corrige_con_token_de_un_solo_uso(
     assert repetido.status_code == 401
     auditoria = list(
         session.scalars(
-            select(EventoAuditoria)
-            .where(EventoAuditoria.tipo_recurso == "legajo")
+            select(EventoAuditoria).where(EventoAuditoria.tipo_recurso == "legajo")
         )
     )
     transiciones = {
@@ -159,12 +162,42 @@ def test_coordinador_observa_y_aspirante_corrige_con_token_de_un_solo_uso(
     assert any(evento.rol_actor == "ASPIRANTE" for evento in auditoria)
 
 
-def test_aprobar_genera_numero_legajo_secuencial(
+def test_aprobar_envia_email_html_con_estado_y_numero_de_legajo(
     workflow_client: tuple[
         TestClient, Session, User, User, Cohorte, list[EmailMessage]
     ],
 ) -> None:
-    client, session, coordinator, _, cohort, _ = workflow_client
+    client, session, coordinator, _, cohort, emails_sent = workflow_client
+    legajo = _crear_legajo(session, cohort, estado="En Revisión")
+    headers = {
+        "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
+    }
+
+    response = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
+        json={"accion": "APROBAR"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["estado"] == "Completado"
+    assert response.json()["numero_legajo"] == "26-001-001"
+    assert len(emails_sent) == 1
+    mensaje = emails_sent[0]
+    assert "Completado" in mensaje.get_body(preferencelist=("plain",)).get_content()
+    html = mensaje.get_body(preferencelist=("html",)).get_content()
+    assert "Completado" in html
+    assert "26-001-001" in html
+    assert "Logo UTN Facultad Regional La Plata" in html
+    assert session.get(Legajo, legajo.id).estado == "Completado"
+
+
+def test_coordinador_aprueba_legajos_con_numeracion_secuencial(
+    workflow_client: tuple[
+        TestClient, Session, User, User, Cohorte, list[EmailMessage]
+    ],
+) -> None:
+    client, session, coordinator, _, cohort, emails_sent = workflow_client
     headers = {
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
@@ -175,8 +208,8 @@ def test_aprobar_genera_numero_legajo_secuencial(
 
     numeros: list[str] = []
     for legajo in legajos:
-        response = client.post(
-            f"/api/v1/legajos/{legajo.id}/transiciones",
+        response = client.patch(
+            f"/api/v1/legajos/{legajo.id}/estado",
             json={"accion": "APROBAR"},
             headers=headers,
         )
@@ -185,6 +218,7 @@ def test_aprobar_genera_numero_legajo_secuencial(
         numeros.append(response.json()["numero_legajo"])
 
     assert numeros == ["26-001-001", "26-001-002"]
+    assert len(emails_sent) == 2
 
 
 def test_solo_coordinador_puede_transicionar_y_no_se_permiten_saltos(
@@ -192,32 +226,30 @@ def test_solo_coordinador_puede_transicionar_y_no_se_permiten_saltos(
         TestClient, Session, User, User, Cohorte, list[EmailMessage]
     ],
 ) -> None:
-    client, session, coordinator, cpr, cohort, _ = workflow_client
+    client, session, coordinator, cpr, cohort, emails_sent = workflow_client
     legajo = _crear_legajo(session, cohort)
     cpr_headers = {
         "Authorization": f"Bearer {_token(client, cpr.email, 'CprExample123!')}"
     }
 
-    denegado = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    denegado = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "REVISAR"},
         headers=cpr_headers,
     )
     assert denegado.status_code == 403
 
-    salto_headers = {
-        "Authorization": (
-            f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
-        )
+    headers = {
+        "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
-    salto = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    salto = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "APROBAR"},
-        headers=salto_headers,
+        headers=headers,
     )
     assert salto.status_code == 409
-
     assert session.get(Legajo, legajo.id).estado == "Pendiente"
+    assert not emails_sent
 
 
 def test_no_se_puede_aprobar_sin_pasar_por_revision(
@@ -225,20 +257,21 @@ def test_no_se_puede_aprobar_sin_pasar_por_revision(
         TestClient, Session, User, User, Cohorte, list[EmailMessage]
     ],
 ) -> None:
-    client, session, coordinator, _, cohort, _ = workflow_client
+    client, session, coordinator, _, cohort, emails_sent = workflow_client
     legajo = _crear_legajo(session, cohort)
     headers = {
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    response = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    response = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "APROBAR"},
         headers=headers,
     )
 
     assert response.status_code == 409
     assert session.get(Legajo, legajo.id).estado == "Pendiente"
+    assert not emails_sent
 
 
 def test_observar_exige_motivo(
@@ -246,23 +279,20 @@ def test_observar_exige_motivo(
         TestClient, Session, User, User, Cohorte, list[EmailMessage]
     ],
 ) -> None:
-    client, session, coordinator, _, cohort, _ = workflow_client
-    legajo = _crear_legajo(
-        session,
-        cohort,
-        estado="En Revisión",
-    )
+    client, session, coordinator, _, cohort, emails_sent = workflow_client
+    legajo = _crear_legajo(session, cohort, estado="En Revisión")
     headers = {
         "Authorization": f"Bearer {_token(client, coordinator.email, 'Coordinator123!')}"
     }
 
-    response = client.post(
-        f"/api/v1/legajos/{legajo.id}/transiciones",
+    response = client.patch(
+        f"/api/v1/legajos/{legajo.id}/estado",
         json={"accion": "OBSERVAR"},
         headers=headers,
     )
 
     assert response.status_code == 422
+    assert not emails_sent
 
 
 def test_token_de_correccion_vencido_no_cambia_el_estado(

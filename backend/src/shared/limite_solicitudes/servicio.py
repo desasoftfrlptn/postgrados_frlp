@@ -4,14 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
-from fastapi import HTTPException, Request, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import delete
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.db.session import SessionLocal
+from src.db.session import get_db
 from src.shared.limite_solicitudes.modelos import ContadorLimiteSolicitudes
 
 
@@ -103,19 +103,19 @@ def dependencia_limite_solicitudes(
 
     def aplicar_limite(
         solicitud: Request,
+        sesion: Session = Depends(get_db),
     ) -> None:
         clave_solicitud = (
             construir_clave(solicitud)
             if construir_clave is not None
             else solicitud.client.host if solicitud.client is not None else "desconocida"
         )
-        with SessionLocal() as sesion:
-            resultado = consumir_limite_solicitudes(
-                sesion,
-                clave=f"{alcance}:{clave_solicitud}",
-                limite=limite,
-                segundos_ventana=segundos_ventana,
-            )
+        resultado = consumir_limite_solicitudes(
+            sesion,
+            clave=f"{alcance}:{clave_solicitud}",
+            limite=limite,
+            segundos_ventana=segundos_ventana,
+        )
         if not resultado.permitido:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

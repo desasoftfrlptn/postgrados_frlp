@@ -1,13 +1,25 @@
+from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 Carrera = Literal["Especialización", "Maestría", "Doctorado"]
 CanalDifusion = Literal["redes", "colegas", "web", "egresados", "otro"]
 TipoBeca = Literal["30%", "100%"]
+TipoDocumento = Literal[
+    "FORM_INSCRIPCION",
+    "DNI",
+    "TITULO",
+    "PARTIDA",
+    "CUIT",
+    "TITULO_POSGRADO",
+    "FORM_BECA",
+]
 
 
 class InscripcionCreate(BaseModel):
+    cohorte_id: UUID | None = None
     carreras: list[Carrera] = Field(min_length=1, max_length=2)
     dni: str = Field(pattern=r"^[0-9]{7,8}$", max_length=8)
     nombre: str = Field(min_length=1, max_length=120)
@@ -63,6 +75,11 @@ class InscripcionCreate(BaseModel):
     def normalize_email(cls, value: object) -> object:
         return value.strip().lower() if isinstance(value, str) else value
 
+    @field_validator("cohorte_id", mode="before")
+    @classmethod
+    def empty_cohort_to_none(cls, value: object) -> object:
+        return None if value == "" else value
+
     @field_validator("tipo_beca", mode="before")
     @classmethod
     def empty_beca_to_none(cls, value: object) -> object:
@@ -117,3 +134,104 @@ class LegajoEstadoResponse(BaseModel):
     estado: str
     numero_legajo: str | None
     mensaje: str
+
+
+class CohorteCreate(BaseModel):
+    anio: int = Field(ge=2000, le=9999)
+    nombre: str = Field(min_length=1, max_length=100)
+    fecha_inicio: date | None = None
+    fecha_proxima_apertura: date | None = None
+    inscripcion_abierta: bool = False
+
+    @field_validator("nombre")
+    @classmethod
+    def limpiar_nombre(cls, value: str) -> str:
+        nombre = value.strip()
+        if not nombre:
+            raise ValueError("El nombre de la cohorte no puede estar vacío")
+        return nombre
+
+    @field_validator("fecha_proxima_apertura")
+    @classmethod
+    def validar_fecha_proxima(cls, value: date | None) -> date | None:
+        if value is not None and value < date.today():
+            raise ValueError("La próxima fecha de apertura no puede estar en el pasado")
+        return value
+
+
+class CohorteInscripcionUpdate(BaseModel):
+    inscripcion_abierta: bool
+    fecha_proxima_apertura: date | None = None
+
+    @field_validator("fecha_proxima_apertura")
+    @classmethod
+    def validar_fecha_proxima(cls, value: date | None) -> date | None:
+        if value is not None and value < date.today():
+            raise ValueError("La próxima fecha de apertura no puede estar en el pasado")
+        return value
+
+
+class CohorteResponse(BaseModel):
+    id: UUID
+    anio: int
+    nombre: str
+    inscripcion_abierta: bool
+    fecha_inicio: date | None
+    fecha_proxima_apertura: date | None
+
+
+class CohortePublicaResponse(BaseModel):
+    id: UUID
+    anio: int
+    nombre: str
+
+
+class ProximaAperturaResponse(BaseModel):
+    fecha_proxima_apertura: date
+
+
+class DocumentoResumenResponse(BaseModel):
+    id: UUID
+    tipo: str
+    fecha_subida: datetime
+
+
+class LegajoListadoResponse(BaseModel):
+    id: UUID
+    numero_legajo: str | None
+    apellido: str
+    nombre: str
+    dni: str
+    estado: str
+    carreras: list[str]
+    solicita_beca: bool
+    tipo_beca: str | None
+    documento_beca: dict[str, str] | None
+
+
+class LegajoDetalleResponse(BaseModel):
+    id: UUID
+    numero_legajo: str | None
+    cohorte_id: UUID
+    estado: str
+    carreras: list[str]
+    dni: str
+    apellido: str
+    nombre: str
+    nacionalidad: str
+    email: EmailStr
+    email_alternativo: EmailStr
+    telefono_movil: str
+    telefono_fijo: str | None
+    domicilio: str
+    ciudad: str
+    provincia: str
+    pais: str
+    titulo_grado: str
+    titulo_posgrado: str | None
+    como_conocio: str
+    motivacion: str
+    solicita_beca: bool
+    tipo_beca: str | None
+    fecha_inscripcion: datetime
+    documentos: list[DocumentoResumenResponse]

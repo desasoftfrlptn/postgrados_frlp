@@ -76,11 +76,11 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para** llevar el control del proceso de admisión.
 
 **Criterios de aceptación:**
-- [ ] Las transiciones de estado siguen estrictamente el diagrama del SRS (RF-CORE-003)
-- [ ] Solo el coordinador puede mover el legajo a "En Revisión" o "Aprobado"
-- [ ] Solo el aspirante puede mover su legajo de "Observado" a "Pendiente" (al corregir)
-- [ ] Cada cambio de estado queda registrado en un log de auditoría (quién, cuándo, de qué estado a qué estado)
-- [ ] Al aprobar se genera automáticamente el número de legajo (formato: AÑO-COHORTE-SECUENCIAL)
+- [x] Las transiciones de estado siguen estrictamente el diagrama del SRS (RF-CORE-003)
+- [x] Solo el coordinador puede mover el legajo a "En Revisión" o "Aprobado"
+- [x] Solo el aspirante puede mover su legajo de "Observado" a "Pendiente" (al corregir)
+- [x] Cada cambio de estado queda registrado en un log de auditoría (quién, cuándo, de qué estado a qué estado)
+- [x] Al aprobar se genera automáticamente el número de legajo (formato: AÑO-COHORTE-SECUENCIAL)
 
 **Estimación:** 8 pts | **Prioridad:** Must | **Sprint:** 1-2
 
@@ -92,10 +92,10 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para** no tener que consultar constantemente el sistema.
 
 **Criterios de aceptación:**
-- [ ] Email de confirmación al enviar el formulario (estado → Pendiente)
-- [ ] Email con detalles de la observación cuando el estado es "Observado"
-- [ ] Email de aprobación cuando el legajo pasa a "Completado"
-- [ ] Los emails usan plantillas HTML (no texto plano) con logo UTN
+- [x] Email de confirmación al enviar el formulario (estado → Pendiente)
+- [x] Email con detalles de la observación cuando el estado es "Observado"
+- [x] Email de aprobación cuando el legajo pasa a "Completado"
+- [x] Los emails usan plantillas HTML (no texto plano) con logo UTN
 
 **Estimación:** 3 pts | **Prioridad:** Must | **Sprint:** 1-2
 
@@ -107,10 +107,10 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para** encontrar la información de un aspirante en segundos.
 
 **Criterios de aceptación:**
-- [ ] Búsqueda por DNI exacto con resultado en <2 segundos
-- [ ] Búsqueda parcial por apellido (case-insensitive, mínimo 3 caracteres)
-- [ ] Filtros combinables: Estado, Cohorte, Carrera, Tiene beca (Sí/No)
-- [ ] Los resultados muestran: Nº Legajo, Apellido y nombre, DNI, Estado, Carrera
+- [x] Búsqueda por DNI exacto con resultado en <2 segundos
+- [x] Búsqueda parcial por apellido (case-insensitive, mínimo 3 caracteres)
+- [x] Filtros combinables: Estado, Cohorte, Carrera, Tiene beca (Sí/No)
+- [x] Los resultados muestran: Nº Legajo, Apellido y nombre, DNI, Estado, Carrera
 
 **Estimación:** 5 pts | **Prioridad:** Must | **Sprint:** 2
 
@@ -122,9 +122,9 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para** preparar reportes para las autoridades de la facultad.
 
 **Criterios de aceptación:**
-- [ ] Exporta los resultados de la búsqueda activa actual (no toda la BD)
-- [ ] El Excel tiene: headers en negrita, columnas ajustadas, filtros automáticos habilitados
-- [ ] El nombre del archivo incluye la fecha: `inscriptos-cohorte2026-YYYY-MM-DD.xlsx`
+- [x] Exporta los resultados de la búsqueda activa actual (no toda la BD)
+- [x] El Excel tiene: headers en negrita, columnas ajustadas, filtros automáticos habilitados
+- [x] El nombre del archivo incluye la fecha: `inscriptos-cohorte2026-YYYY-MM-DD.xlsx`
 
 **Estimación:** 3 pts | **Prioridad:** Should | **Sprint:** 2
 
@@ -136,9 +136,9 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para** controlar cuándo los aspirantes pueden completar el formulario.
 
 **Criterios de aceptación:**
-- [ ] Solo el coordinador puede abrir/cerrar el período (BR-009)
-- [ ] Con período cerrado, el formulario muestra mensaje: "La inscripción está cerrada. Próxima apertura: [fecha]"
-- [ ] Múltiples cohortes pueden coexistir con períodos independientes
+- [x] Solo el coordinador puede abrir/cerrar el período (BR-009)
+- [x] Con período cerrado, la API pública informa la próxima apertura registrada
+- [x] Múltiples cohortes pueden coexistir con períodos independientes
 
 **Estimación:** 2 pts | **Prioridad:** Must | **Sprint:** 2
 
@@ -150,9 +150,9 @@ Este documento define las historias de usuario base del proyecto. Cada equipo de
 **para** liberar vacantes después del plazo establecido.
 
 **Criterios de aceptación:**
-- [ ] A los 30 días corridos desde "Completado" sin pasar a "Activo" → estado cambia a "Vencido"
-- [ ] El coordinador recibe email de notificación al producirse el cambio
-- [ ] La tarea programada se ejecuta una vez por día (job/cron)
+- [x] A los 30 días corridos desde "Completado" sin pasar a "Activo" → estado cambia a "Vencido"
+- [x] El coordinador recibe email de notificación al producirse el cambio
+- [x] La tarea programada se ejecuta una vez por día (job/cron)
 
 **Estimación:** 3 pts | **Prioridad:** Must | **Sprint:** 2
 

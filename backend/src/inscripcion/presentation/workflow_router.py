@@ -13,7 +13,10 @@ from src.inscripcion.application.workflow_estados import (
     corregir_legajo,
     transicionar_legajo,
 )
-from src.inscripcion.infrastructure.email import enviar_email_observacion
+from src.inscripcion.infrastructure.email import (
+    enviar_email_aprobacion,
+    enviar_email_observacion,
+)
 from src.inscripcion.presentation.schemas import (
     CorreccionLegajoRequest,
     LegajoEstadoResponse,
@@ -24,9 +27,9 @@ from src.shared.autorizacion.permisos import requerir_roles
 router = APIRouter(prefix="/api/v1/legajos", tags=["legajos-workflow"])
 
 
-@router.post("/{legajo_id}/transiciones", response_model=LegajoEstadoResponse)
+@router.patch("/{id}/estado", response_model=LegajoEstadoResponse)
 def cambiar_estado_legajo(
-    legajo_id: UUID,
+    id: UUID,
     solicitud: TransicionLegajoRequest,
     tareas_fondo: BackgroundTasks,
     session: Session = Depends(get_db),
@@ -35,7 +38,7 @@ def cambiar_estado_legajo(
     try:
         resultado = transicionar_legajo(
             session,
-            legajo_id=legajo_id,
+            legajo_id=id,
             usuario=usuario,
             accion=solicitud.accion,
             comentario=solicitud.comentario,
@@ -60,6 +63,15 @@ def cambiar_estado_legajo(
             solicitud.comentario or "",
             str(legajo.id),
             resultado.token_correccion,
+        )
+    elif solicitud.accion == "APROBAR":
+        if legajo.numero_legajo is None:
+            raise RuntimeError("Un legajo aprobado debe tener número asignado")
+        tareas_fondo.add_task(
+            enviar_email_aprobacion,
+            legajo.email,
+            legajo.nombre,
+            legajo.numero_legajo,
         )
 
     mensajes = {

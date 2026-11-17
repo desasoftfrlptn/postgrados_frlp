@@ -1,8 +1,12 @@
 import hashlib
 import json
 from collections.abc import Generator
+from datetime import date, datetime, timezone
+from io import BytesIO
 from pathlib import Path
 from uuid import UUID
+from xml.etree import ElementTree
+from zipfile import ZipFile
 
 import pytest
 from fastapi.testclient import TestClient
@@ -47,7 +51,7 @@ def client(
     app.dependency_overrides[get_db] = override_get_db
     monkeypatch.setattr(
         "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
-        lambda email, nombre, codigo: None,
+        lambda email, nombre, codigo, token, expira_en: None,
     )
     with TestClient(app) as test_client:
         yield test_client, session, cohorte
@@ -143,7 +147,7 @@ def test_public_enrollment_saves_legajo_and_private_documents(
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=valid_files(),
     )
@@ -182,15 +186,17 @@ def test_public_enrollment_sends_confirmation_email(
     client: tuple[TestClient, Session, Cohorte],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    test_client, _, _ = client
-    sent: list[tuple[str, str, str]] = []
+    test_client, session, _ = client
+    sent: list[tuple[str, str, str, str, datetime]] = []
     monkeypatch.setattr(
         "src.inscripcion.presentation.router.enviar_confirmacion_inscripcion",
-        lambda email, nombre, codigo: sent.append((email, nombre, codigo)),
+        lambda email, nombre, codigo, token, expira_en: sent.append(
+            (email, nombre, codigo, token, expira_en)
+        ),
     )
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=valid_files(),
     )
@@ -198,7 +204,25 @@ def test_public_enrollment_sends_confirmation_email(
     assert response.status_code == 201
     assert response.json()["estado"] == "Pendiente"
     assert "confirmación a tu email" in response.json()["mensaje"]
-    assert sent == [("ana@example.com", "Ana", response.json()["codigo_seguimiento"])]
+    assert len(sent) == 1
+    email, nombre, codigo, token, expira_en = sent[0]
+    assert (email, nombre, codigo) == (
+        "ana@example.com",
+        "Ana",
+        response.json()["codigo_seguimiento"],
+    )
+    legajo = session.scalar(select(Legajo))
+    assert legajo is not None
+    assert legajo.token_propietario_hash == hashlib.sha256(
+        token.encode("ascii")
+    ).hexdigest()
+    expira_en_db = legajo.token_propietario_expira_en
+    assert expira_en_db is not None
+    if expira_en_db.tzinfo is None:
+        expira_en_db = expira_en_db.replace(tzinfo=timezone.utc)
+    assert expira_en_db == expira_en
+    assert token not in response.text
+    assert expira_en > datetime.now(timezone.utc)
 
 
 @pytest.mark.parametrize(
@@ -220,11 +244,11 @@ def test_duplicate_identity_is_rejected_without_saving_a_second_legajo(
     message: str,
 ) -> None:
     test_client, session, _ = client
-    test_client.post("/api/v1/inscripciones", data=valid_form(), files=valid_files())
+    test_client.post("/api/v1/legajos", data=valid_form(), files=valid_files())
     duplicate = valid_form(**duplicate_fields)
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=duplicate,
         files=valid_files(),
     )
@@ -243,7 +267,7 @@ def test_invalid_pdf_is_rejected_before_persistence(
     files = valid_files(archivo_dni=("dni.pdf", b"no es un PDF", "application/pdf"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -260,7 +284,7 @@ def test_rechaza_mime_incorrecto_sin_persistir(
     files = valid_files(archivo_dni=("dni.pdf", PDF, "application/octet-stream"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -281,7 +305,7 @@ def test_rechaza_archivo_mayor_a_5_mb_sin_persistir(
     files = valid_files(archivo_dni=("dni.pdf", contenido, "application/pdf"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -302,7 +326,7 @@ def test_acepta_archivo_del_tamano_maximo(
     files = valid_files(archivo_dni=("dni.pdf", contenido, "application/pdf"))
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -336,7 +360,7 @@ def test_requiere_cada_documento_obligatorio(
     files.pop(campo)
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=files,
     )
@@ -370,7 +394,7 @@ def test_requiere_documentos_segun_condiciones_de_inscripcion(
     files.pop(campo_archivo, None)
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(**campos_formulario),
         files=files,
     )
@@ -395,7 +419,7 @@ def test_rechaza_falla_de_base_de_datos_sin_persistencia_parcial(
 
     with pytest.raises(SQLAlchemyError, match="Falla simulada"):
         test_client.post(
-            "/api/v1/inscripciones",
+            "/api/v1/legajos",
             data=valid_form(),
             files=valid_files(),
         )
@@ -405,6 +429,7 @@ def test_rechaza_falla_de_base_de_datos_sin_persistencia_parcial(
     assert list((settings.storage_path / "inscripciones").glob("*.pdf")) == []
 
 
+@pytest.mark.parametrize("tipo_beca", ["30%", "100%"])
 def test_beca_requires_percentage_and_signed_document(
     client: tuple[TestClient, Session, Cohorte],
     tipo_beca: str,
@@ -412,7 +437,7 @@ def test_beca_requires_percentage_and_signed_document(
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true", tipo_beca=tipo_beca),
         files=valid_files(archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")),
     )
@@ -443,7 +468,7 @@ def test_scholarship_request_without_form_is_rejected_without_partial_persistenc
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true", tipo_beca="30%"),
         files=valid_files(),
     )
@@ -463,7 +488,7 @@ def test_scholarship_request_without_percentage_is_rejected_without_partial_pers
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true"),
         files=valid_files(
             archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
@@ -485,7 +510,7 @@ def test_scholarship_type_without_request_is_rejected_without_partial_persistenc
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(tipo_beca="30%"),
         files=valid_files(),
     )
@@ -505,7 +530,7 @@ def test_scholarship_request_rejects_unsupported_percentage(
     test_client, session, _ = client
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(solicita_beca="true", tipo_beca="50%"),
         files=valid_files(
             archivo_beca=("formulario-beca.pdf", PDF, "application/pdf")
@@ -528,7 +553,7 @@ def test_enrollment_requires_an_open_cohort(
     session.commit()
 
     response = test_client.post(
-        "/api/v1/inscripciones",
+        "/api/v1/legajos",
         data=valid_form(),
         files=valid_files(),
     )
@@ -661,7 +686,7 @@ def test_legajo_list_combines_documented_filters(
         "30123462": create_legajo(
             cohorte_id=cohorte.id,
             dni="30123462",
-            apellido="Becaria",
+            apellido="Becaría",
             solicita_beca=True,
             tipo_beca="30%",
             carreras=["Maestría"],
@@ -763,3 +788,179 @@ def test_legajo_list_combines_documented_filters(
             "tiene_beca": "true",
         }
     ) == {"30123462"}
+    assert dni_resultados({"dni": "30123462"}) == {"30123462"}
+    assert dni_resultados({"apellido": "bec"}) == {
+        "30123462",
+        "30123463",
+        "30123465",
+    }
+    assert dni_resultados({"apellido": "BECARÍA"}) == {"30123462"}
+    assert test_client.get(
+        "/api/v1/legajos",
+        params={"apellido": "ab"},
+        headers=headers,
+    ).status_code == 422
+
+
+def test_inscripcion_puede_seleccionar_cohorte_abierta(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, _ = client
+    cohorte_seleccionada = Cohorte(
+        anio=2027,
+        nombre="Cohorte 2027",
+        inscripcion_abierta=True,
+    )
+    session.add(cohorte_seleccionada)
+    session.commit()
+
+    response = test_client.post(
+        "/api/v1/legajos",
+        data=valid_form(cohorte_id=str(cohorte_seleccionada.id)),
+        files=valid_files(),
+    )
+
+    assert response.status_code == 201
+    assert session.scalar(select(Legajo)).cohorte_id == cohorte_seleccionada.id
+
+
+def test_cohortes_publicas_y_gestion_de_coordinacion(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte_abierta = client
+    respuesta_publica = test_client.get("/api/v1/cohortes")
+
+    assert respuesta_publica.status_code == 200
+    assert [item["id"] for item in respuesta_publica.json()] == [
+        str(cohorte_abierta.id)
+    ]
+    assert respuesta_publica.headers["X-Content-Type-Options"] == "nosniff"
+    assert test_client.get("/api/v1/cohortes/gestion").status_code == 401
+
+    headers = create_auth_headers(session, "COORDINADOR")
+    sin_fecha = test_client.patch(
+        f"/api/v1/cohortes/{cohorte_abierta.id}/inscripcion",
+        json={"inscripcion_abierta": False},
+        headers=headers,
+    )
+    assert sin_fecha.status_code == 422
+
+    cierre = test_client.patch(
+        f"/api/v1/cohortes/{cohorte_abierta.id}/inscripcion",
+        json={
+            "inscripcion_abierta": False,
+            "fecha_proxima_apertura": "2027-03-01",
+        },
+        headers=headers,
+    )
+    assert cierre.status_code == 200
+    assert cierre.json()["fecha_proxima_apertura"] == "2027-03-01"
+    assert test_client.get("/api/v1/cohortes").json() == []
+    proxima_apertura = test_client.get("/api/v1/cohortes/proxima-apertura")
+    assert proxima_apertura.status_code == 200
+    assert proxima_apertura.json() == {"fecha_proxima_apertura": "2027-03-01"}
+
+    creacion = test_client.post(
+        "/api/v1/cohortes",
+        json={
+            "anio": 2027,
+            "nombre": "Cohorte nueva",
+            "fecha_proxima_apertura": "2027-04-01",
+        },
+        headers=headers,
+    )
+    assert creacion.status_code == 201
+    gestion = test_client.get("/api/v1/cohortes/gestion", headers=headers)
+    assert gestion.status_code == 200
+    assert {item["nombre"] for item in gestion.json()} == {
+        "Cohorte 2026",
+        "Cohorte nueva",
+    }
+
+
+def test_exportacion_xlsx_aplica_encabezado_negrita_y_filtros(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte = client
+    session.add(
+        create_legajo(
+            cohorte_id=cohorte.id,
+            dni="30123456",
+            apellido="Pérez",
+            solicita_beca=False,
+            tipo_beca=None,
+        )
+    )
+    session.commit()
+    headers = create_auth_headers(session, "COORDINADOR")
+
+    response = test_client.get(
+        "/api/v1/legajos/exportar",
+        params={"cohorte_id": str(cohorte.id)},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert (
+        f"inscriptos-cohorte{cohorte.anio}-{date.today().isoformat()}.xlsx"
+        in response.headers["content-disposition"]
+    )
+    with ZipFile(BytesIO(response.content)) as archivo:
+        assert archivo.testzip() is None
+        for nombre in archivo.namelist():
+            if nombre.endswith((".xml", ".rels")):
+                ElementTree.fromstring(archivo.read(nombre))
+        hoja = ElementTree.fromstring(archivo.read("xl/worksheets/sheet1.xml"))
+        estilos = ElementTree.fromstring(archivo.read("xl/styles.xml"))
+    ns = {"x": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    assert hoja.find("x:autoFilter", ns).attrib["ref"] == "A1:H2"
+    assert hoja.find("x:sheetData/x:row/x:c", ns).attrib["s"] == "1"
+    assert hoja.find("x:cols/x:col", ns).attrib["customWidth"] == "1"
+    assert estilos.find("x:fonts/x:font[2]/x:b", ns) is not None
+
+
+def test_exportacion_rechaza_mas_de_500_legajos(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, session, cohorte = client
+    session.add_all(
+        [
+            create_legajo(
+                cohorte_id=cohorte.id,
+                dni=str(31000000 + indice),
+                apellido=f"Aspirante {indice}",
+                solicita_beca=False,
+                tipo_beca=None,
+            )
+            for indice in range(501)
+        ]
+    )
+    session.commit()
+    headers = create_auth_headers(session, "COORDINADOR")
+
+    response = test_client.get("/api/v1/legajos/exportar", headers=headers)
+
+    assert response.status_code == 413
+    assert response.json()["detail"] == "La exportación admite hasta 500 legajos"
+
+
+def test_inscripcion_rechaza_el_decimo_primer_envio_por_ip(
+    client: tuple[TestClient, Session, Cohorte],
+) -> None:
+    test_client, _, _ = client
+    respuestas = [
+        test_client.post(
+            "/api/v1/legajos",
+            data=valid_form(),
+            files=valid_files(),
+        )
+        for _ in range(11)
+    ]
+
+    assert respuestas[0].status_code == 201
+    assert all(respuesta.status_code == 409 for respuesta in respuestas[1:10])
+    assert respuestas[10].status_code == 429
+    assert 1 <= int(respuestas[10].headers["Retry-After"]) <= 3600

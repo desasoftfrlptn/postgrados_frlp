@@ -37,7 +37,7 @@ dependencia aun debe conectarse a las rutas correspondientes.
 ## Decision propuesta
 
 Proponemos usar el contador compartido en PostgreSQL con ventana fija para el
-MVP. Para `POST /api/v1/inscripciones`, el limite objetivo es **10 solicitudes
+MVP. Para `POST /api/v1/legajos`, el limite objetivo es **10 solicitudes
 por IP en una hora**, de acuerdo con NFR-S06. La dependencia debe responder con
 HTTP 429 y `Retry-After` cuando se exceda el limite.
 
