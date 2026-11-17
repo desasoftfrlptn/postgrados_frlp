@@ -16,9 +16,11 @@ from sqlalchemy.orm import Session, selectinload
 
 from src.authentication.infrastructure.models import User
 from src.db.session import get_db
+from src.inscripcion.application.estado_documental import evaluar_estado_documental
 from src.inscripcion.infrastructure.models import Cohorte, Legajo
 from src.inscripcion.presentation.schemas import (
     Carrera,
+    EstadoDocumentalResponse,
     LegajoDetalleResponse,
     LegajoListadoResponse,
 )
@@ -368,6 +370,7 @@ def obtener_legajo(
             detail="No se encontró el legajo solicitado",
         )
     autorizar_dueno_o_coordinador(legajo, credenciales, session)
+    evaluacion = evaluar_estado_documental(legajo)
     return LegajoDetalleResponse(
         id=legajo.id,
         numero_legajo=legajo.numero_legajo,
@@ -401,4 +404,38 @@ def obtener_legajo(
             }
             for documento in legajo.documentos
         ],
+        documentacion_completa=evaluacion.completo,
+        estado_documental=evaluacion.estado,
+        documentos_faltantes=list(evaluacion.faltantes),
+    )
+
+
+@router.get("/{id}/estado-documental", response_model=EstadoDocumentalResponse)
+def obtener_estado_documental_legajo(
+    id: UUID,
+    session: Session = Depends(get_db),
+    credenciales: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> EstadoDocumentalResponse:
+    credenciales = exigir_credencial(credenciales)
+    legajo = session.scalar(
+        select(Legajo)
+        .options(selectinload(Legajo.documentos))
+        .where(Legajo.id == id)
+    )
+    if legajo is None:
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND,
+            detail="No se encontró el legajo solicitado",
+        )
+    autorizar_dueno_o_coordinador(legajo, credenciales, session)
+    evaluacion = evaluar_estado_documental(legajo, verificar_archivos=True)
+    return EstadoDocumentalResponse(
+        estado=evaluacion.estado,
+        completo=evaluacion.completo,
+        validado=evaluacion.validado,
+        requeridos=list(evaluacion.requeridos),
+        presentes=list(evaluacion.presentes),
+        faltantes=list(evaluacion.faltantes),
+        invalidos=list(evaluacion.invalidos),
+        opcionales_presentes=list(evaluacion.opcionales_presentes),
     )

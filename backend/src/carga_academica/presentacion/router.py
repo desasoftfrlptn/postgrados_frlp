@@ -2,7 +2,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import delete, select, update
@@ -49,7 +49,11 @@ from src.seguimiento_graduacion.infraestructura.modelos import PlanGraduacion
 from src.shared.auditoria.servicio import registrar_evento_auditoria
 from src.shared.autorizacion.permisos import requerir_roles
 from src.shared.http.ruta_api import ErrorRespuesta, RutaAPI
-from src.shared.http.excel import generar_excel
+from src.carga_academica.infraestructura.excel import (
+    ExcelInvalidoError,
+    exportar_planilla_excel,
+    importar_notas_excel,
+)
 
 router = APIRouter(
     prefix="/api/v1/seminarios",
@@ -472,24 +476,62 @@ def registrar_notas(
     return _planilla(session, seminario)
 
 
+@router.post("/{id}/importar-notas", response_model=PlanillaRespuesta)
+async def importar_notas_desde_excel(
+    id: UUID,
+    archivo: UploadFile = File(...),
+    _: Seminario = Depends(_exigir_docente),
+    session: Session = Depends(get_db),
+) -> PlanillaRespuesta:
+    seminario = _seminario(session, id, bloquear=True)
+    contenido = await archivo.read(5 * 1024 * 1024 + 1)
+    try:
+        notas_importadas = importar_notas_excel(contenido)
+    except ExcelInvalidoError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    inscripciones = {
+        legajo.email.strip().lower(): inscripcion
+        for inscripcion, legajo in session.execute(
+            select(InscripcionSeminario, Legajo)
+            .join(Legajo, Legajo.id == InscripcionSeminario.legajo_id)
+            .where(InscripcionSeminario.seminario_id == id, Legajo.estado != "Baja")
+        )
+    }
+    faltantes = [item.email for item in notas_importadas if item.email not in inscripciones]
+    if faltantes:
+        raise HTTPException(
+            status_code=422,
+            detail="Todos los estudiantes del archivo deben pertenecer al seminario",
+        )
+
+    ahora = datetime.now(timezone.utc)
+    for item in notas_importadas:
+        inscripcion = inscripciones[item.email]
+        if inscripcion.nota != item.nota:
+            inscripcion.nota = item.nota
+            inscripcion.ultimo_avance_en = ahora
+
+    registrar_evento_auditoria(
+        session,
+        accion="importar_notas_excel",
+        tipo_recurso="seminario",
+        id_recurso=id,
+        rol_actor="DOCENTE",
+        detalles={"cantidad": len(notas_importadas)},
+    )
+    session.commit()
+    return _planilla(session, seminario)
+
+
 @router.get("/{id}/exportar")
 def exportar_planilla(
     seminario: Seminario = Depends(_exigir_docente),
     session: Session = Depends(get_db),
 ) -> StreamingResponse:
     planilla = _planilla(session, seminario)
-    filas = [[
-        "Apellido", "Nombre", "Email", "Carrera de grado",
-        *[clase.fecha.isoformat() for clase in planilla.clases], "% Asistencia",
-    ]]
-    for estudiante in planilla.estudiantes:
-        filas.append([
-            estudiante.apellido, estudiante.nombre, estudiante.email, estudiante.titulo_grado,
-            *["P" if celda.presente else "A" for celda in estudiante.asistencias],
-            str(estudiante.porcentaje_asistencia),
-        ])
     return StreamingResponse(
-        generar_excel(filas, "Asistencia"),
+        exportar_planilla_excel(planilla),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": f'attachment; filename="seminario-{seminario.id}.xlsx"',

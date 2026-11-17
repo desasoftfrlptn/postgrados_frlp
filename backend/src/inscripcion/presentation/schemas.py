@@ -196,6 +196,17 @@ class DocumentoResumenResponse(BaseModel):
     fecha_subida: datetime
 
 
+class EstadoDocumentalResponse(BaseModel):
+    estado: Literal["INCOMPLETO", "COMPLETO", "VALIDADO"]
+    completo: bool
+    validado: bool
+    requeridos: list[str]
+    presentes: list[str]
+    faltantes: list[str]
+    invalidos: list[str]
+    opcionales_presentes: list[str]
+
+
 class LegajoListadoResponse(BaseModel):
     id: UUID
     numero_legajo: str | None
@@ -235,3 +246,6 @@ class LegajoDetalleResponse(BaseModel):
     tipo_beca: str | None
     fecha_inscripcion: datetime
     documentos: list[DocumentoResumenResponse]
+    documentacion_completa: bool = False
+    estado_documental: str = "INCOMPLETO"
+    documentos_faltantes: list[str] = Field(default_factory=list)

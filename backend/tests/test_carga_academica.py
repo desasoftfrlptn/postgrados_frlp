@@ -304,3 +304,52 @@ def test_asistencia_futura_no_registra_avance_anticipado(entorno) -> None:
         "asistencias": [{"clase_id": clase, "legajo_id": str(legajo.id), "presente": True}],
     }).status_code == 200
     assert session.scalar(select(InscripcionSeminario)).ultimo_avance_en is None
+
+
+def test_importar_notas_desde_excel(entorno) -> None:
+    from src.shared.http.excel import generar_excel
+
+    cliente, _, cohorte, legajo, tokens = entorno
+    seminario = _crear(cliente, cohorte, tokens)
+    coord = {"Authorization": tokens["COORDINADOR"]}
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/inscripciones",
+        headers=coord,
+        json={"legajo_ids": [str(legajo.id)]},
+    ).status_code == 204
+    docente = {"Authorization": f"Bearer {_enlace(cliente, seminario, tokens)['token']}"}
+
+    clase = cliente.post(
+        f"/api/v1/seminarios/{seminario}/clases",
+        headers=docente,
+        json={"fecha": date.today().isoformat()},
+    ).json()["id"]
+    assert cliente.patch(
+        f"/api/v1/seminarios/{seminario}/asistencias",
+        headers=docente,
+        json={"asistencias": [{"clase_id": clase, "legajo_id": str(legajo.id), "presente": True}]},
+    ).status_code == 200
+
+    excel_valido = generar_excel([["Email", "Nota"], [legajo.email, "8.5"]], "Notas").getvalue()
+    resp = cliente.post(
+        f"/api/v1/seminarios/{seminario}/importar-notas",
+        headers=docente,
+        files={"archivo": ("notas.xlsx", excel_valido, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert resp.status_code == 200
+    est = resp.json()["estudiantes"][0]
+    assert Decimal(est["nota"]) == Decimal("8.5")
+    assert est["condicion"] == "Aprobado"
+
+    excel_invalido = generar_excel([["Email", "Nota"], [legajo.email, "11"]], "Notas").getvalue()
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/importar-notas",
+        headers=docente,
+        files={"archivo": ("notas.xlsx", excel_invalido, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    ).status_code == 422
+
+    assert cliente.post(
+        f"/api/v1/seminarios/{seminario}/importar-notas",
+        headers=docente,
+        files={"archivo": ("notas.xlsx", b"no-es-un-zip", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    ).status_code == 422
