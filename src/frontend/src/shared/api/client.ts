@@ -113,7 +113,8 @@ function crearHeaders(
 async function request<T>(
   ruta: string,
   opciones: RequestInit,
-  token?: string
+  token?: string,
+  comoArchivo = false
 ): Promise<T> {
   const respuesta =
     await fetch(
@@ -163,6 +164,8 @@ async function request<T>(
   }
 
 
+  if (comoArchivo) return await respuesta.blob() as T;
+
   const data =
     await respuesta.json();
 
@@ -172,6 +175,9 @@ async function request<T>(
 
 
 export const api = {
+  descargar(ruta: string, token: string): Promise<Blob> {
+    return request<Blob>(ruta, { method: "GET" }, token, true);
+  },
   get<T>(
     ruta: string,
     token?: string

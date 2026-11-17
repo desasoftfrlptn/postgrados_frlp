@@ -1,8 +1,6 @@
-# Define las rutas públicas y administrativas de Noticias.
-
+from src.usuarios.seguridad import TokenBearer
 import os
 import uuid
-
 from datetime import date
 from pathlib import Path
 from uuid import UUID
@@ -17,7 +15,6 @@ from fastapi import (
 )
 from fastapi.security import (
     HTTPAuthorizationCredentials,
-    HTTPBearer,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +41,7 @@ enrutador = APIRouter(
 )
 
 
-seguridad_bearer = HTTPBearer()
+seguridad_bearer = TokenBearer()
 
 
 CARPETA_IMAGENES = Path(

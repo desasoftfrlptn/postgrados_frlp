@@ -1,3 +1,4 @@
+from src.usuarios.seguridad import TokenBearer
 # Define las rutas de autenticación y administración de usuarios.
 
 from uuid import UUID
@@ -9,9 +10,10 @@ from fastapi import (
 )
 from fastapi.security import (
     HTTPAuthorizationCredentials,
-    HTTPBearer,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from src.conduccion.modelos import AuditoriaConduccionORM
 
 from src.compartido.conexion import get_db
 
@@ -47,7 +49,7 @@ enrutador = APIRouter(
 )
 
 
-seguridad = HTTPBearer()
+seguridad = TokenBearer()
 
 
 async def usuario_actual(
@@ -188,6 +190,7 @@ async def registrar_usuario(
             datos.tipo_usuario
         ),
         db=db,
+        administrador=administrador,
     )
 
     return respuesta_usuario(
@@ -222,12 +225,32 @@ async def actualizar_usuario(
                 datos.tipo_usuario
             ),
             db=db,
+            administrador=administrador,
         )
     )
 
     return respuesta_usuario(
         usuario
     )
+
+
+@enrutador.get("/usuarios/{usuario_id}/auditoria")
+async def auditoria_usuario(
+    usuario_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(administrador_actual),
+):
+    eventos = await db.scalars(
+        select(AuditoriaConduccionORM).where(
+            AuditoriaConduccionORM.recurso_tipo == "USUARIO",
+            AuditoriaConduccionORM.recurso_id == usuario_id,
+        ).order_by(AuditoriaConduccionORM.fecha.desc()).limit(100)
+    )
+    return [{
+        "id": evento.id, "actor_id": evento.actor_id,
+        "actor_rol": evento.actor_rol, "accion": evento.accion,
+        "fecha": evento.fecha, "anterior": evento.anterior, "nuevo": evento.nuevo,
+    } for evento in eventos]
 
 
 @enrutador.patch(

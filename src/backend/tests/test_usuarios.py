@@ -89,7 +89,7 @@ async def test_alta_revierte_error_integridad(db):
     db.scalar.side_effect = [
         None,
         None,
-        SimpleNamespace(id=uuid4()),
+        SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN")),
     ]
 
     db.commit.side_effect = IntegrityError(
@@ -110,7 +110,7 @@ async def test_edicion_actualiza_datos_y_rol(
     usuario,
     monkeypatch,
 ):
-    rol = SimpleNamespace(id=uuid4())
+    rol = SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN"))
     db.scalar.side_effect = [None, None, rol]
 
     monkeypatch.setattr(
@@ -191,7 +191,7 @@ async def test_edicion_revierte_error_integridad(
     )
 
     db.scalar.side_effect = [
-        None, None, SimpleNamespace(id=uuid4()),
+        None, None, SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN")),
     ]
     db.commit.side_effect = IntegrityError(
         "update", {}, Exception("duplicado"),
@@ -218,7 +218,7 @@ async def test_activar_y_desactivar(
         "buscar_usuario_con_rol",
         AsyncMock(return_value=usuario),
     )
-    administrador = SimpleNamespace(id=uuid4())
+    administrador = SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN"))
 
     obtenido = await s.cambiar_estado_usuario(
         usuario.id,
@@ -253,7 +253,7 @@ async def test_estado_usuario_inexistente(db, monkeypatch):
         await s.cambiar_estado_usuario(
             uuid4(),
             False,
-            SimpleNamespace(id=uuid4()),
+            SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN")),
             db,
         )
 
@@ -357,7 +357,7 @@ async def test_eliminar_usuario(db, usuario):
 
     await s.eliminar_usuario(
         usuario.id,
-        SimpleNamespace(id=uuid4()),
+        SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN")),
         db,
     )
 
@@ -379,7 +379,7 @@ async def test_eliminar_usuario_inexistente(db):
     with pytest.raises(HTTPException) as error:
         await s.eliminar_usuario(
             uuid4(),
-            SimpleNamespace(id=uuid4()),
+            SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN")),
             db,
         )
 
@@ -395,7 +395,7 @@ async def test_eliminar_usuario_con_relaciones(db, usuario):
     with pytest.raises(HTTPException) as error:
         await s.eliminar_usuario(
             usuario.id,
-            SimpleNamespace(id=uuid4()),
+            SimpleNamespace(id=uuid4(), rol=SimpleNamespace(nombre="ADMIN")),
             db,
         )
     assert error.value.status_code == 409

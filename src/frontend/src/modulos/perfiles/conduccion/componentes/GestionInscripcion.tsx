@@ -158,20 +158,11 @@ export default function GestionInscripcion({
   }, [base, token, onEstadoActualizado]);
 
   useEffect(() => {
-    let cancelado = false;
-
-    async function iniciarCarga() {
-      await Promise.resolve();
-
-      if (!cancelado) {
-        await cargar();
-      }
-    }
-
-    void iniciarCarga();
+    // Programar la consulta permite cancelar el inicio al desmontar la vista.
+    const inicio = window.setTimeout(() => void cargar(), 0);
 
     return () => {
-      cancelado = true;
+      window.clearTimeout(inicio);
       solicitudActual.current += 1;
     };
   }, [cargar]);

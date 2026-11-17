@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { act, renderHook } from "@testing-library/react";
 import {
   beforeEach,
+  afterEach,
   describe,
   expect,
   it,
@@ -42,6 +43,37 @@ function prepararHook() {
 beforeEach(() => {
   vi.mocked(api.post).mockReset();
   vi.mocked(api.post).mockResolvedValue(respuestaLogin);
+});
+
+afterEach(() => vi.useRealTimers());
+
+it("cierra la sesión al vencer el JWT aunque no haya solicitudes", async () => {
+  vi.useFakeTimers();
+  const exp = Math.floor(Date.now() / 1000) + 60;
+  vi.mocked(api.post).mockResolvedValueOnce({
+    ...respuestaLogin,
+    token: `header.${btoa(JSON.stringify({ exp }))}.firma`,
+  });
+  const { result } = prepararHook();
+  await act(async () => { await result.current.login("ana@example.com", "Clave123!"); });
+  expect(result.current.user).not.toBeNull();
+  act(() => { vi.advanceTimersByTime(60_000); });
+  expect(result.current.user).toBeNull();
+  expect(result.current.motivoCierre).toContain("venció");
+});
+
+it("una respuesta de login pendiente no restaura una sesión cerrada", async () => {
+  let resolver!: (valor: typeof respuestaLogin) => void;
+  vi.mocked(api.post).mockReturnValueOnce(new Promise(resolve => { resolver = resolve; }));
+  const { result } = prepararHook();
+  let pendiente!: Promise<unknown>;
+  act(() => { pendiente = result.current.login("ana@example.com", "Clave123!"); });
+  act(() => { result.current.logout(); });
+  await act(async () => {
+    resolver(respuestaLogin);
+    await expect(pendiente).rejects.toThrow("cancelado");
+  });
+  expect(result.current.user).toBeNull();
 });
 
 describe("useAuth y AuthProvider", () => {

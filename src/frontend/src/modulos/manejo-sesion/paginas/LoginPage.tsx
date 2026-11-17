@@ -8,7 +8,7 @@ import imagenFondo from "../../../imagenes/hero-inicio.jpg";
 import "./ManejoSesion.css";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, motivoCierre } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -125,6 +125,7 @@ export default function LoginPage() {
         className="sesion-formulario"
         onSubmit={handleSubmit}
       >
+        {motivoCierre && <p role="status">{motivoCierre}</p>}
         <header className="sesion-encabezado">
           <h1 id="titulo-login">Iniciar Sesión</h1>
           <p>

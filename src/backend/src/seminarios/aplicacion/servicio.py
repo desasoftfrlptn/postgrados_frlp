@@ -3,7 +3,7 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, or_
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -586,11 +586,10 @@ async def listar_cursada_estudiante(
     dni: str,
     db: AsyncSession,
 ) -> list[CursadaEstudianteRespuesta]:
-    condiciones = [LegajoORM.correo_electronico == email]
-    if dni:
-        condiciones.append(LegajoORM.dni_pasaporte == dni)
-
-    legajo = await db.scalar(select(LegajoORM).where(or_(*condiciones)))
+    legajo = await db.scalar(select(LegajoORM).where(
+        LegajoORM.correo_electronico == email,
+        LegajoORM.dni_pasaporte == dni,
+    ))
     if legajo is None:
         return []
 

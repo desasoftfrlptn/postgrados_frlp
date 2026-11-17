@@ -24,6 +24,7 @@ export interface AuthState {
 
 export interface AuthContextValue {
   user: AuthState | null;
+  motivoCierre?: string;
 
   login: (
     email: string,

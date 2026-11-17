@@ -1,12 +1,12 @@
 import os
+import math
 
 from datetime import (
     datetime,
     timedelta,
     timezone,
 )
-from uuid import UUID
-
+from uuid import UUID, uuid4
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from jose import JWTError, jwt
@@ -23,6 +23,33 @@ from src.usuarios.modelos import (
     RolORM,
     UsuarioORM,
 )
+from src.conduccion.modelos import AuditoriaConduccionORM
+
+
+def auditar_usuario(db, actor, usuario, accion, anterior=None):
+    """Se persiste junto con la operación, sin hashes ni contraseñas."""
+    if actor is None:
+        return
+    db.add(AuditoriaConduccionORM(
+        actor_id=actor.id,
+        actor_rol=actor.rol.nombre,
+        recurso_tipo="USUARIO",
+        recurso_id=usuario.id,
+        accion=accion,
+        anterior=anterior,
+        nuevo=estado_auditable(usuario) if accion != "ELIMINAR_USUARIO" else None,
+    ))
+
+
+def estado_auditable(usuario):
+    return {
+        "nombre": usuario.nombre,
+        "apellido": usuario.apellido,
+        "dni": usuario.dni,
+        "correo_electronico": usuario.correo_electronico,
+        "rol_id": str(usuario.rol_id),
+        "activo": usuario.activo,
+    }
 
 
 load_dotenv()
@@ -65,6 +92,7 @@ async def iniciar_sesion(
     if (
         usuario is None
         or not usuario.activo
+        or usuario.rol is None
         or not verificar_password(
             contrasena,
             usuario.contrasena_hash,
@@ -75,6 +103,7 @@ async def iniciar_sesion(
             detail=(
                 "Correo o contraseña incorrectos"
             ),
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return (
@@ -122,6 +151,7 @@ async def buscar_usuario_con_rol(
             UsuarioORM.id
             == usuario_id
         )
+        .execution_options(populate_existing=True)
     )
 
     return await db.scalar(
@@ -138,7 +168,13 @@ async def obtener_usuario_actual(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM],
+            options={"require_exp": True, "require_sub": True},
         )
+
+        if (not isinstance(contenido["exp"], (int, float))
+                or isinstance(contenido["exp"], bool)
+                or not math.isfinite(contenido["exp"])):
+            raise ValueError("Vencimiento inválido")
 
         usuario_id = contenido.get(
             "sub"
@@ -148,6 +184,7 @@ async def obtener_usuario_actual(
             raise HTTPException(
                 status_code=401,
                 detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"},
             )
 
         id_usuario = UUID(
@@ -157,10 +194,13 @@ async def obtener_usuario_actual(
     except (
         JWTError,
         ValueError,
+        TypeError,
+        OverflowError,
     ):
         raise HTTPException(
             status_code=401,
             detail="Token inválido",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     usuario = await buscar_usuario_con_rol(
@@ -171,10 +211,12 @@ async def obtener_usuario_actual(
     if (
         usuario is None
         or not usuario.activo
+        or usuario.rol is None
     ):
         raise HTTPException(
             status_code=401,
             detail="Usuario no válido",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     return usuario
@@ -261,6 +303,7 @@ async def crear_usuario(
     contrasena: str,
     tipo_usuario: str,
     db: AsyncSession,
+    administrador=None,
 ) -> UsuarioORM:
     correo = (
         correo_electronico
@@ -331,6 +374,7 @@ async def crear_usuario(
     )
 
     usuario = UsuarioORM(
+        id=uuid4(),
         nombre=nombre_limpio,
         apellido=apellido_limpio,
         dni=dni_limpio,
@@ -346,6 +390,7 @@ async def crear_usuario(
     db.add(
         usuario
     )
+    auditar_usuario(db, administrador, usuario, "CREAR_USUARIO")
 
     try:
         await db.commit()
@@ -378,6 +423,7 @@ async def modificar_usuario(
     correo_electronico: str,
     tipo_usuario: str,
     db: AsyncSession,
+    administrador=None,
 ) -> UsuarioORM:
     usuario = await buscar_usuario_con_rol(
         usuario_id,
@@ -389,6 +435,13 @@ async def modificar_usuario(
             status_code=404,
             detail="Usuario no encontrado",
         )
+
+    if not all(valor.strip() for valor in (nombre, apellido, dni)):
+        raise HTTPException(status_code=400, detail="Nombre, apellido y DNI son obligatorios")
+    if administrador and administrador.id == usuario_id and tipo_usuario.strip().upper() != "ADMIN":
+        raise HTTPException(status_code=400, detail="No podés quitarte tu propio rol de administrador.")
+
+    anterior = estado_auditable(usuario)
 
     correo = (
         correo_electronico
@@ -460,6 +513,7 @@ async def modificar_usuario(
     usuario.rol_id = (
         rol.id
     )
+    auditar_usuario(db, administrador, usuario, "EDITAR_USUARIO", anterior)
 
     try:
         await db.commit()
@@ -513,7 +567,9 @@ async def cambiar_estado_usuario(
             detail="Usuario no encontrado",
         )
 
+    anterior = estado_auditable(usuario)
     usuario.activo = activo
+    auditar_usuario(db, administrador, usuario, "ACTIVAR_USUARIO" if activo else "DESACTIVAR_USUARIO", anterior)
 
     await db.commit()
 
@@ -554,6 +610,7 @@ async def eliminar_usuario(
         )
 
     try:
+        auditar_usuario(db, administrador, usuario, "ELIMINAR_USUARIO", estado_auditable(usuario))
         await db.delete(
             usuario
         )

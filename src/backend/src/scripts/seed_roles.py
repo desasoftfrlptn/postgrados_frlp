@@ -15,7 +15,7 @@ ROLES = (
     "ALUMNO",
     "DOCENTE",
     "COORDINADOR",
-    "EQUIPO PRODUCCION",
+    "CPR",
     "ADMIN",
 )
 

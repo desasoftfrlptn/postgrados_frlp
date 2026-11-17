@@ -1,3 +1,4 @@
+from src.usuarios.seguridad import TokenBearer
 # Define las rutas para la administración de seminarios.
 
 from uuid import UUID
@@ -5,7 +6,6 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import (
     HTTPAuthorizationCredentials,
-    HTTPBearer,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +25,7 @@ from src.seminarios.aplicacion.servicio import (
     registrar_calificacion_seminario,
     registrar_asistencia_clase,
     listar_cursada_estudiante,
+    verificar_seminario_docente,
 )
 from src.seminarios.presentacion.esquema import (
     SeminarioCrear,
@@ -46,7 +47,7 @@ enrutador = APIRouter(
 )
 
 
-seguridad_bearer = HTTPBearer()
+seguridad_bearer = TokenBearer()
 
 
 async def obtener_admin(
@@ -205,6 +206,7 @@ async def inscribir_estudiante_en_seminario(
     db: AsyncSession = Depends(get_db),
     docente=Depends(obtener_docente_actual),
 ):
+    await verificar_seminario_docente(seminario_id, docente.id, db)
     return await inscribir_alumno_seminario(
         seminario_id,
         datos.legajo_id,

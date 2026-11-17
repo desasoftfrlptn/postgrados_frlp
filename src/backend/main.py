@@ -55,6 +55,7 @@ from src.inscripcion.presentacion.cohortes_rutas import (
     enrutador as cohortes_rutas,
 )
 from src.conduccion.rutas import enrutador as conduccion_rutas
+from src.inscripcion.presentacion.documentos_rutas import enrutador as documentos_rutas
 
 
 @asynccontextmanager
@@ -85,9 +86,9 @@ app.add_middleware(
 )
 
 app.mount(
-    "/uploads",
-    StaticFiles(directory=str(DIRECTORIO_BACKEND / "uploads")),
-    name="uploads",
+    "/uploads/noticias",
+    StaticFiles(directory=str(DIRECTORIO_BACKEND / "uploads" / "noticias"), check_dir=False),
+    name="imagenes_noticias",
 )
 
 
@@ -104,6 +105,7 @@ def health_check():
 
 
 app.include_router(inscripcion_rutas)
+app.include_router(documentos_rutas)
 app.include_router(usuarios_rutas)
 app.include_router(carreras_rutas)
 app.include_router(seminarios_rutas)
