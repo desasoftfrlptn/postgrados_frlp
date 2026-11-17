@@ -46,6 +46,7 @@ import LoginPage from "../../modulos/manejo-sesion/paginas/LoginPage";
 import RecuperarContrasenaPage from "../../modulos/manejo-sesion/paginas/RecuperarContrasenaPage";
 import CambiarContrasenaInicialPage from "../../modulos/manejo-sesion/paginas/CambiarContrasenaInicialPage";
 import ProtectedRoute from "../../modulos/manejo-sesion/ProtectedRoute";
+import AccesoDenegadoPage from "../../modulos/manejo-sesion/paginas/AccesoDenegadoPage";
 
 // PÁGINAS PÚBLICAS
 import PaginaFAQ from "../../modulos/preguntas-frecuentes/paginas/paginaFAQ";
@@ -138,6 +139,10 @@ export const router = createBrowserRouter([
           {
             path: "dashboard/general",
             element: <DashboardRolGeneralPage />,
+          },
+          {
+            path: "dashboard/acceso-denegado",
+            element: <AccesoDenegadoPage />,
           },
           {
             path: "dashboard/perfil",

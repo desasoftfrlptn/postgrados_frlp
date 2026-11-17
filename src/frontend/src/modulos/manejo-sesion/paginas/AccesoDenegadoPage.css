@@ -1,0 +1,48 @@
+
+.acceso-denegado {
+  max-width: 580px;
+  margin: 64px auto;
+  padding: 40px 32px;
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.acceso-denegado h1 {
+  margin-bottom: 16px;
+  color: #1e293b;
+  font-size: 28px;
+}
+
+.acceso-denegado p {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.acceso-denegado-enlace {
+  display: inline-block;
+  margin-top: 24px;
+  padding: 12px 24px;
+  color: #ffffff;
+  background: #1e40af;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.acceso-denegado-enlace:hover {
+  background: #1e3a8a;
+}
+
+.acceso-denegado-enlace:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .acceso-denegado {
+    margin: 24px 12px;
+    padding: 32px 20px;
+  }
+}

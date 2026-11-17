@@ -1,10 +1,9 @@
-// Protege las rutas privadas y puede restringir el acceso según el rol.
 
 import { Navigate, Outlet } from "react-router-dom";
+import type { ReactNode } from "react";
 
 import { useAuth } from "./useAuth";
 import type { Rol } from "../../shared/tipos";
-import type { ReactNode } from "react";
 
 interface ProtectedRouteProps {
   rolesPermitidos?: Rol[];
@@ -12,11 +11,12 @@ interface ProtectedRouteProps {
 }
 
 const todosLosRoles: Rol[] = [
+  "ADMIN",
   "ASPIRANTE",
-  "DOCENTE",
+  "ALUMNO",
   "COORDINADOR",
   "CPR",
-  "ADMIN",
+  "DOCENTE",
 ];
 
 export default function ProtectedRoute({
@@ -30,7 +30,12 @@ export default function ProtectedRoute({
   }
 
   if (!rolesPermitidos.includes(user.rol)) {
-    return <Navigate to="/dashboard/general" replace />;
+    return (
+      <Navigate
+        to="/dashboard/acceso-denegado"
+        replace
+      />
+    );
   }
 
   return children ?? <Outlet />;

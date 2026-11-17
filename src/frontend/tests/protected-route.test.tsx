@@ -1,85 +1,131 @@
+
 import { render, screen } from "@testing-library/react";
-import {
-  MemoryRouter,
-  Route,
-  Routes,
-} from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ProtectedRoute from "../src/modulos/manejo-sesion/ProtectedRoute";
-import {
-  AuthContext,
-  type AuthState,
-} from "../src/modulos/manejo-sesion/useAuth";
+import AccesoDenegadoPage from "../src/modulos/manejo-sesion/paginas/AccesoDenegadoPage";
+import { useAuth } from "../src/modulos/manejo-sesion/useAuth";
+import type { Rol } from "../src/shared/tipos";
 
-function usuarioConRol(rol: AuthState["rol"]): AuthState {
+vi.mock("../src/modulos/manejo-sesion/useAuth", () => ({
+  useAuth: vi.fn(),
+}));
+
+type Usuario = NonNullable<ReturnType<typeof useAuth>["user"]>;
+
+function usuarioConRol(rol: Rol): Usuario {
   return {
-    id: "usuario-1",
-    nombre: "Ana",
-    apellido: "Perez",
-    dni: "12345678",
-    email: "ana@example.com",
+    nombre: "Usuario",
+    apellido: "Prueba",
     rol,
-    token: "token-prueba",
-    debeCambiarContrasena: false,
-  };
+  } as Usuario;
 }
 
-function mostrarRuta(user: AuthState | null) {
-  render(
-    <AuthContext.Provider
-      value={{
-        user,
-        login: vi.fn(async () => usuarioConRol("ADMIN")),
-        logout: vi.fn(),
-        confirmarCambioContrasena: vi.fn(),
-      }}
-    >
-      <MemoryRouter initialEntries={["/privado"]}>
-        <Routes>
-          <Route path="/login" element={<p>Inicio de sesión</p>} />
-          <Route
-            path="/dashboard/general"
-            element={<p>Panel general</p>}
-          />
+function mostrarRuta(
+  usuario: Usuario | null,
+  rolesPermitidos?: Rol[],
+) {
+  vi.mocked(useAuth).mockReturnValue({
+    user: usuario,
+  } as ReturnType<typeof useAuth>);
 
-          <Route
-            element={<ProtectedRoute rolesPermitidos={["ADMIN"]} />}
-          >
-            <Route
-              path="/privado"
-              element={<p>Contenido privado</p>}
-            />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </AuthContext.Provider>,
+  return render(
+    <MemoryRouter initialEntries={["/dashboard/administrador"]}>
+      <Routes>
+        <Route
+          path="/login"
+          element={<div>Inicio de sesión</div>}
+        />
+
+        <Route
+          path="/dashboard/acceso-denegado"
+          element={<AccesoDenegadoPage />}
+        />
+
+        <Route
+          path="/dashboard/administrador"
+          element={
+            <ProtectedRoute rolesPermitidos={rolesPermitidos}>
+              <div>Contenido privado</div>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </MemoryRouter>,
   );
 }
 
 describe("ProtectedRoute", () => {
-  it("envía al login si no hay sesión", () => {
-    mostrarRuta(null);
-
-    expect(screen.getByText("Inicio de sesión")).toBeInTheDocument();
-    expect(screen.queryByText("Contenido privado")).not.toBeInTheDocument();
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it.each([
+  it("envía al login si no hay sesión", () => {
+    mostrarRuta(null, ["ADMIN"]);
+
+    expect(
+      screen.getByText("Inicio de sesión"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Contenido privado"),
+    ).not.toBeInTheDocument();
+  });
+
+  it.each<Rol>([
     "ASPIRANTE",
+    "ALUMNO",
     "DOCENTE",
     "COORDINADOR",
     "CPR",
-  ] as const)("rechaza el rol %s", (rol) => {
-    mostrarRuta(usuarioConRol(rol));
+  ])("rechaza el rol %s", (rol) => {
+    mostrarRuta(usuarioConRol(rol), ["ADMIN"]);
 
-    expect(screen.getByText("Panel general")).toBeInTheDocument();
-    expect(screen.queryByText("Contenido privado")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Acceso denegado",
+      }),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "No tenés permisos para acceder a esta sección.",
+      ),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Contenido privado"),
+    ).not.toBeInTheDocument();
   });
 
   it("permite el rol autorizado", () => {
-    mostrarRuta(usuarioConRol("ADMIN"));
+    mostrarRuta(usuarioConRol("ADMIN"), ["ADMIN"]);
 
-    expect(screen.getByText("Contenido privado")).toBeInTheDocument();
+    expect(
+      screen.getByText("Contenido privado"),
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Acceso denegado"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("permite ALUMNO en una ruta privada general", () => {
+    mostrarRuta(usuarioConRol("ALUMNO"));
+
+    expect(
+      screen.getByText("Contenido privado"),
+    ).toBeInTheDocument();
+  });
+
+  it("ofrece volver al panel correspondiente", () => {
+    mostrarRuta(usuarioConRol("DOCENTE"), ["ADMIN"]);
+
+    expect(
+      screen.getByRole("link", {
+        name: "Volver a mi panel",
+      }),
+    ).toHaveAttribute("href", "/dashboard/docente");
   });
 });
