@@ -13,6 +13,9 @@ from sqlalchemy import select
 from src.authentication.application.security import get_current_user
 from src.authentication.infrastructure.models import User
 from src.authentication.presentation.router import router as autenticacion_router
+from src.carga_academica.presentacion.router import router as seminarios_router
+from src.carga_academica.presentacion.router import router_legajos as carga_legajos_router
+from src.carga_academica.aplicacion.recordatorios import enviar_recordatorios
 from src.core.config import settings
 from src.db.session import SessionLocal
 from src.inscripcion.application.vencer_reservas import vencer_reservas
@@ -82,15 +85,39 @@ async def _ejecutar_tarea_diaria() -> None:
             _LOGGER.exception("Falló la tarea diaria de vencimiento de reservas")
 
 
+def _procesar_recordatorios_docentes() -> None:
+    with SessionLocal() as session:
+        enviar_recordatorios(session)
+
+
+async def _ejecutar_recordatorios_docentes() -> None:
+    while True:
+        ahora = datetime.now().astimezone()
+        proxima = ahora.replace(hour=8, minute=0, second=0, microsecond=0)
+        if proxima <= ahora:
+            proxima += timedelta(days=1)
+        await asyncio.sleep((proxima - ahora).total_seconds())
+        try:
+            await asyncio.to_thread(_procesar_recordatorios_docentes)
+        except Exception:
+            _LOGGER.exception("Falló la tarea diaria de recordatorios docentes")
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     tarea = asyncio.create_task(_ejecutar_tarea_diaria())
+    recordatorios = asyncio.create_task(_ejecutar_recordatorios_docentes())
     try:
         yield
     finally:
         tarea.cancel()
+        recordatorios.cancel()
         try:
             await tarea
+        except asyncio.CancelledError:
+            pass
+        try:
+            await recordatorios
         except asyncio.CancelledError:
             pass
 
@@ -118,6 +145,8 @@ app.include_router(cohortes_router)
 app.include_router(legajos_router)
 app.include_router(workflow_router)
 app.include_router(autenticacion_router)
+app.include_router(seminarios_router)
+app.include_router(carga_legajos_router)
 
 
 @app.get("/health", tags=["health"], dependencies=[Depends(get_current_user)])

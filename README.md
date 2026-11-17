@@ -69,7 +69,7 @@ Lee en este orden antes de escribir código:
 | Módulo | Descripción | Estado |
 |--------|-------------|--------|
 | **CORE** *(todos los equipos)* | Inscripción, legajo digital, workflow de estados, gestión documental | 🟡 En kickoff |
-| **MOD-B** | Gestión Docente: asistencia digital, calificaciones, recordatorios automáticos | 🔴 Pendiente |
+| **MOD-B** | Gestión Docente: asistencia digital, calificaciones, recordatorios automáticos | 🟡 Backend implementado; frontend pendiente |
 | **MOD-C** | Seguimiento de Graduación: TFI/Tesis, semáforo de riesgo académico | 🔴 Pendiente |
 | **MOD-D** | Analytics & Reporting: dashboards, estadísticas por cohorte, exportación | 🔴 Pendiente |
 

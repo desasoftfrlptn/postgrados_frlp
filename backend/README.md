@@ -39,8 +39,8 @@ bcrypt (cost factor 12) y no existe registro público.
 La inscripción (`POST /api/v1/legajos`) permanece pública. La interfaz de
 coordinación exige el rol `COORDINADOR`; `CPR` puede autenticarse, pero su módulo
 todavía no está disponible. Las rutas API pueden exigir roles con
-`requerir_roles(...)`. El acceso de `DOCENTE` mediante link token se implementará
-con el Módulo B cuando exista el modelo de seminarios.
+`requerir_roles(...)`. El acceso de `DOCENTE` a cada seminario utiliza un
+token opaco específico, independiente de las cuentas con contraseña.
 
 `GET /api/v1/legajos`, `GET /api/v1/legajos/exportar` y las rutas de gestión de
 cohortes requieren un JWT válido con rol `COORDINADOR`. `GET
@@ -147,6 +147,68 @@ afectados a cada usuario activo con rol `COORDINADOR`.
 Todas las respuestas HTTP incluyen los encabezados de seguridad configurados
 por `MiddlewareEncabezadosSeguridad`. CORS permite el origen definido en
 `CORS_ORIGIN`.
+
+## Seminarios y carga académica
+
+Ejecutar `alembic upgrade head` para crear las tablas del módulo. Coordinación
+usa su JWT en `Authorization: Bearer <JWT>`:
+
+- `POST /api/v1/seminarios`: crear con `cohorte_id`, `nombre`,
+  `docente_nombre`, `docente_email` y `fecha_limite_notas` opcional (fecha y
+  hora ISO 8601 con zona horaria). `GET /api/v1/seminarios` lista seminarios y
+  admite el filtro `cohorte_id`.
+- `POST /api/v1/seminarios/{id}/inscripciones`: recibe
+  `{"legajo_ids":["<UUID>"]}`. Los legajos deben estar `Activo` y pertenecer
+  a la cohorte. El lote completo se rechaza si alguno no cumple.
+- `POST /api/v1/seminarios/{id}/enlace`: recibe `{}` o
+  `{"expira_en":"2027-06-30T23:59:59Z"}` y devuelve `token`, `expira_en` y
+  `enlace`. Por defecto vence al final del semestre calendario en UTC. Solo se
+  guarda el hash del token; generar otro enlace revoca todos los anteriores.
+  La respuesta no se almacena en caché y el token no vuelve a mostrarse.
+
+El docente envía `Authorization: Bearer <token>` en cada solicitud. El token
+solo autoriza su seminario; un token válido de otro seminario recibe `403`.
+La URL generada usa `CORS_ORIGIN` y el formato
+`/docente/seminarios/{id}#token=<token>`: el frontend deberá implementar esa
+ruta, extraer el fragmento y enviar el token en el encabezado; el frontend no
+está implementado por este módulo.
+
+- `GET /api/v1/seminarios/{id}/estudiantes` devuelve `seminario`, `clases` y
+  `estudiantes`. Cada estudiante incluye `legajo_id`, datos de identificación,
+  una lista `asistencias` con `clase_id` y `presente`, `porcentaje_asistencia`,
+  `nota` y `condicion`.
+- `POST /api/v1/seminarios/{id}/clases`: recibe `{}` para la fecha local actual
+  o `{"fecha":"2026-11-16"}`. Una clase nueva muestra ausentes por defecto;
+  no se admiten fechas duplicadas. `PATCH /api/v1/seminarios/{id}/clases/{clase_id}`
+  recibe `{"fecha":"2026-11-17"}` para corregirla.
+- `PATCH /api/v1/seminarios/{id}/asistencias`: recibe
+  `{"asistencias":[{"clase_id":"<UUID>","legajo_id":"<UUID>","presente":true}]}`
+  y devuelve la planilla actualizada. Puede enviarse una sola celda o un lote.
+- `PATCH /api/v1/seminarios/{id}/notas`: recibe
+  `{"notas":[{"legajo_id":"<UUID>","nota":7.5}]}` y devuelve la planilla.
+  Solo se admiten números de 1 a 10 con hasta un decimal. Los lotes se validan
+  íntegramente antes de guardar y se serializan por seminario en PostgreSQL.
+- `GET /api/v1/seminarios/{id}/exportar` descarga la planilla XLSX.
+- `GET /api/v1/legajos/{id}/seminarios` muestra notas y condición al dueño del
+  legajo o al coordinador usando sus credenciales habituales.
+
+La asistencia se calcula con las clases hasta la fecha local del servidor;
+las futuras no participan y sin clases dictadas es 0 %. Con nota menor a 4 la
+condición es `Desaprobado`; con nota desde 4 y asistencia menor a 75 % es
+`Libre`; con ambos umbrales cumplidos es `Aprobado`. Sin nota es `Pendiente`.
+La condición se calcula al consultar, de modo que refleja nuevas clases,
+asistencias, notas y cambios de fecha. Los legajos en `Baja` se excluyen de la
+planilla y no se pueden modificar desde ella.
+
+Si se informó `fecha_limite_notas`, la tarea diaria a las 08:00 (hora local del
+servidor) envía un recordatorio cuando quedan hasta 48 horas y existen notas
+pendientes. Cada correo incluye un nuevo enlace que no revoca los existentes;
+se repite como máximo cada 24 horas hasta completar o vencer el plazo. Usar la
+configuración SMTP compartida y mantener el backend en ejecución. El envío no
+es una cola durable: los errores quedan en el log y se reintenta en la próxima
+ejecución; un fallo después de enviar y antes de confirmar puede duplicar un
+mensaje. Las modificaciones y la emisión de enlaces quedan auditadas sin
+registrar tokens.
 
 ## Servicios compartidos
 
