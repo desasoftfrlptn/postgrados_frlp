@@ -63,7 +63,7 @@ enrutador = APIRouter(
 )
 
 CARPETA_DOCUMENTOS = (
-    Path(os.getenv("STORAGE_PATH", "uploads"))
+    Path(os.getenv("STORAGE_PATH", "storage_privado"))
     / "legajos"
 )
 

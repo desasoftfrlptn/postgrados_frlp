@@ -1,9 +1,9 @@
+from src.usuarios.seguridad import TokenBearer
 # Define las rutas de consulta y administración del contenido público.
 
 from fastapi import APIRouter, Depends
 from fastapi.security import (
     HTTPAuthorizationCredentials,
-    HTTPBearer,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,7 +27,7 @@ enrutador = APIRouter(
 )
 
 
-seguridad_bearer = HTTPBearer()
+seguridad_bearer = TokenBearer()
 
 
 async def obtener_admin(
