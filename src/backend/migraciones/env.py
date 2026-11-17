@@ -1,11 +1,15 @@
 import asyncio
 from logging.config import fileConfig
+from pathlib import Path
 
-from dotenv import load_dotenv
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy.engine import Connection
 
-load_dotenv()
+
+DIRECTORIO_BACKEND = Path(__file__).resolve().parents[1]
+
+load_dotenv(DIRECTORIO_BACKEND / ".env")
 
 from src.compartido.conexion import (
     Base,
@@ -13,38 +17,33 @@ from src.compartido.conexion import (
     engine,
 )
 
-# Registrar todos los modelos del proyecto.
 from src.usuarios import modelos as _usuarios
 from src.carreras import modelos as _carreras
 
 from src.seminarios.infraestructura import (
     orm_modelos as _seminarios,
 )
-
 from src.configuracion_publica.infraestructura import (
     orm_modelos as _configuracion,
 )
-
 from src.noticias.infraestructura import (
     orm_modelos as _noticias,
 )
-
 from src.infraestructura import (
     orm_modelos as _generales,
 )
-
 from src.inscripcion.infraestructura import (
     orm_modelos as _legajos,
     documentos_modelos as _documentos,
     cohortes_modelos as _cohortes,
 )
+from src.conduccion import modelos as _conduccion
 
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
 
 target_metadata = Base.metadata
 
@@ -61,9 +60,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(
-    connection: Connection,
-) -> None:
+def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -75,12 +72,12 @@ def do_run_migrations(
 
 
 async def run_async_migrations() -> None:
-    async with engine.connect() as connection:
-        await connection.run_sync(
-            do_run_migrations
-        )
+    try:
+        async with engine.connect() as connection:
+            await connection.run_sync(do_run_migrations)
 
-    await engine.dispose()
+    finally:
+        await engine.dispose()
 
 
 def run_migrations_online() -> None:
