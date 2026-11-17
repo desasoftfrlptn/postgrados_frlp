@@ -218,11 +218,6 @@ export default function FormularioInscripcion() {
         documentos.tituloGrado,
       ];
 
-      if (datos.solicitud_beca && !documentos.formularioBeca) {
-        setMensaje("Debés adjuntar el formulario de beca firmado.");
-        return;
-      }
-
       const faltaDocumento = documentosObligatorios.some(
         (documento) => documento === null
       );
@@ -235,10 +230,15 @@ export default function FormularioInscripcion() {
       }
     }
 
-    if (etapa < 4) {
-      setEtapa(etapa + 1);
-      setMensaje("");
+    if (etapa === 3) {
+      if (datos.solicitud_beca && !documentos.formularioBeca) {
+        setMensaje("Debés adjuntar el formulario de beca firmado.");
+        return;
+      }
     }
+
+     setMensaje("");
+    setEtapa((actual) => actual + 1);
   };
 
   const etapaAnterior = () => {
@@ -1092,7 +1092,6 @@ const enviarFormulario = async (e: React.FormEvent) => {
                   name="formulario-beca"
                   type="file"
                   accept="application/pdf"
-                  required={Boolean(datos.solicitud_beca)}
                   onChange={(e) =>
                     validarDocumento(
                       e.target.files?.[0],
@@ -1132,6 +1131,31 @@ const enviarFormulario = async (e: React.FormEvent) => {
 
             <fieldset className="inscripcion-beca">
               <legend>Solicitud de beca</legend>
+
+              <div className="inscripcion-opcion-beca">
+                <input
+                  id="sin-beca"
+                  name="solicitud_beca"
+                  type="radio"
+                  value=""
+                  checked={datos.solicitud_beca === ""}
+                  onChange={() => {
+                    setDatos({
+                      ...datos,
+                      solicitud_beca: "",
+                    });
+
+                    setDocumentos((actuales) => ({
+                      ...actuales,
+                      formularioBeca: null,
+                    }));
+                  }}
+                />
+
+                <label htmlFor="sin-beca">
+                  No solicitar beca
+                </label>
+              </div>
 
               <div className="inscripcion-opcion-beca">
                 <input
