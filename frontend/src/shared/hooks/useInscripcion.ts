@@ -95,7 +95,7 @@ export interface ResultadoInscripcion {
  * Si falla la 2.ª carrera lanza InscripcionParcialError. Si lo que falla es la subida de un documento
  * NO lanza (reintentar duplicaría el legajo): devuelve los fallos en `documentosFallidos`.
  *
- * PENDIENTE (backend): POST /legajos/:id/documentos.
+ * La carga de documentos existe y requiere cookie de aspirante.
  */
 export function useInscripcion(opts?: OpcionesCredenciales) {
   return useMutation({
@@ -143,7 +143,7 @@ export function useInscripcion(opts?: OpcionesCredenciales) {
 
 /**
  * Sube archivos sueltos a un legajo ya creado (mismo mapeo de ids del wizard).
- * PENDIENTE (backend): POST /legajos/:id/documentos.
+ * La carga de documentos existe y requiere cookie de aspirante.
  */
 export function useSubirDocumentosInscripcion(opts?: OpcionesCredenciales) {
   return useMutation({

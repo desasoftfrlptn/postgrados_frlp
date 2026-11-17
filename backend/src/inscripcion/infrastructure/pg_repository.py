@@ -3,7 +3,7 @@
 from typing import Any, List, Optional
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -142,3 +142,23 @@ class PostgresCohorteRepository(CohorteRepository):
         await self.session.commit()
         await self.session.refresh(cohorte)
         return cohorte
+    async def estadisticas(self, tipo_carrera: str | None = None) -> list[dict[str, Any]]:
+        # El filtro va en el JOIN para conservar cohortes sin inscriptos con contadores en cero.
+        condiciones = [Legajo.cohorte_id == Cohorte.id]
+        if tipo_carrera is not None:
+            condiciones.append(Legajo.tipo_carrera == tipo_carrera)
+        query = (
+            select(
+                Cohorte.id.label("cohorte_id"), Cohorte.nombre.label("cohorte_nombre"), Cohorte.anio,
+                func.count(Legajo.id).filter(Legajo.estado != "BORRADOR").label("total_inscriptos"),
+                func.count(Legajo.id).filter(Legajo.estado == "ACTIVO").label("activos"),
+                func.count(Legajo.id).filter(Legajo.estado == "GRADUADO").label("graduados"),
+                func.count(Legajo.id).filter(Legajo.semaforo == "ROJO").label("en_riesgo"),
+                func.count(Legajo.id).filter(Legajo.estado == "BAJA").label("dados_de_baja"),
+            )
+            .outerjoin(Legajo, and_(*condiciones))
+            .group_by(Cohorte.id, Cohorte.nombre, Cohorte.anio, Cohorte.created_at)
+            .order_by(Cohorte.anio.desc(), Cohorte.created_at.desc(), Cohorte.id.desc())
+            .limit(3)
+        )
+        return [dict(row) for row in (await self.session.execute(query)).mappings()]

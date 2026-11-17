@@ -12,8 +12,8 @@ TIPOS_DOCUMENTO = (
     "DNI", "TITULO_GRADO", "PARTIDA", "CUIT_CUIL",
     "FORM_INSCRIPCION", "FORM_BECA", "TITULO_POSGRADO",
 )
-# "FALTANTE" no se guarda: es un documento que todavía no tiene fila en esta tabla.
-ESTADOS_DOCUMENTO = ("PENDIENTE_REVISION", "APROBADO", "OBSERVADO")
+# FALTANTE invalida un archivo recibido sin borrar su PDF ni el historial.
+ESTADOS_DOCUMENTO = ("PENDIENTE_REVISION", "APROBADO", "OBSERVADO", "FALTANTE")
 
 
 def valores_sql(valores: tuple[str, ...]) -> str:
@@ -40,7 +40,7 @@ class Documento(Base):
     tamanio_bytes: Mapped[int]
     fecha_subida: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
 
     # Revisión del coordinador

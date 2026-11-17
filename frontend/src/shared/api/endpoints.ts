@@ -1,13 +1,5 @@
-/**
- * Endpoints del backend, 1:1 con los routers (auth, accesos, legajos).
- * Pensado para usarse dentro de queryFn / mutationFn de TanStack Query.
- *
- * Los bloques marcados PENDIENTE (cohortes, estadísticas, seminarios, documentos, períodos)
- * todavía no tienen router en el backend: las rutas son convención REST y los hooks ya las usan,
- * así que cuando se implementen solo hay que ajustar este archivo.
- */
+/** Contratos verificados contra los routers y schemas locales de FastAPI. */
 import type {
-  Cohorte,
   CrearTrabajoFinalRequest,
   DocumentoConEstado,
   EstadisticasCohorte,
@@ -225,6 +217,8 @@ export const legajosApi = {
   exportar: (filtros: LegajoFiltros = {}) =>
     download("/legajos/exportar", { params: filtrosToParams(filtros) }),
 
+  exportarPdf: (legajoId: string) => download(`/legajos/${enc(legajoId)}/exportar-pdf`),
+
   // Cualquier usuario autenticado (el backend valida el acceso según rol).
   detalle: (legajoId: string) => api.get<Legajo>(`/legajos/${enc(legajoId)}`),
 
@@ -275,30 +269,67 @@ export const trabajoFinalApi = {
     api.post<TrabajoFinal>(`/legajos/${enc(legajoId)}/trabajo-final`, datos),
 };
 
-// Contrato PROPUESTO para el dashboard de riesgo (hoy el hook usa datos de ejemplo). Los días sin
-// avance y los seminarios adeudados salen del módulo académico (seminarios y asistencias).
+/** Espejo de EstudianteEnRiesgoResponse: el listado solo devuelve ROJO. */
 export interface EstudianteRiesgoApi {
-  legajo_id: string;
+  id: string;
+  numero_legajo: string | null;
   nombre: string;
   apellido: string;
   carrera_elegida: string;
-  fecha_inscripcion: string;
-  seminarios_adeudados: number;
-  dias_sin_avance: number;
-  semaforo: Semaforo;
+  tipo_carrera: TipoCarrera | null;
+  cohorte_id: string;
+  fecha_inscripcion: string | null;
+  semaforo: "ROJO";
+}
+
+export interface EstudiantesRiesgoPagina {
+  data: EstudianteRiesgoApi[];
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
 }
 
 export const riesgoApi = {
-  listar: () => api.get<EstudianteRiesgoApi[]>("/estadisticas/riesgo"),
+  listar: (page = 1, limit = 20, signal?: AbortSignal) =>
+    api.get<EstudiantesRiesgoPagina>("/graduacion/en-riesgo", {
+      params: { page, limit }, signal,
+    }),
+
+  // Recorre todas las páginas: la pantalla y su exportación usan el mismo conjunto completo.
+  listarTodos: async (signal?: AbortSignal): Promise<EstudianteRiesgoApi[]> => {
+    const estudiantes = new Map<string, EstudianteRiesgoApi>();
+    let page = 1;
+    let pages = 1;
+    do {
+      const respuesta = await riesgoApi.listar(page, 100, signal);
+      for (const estudiante of respuesta.data) estudiantes.set(estudiante.id, estudiante);
+      pages = respuesta.pages;
+      page++;
+    } while (page <= pages);
+    return [...estudiantes.values()];
+  },
 };
 
+/** Espejo de CohorteResponse (el backend usa `abierta`). */
+export interface CohorteApi {
+  id: string;
+  anio: number;
+  nombre: string;
+  abierta: boolean;
+  fecha_inicio: string | null;
+}
+
+// Protege también llamadas directas o refetch manual: nunca solicita una ruta inexistente.
+function noDisponible<T>(message: string): Promise<T> {
+  return Promise.reject(new ApiError({ statusCode: 0, errorCode: "FEATURE_UNAVAILABLE", message }));
+}
+
 export const cohortesApi = {
-  listar: () => api.get<Cohorte[]>("/cohortes"),
-  detalle: (id: string) => api.get<Cohorte>(`/cohortes/${enc(id)}`),
+  listar: () => api.get<CohorteApi[]>("/cohortes", { auth: false }),
+  detalle: (id: string) => api.get<CohorteApi>(`/cohortes/${enc(id)}`, { auth: false }),
   estadisticas: (tipoCarrera?: TipoCarrera) =>
-    api.get<EstadisticasCohorte[]>("/estadisticas/cohortes", {
-      params: { tipo_carrera: tipoCarrera },
-    }),
+    api.get<EstadisticasCohorte[]>("/estadisticas/cohortes", { params: { tipo_carrera: tipoCarrera } }),
 };
 
 // Se asume la misma convención de paginado que /legajos ({data, page, limit, total, pages}).
@@ -326,26 +357,40 @@ export const seminariosApi = {
   detalle: (id: string) => api.get<Seminario>(`/seminarios/${enc(id)}`),
 };
 
-// Los documentos los ven el coordinador (Bearer) y el aspirante (cookie): se mandan ambas credenciales.
+export interface DocumentoSubido {
+  id: string;
+  legajo_id: string;
+  tipo: TipoDocumento;
+  nombre_original: string;
+  tamanio_bytes: number;
+  estado: string;
+  fecha_subida: string;
+}
+
+// Upload: cookie de aspirante. Download: cookie de seguimiento o Bearer del coordinador.
 export const documentosApi = {
-  listar: (legajoId: string) =>
-    api.get<DocumentoConEstado[]>(`/legajos/${enc(legajoId)}/documentos`, { credentials: "include" }),
+  listar: (legajoId: string, opts: OpcionesCredenciales = { auth: true }) =>
+    api.get<DocumentoConEstado[]>(`/legajos/${enc(legajoId)}/documentos`, credenciales(opts)),
 
   // Aspirante (cookie). multipart/form-data: client.ts no fuerza Content-Type con FormData.
   subir: (legajoId: string, file: File, tipo: TipoDocumento, opts?: OpcionesCredenciales) => {
+    if (opts?.auth) {
+      return noDisponible<DocumentoSubido>("La carga de documentos requiere un enlace de aspirante; no admite la sesión del personal.");
+    }
     const formData = new FormData();
     formData.append("file", file);
     formData.append("tipo", tipo);
-    return api.post<unknown>(`/legajos/${enc(legajoId)}/documentos`, formData, credenciales(opts));
+    return api.post<DocumentoSubido>(`/legajos/${enc(legajoId)}/documentos`, formData, ASPIRANTE);
   },
 
   // Coordinador.
   revisar: (
     legajoId: string,
     docId: string,
-    datos: { accion: "OBSERVAR" | "MARCAR_FALTANTE"; motivo: string },
-  ) => api.patch<unknown>(`/legajos/${enc(legajoId)}/documentos/${enc(docId)}`, datos),
+    datos: { accion: "APROBAR" | "OBSERVAR" | "MARCAR_FALTANTE"; motivo?: string },
+  ) => api.patch<DocumentoConEstado>(`/legajos/${enc(legajoId)}/documentos/${enc(docId)}`, datos),
 
   // La ruta del archivo en storage es interna: el PDF se baja siempre por este endpoint.
-  descargar: (docId: string) => download(`/documentos/${enc(docId)}/download`, { credentials: "include" }),
+  descargar: (docId: string, opts: OpcionesCredenciales = { auth: true }) =>
+    download(`/documentos/${enc(docId)}/download`, credenciales(opts)),
 };

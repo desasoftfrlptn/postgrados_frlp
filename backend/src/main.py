@@ -12,6 +12,8 @@ from src.carga_academica.presentation.router import router as carga_academica_ro
 from src.inscripcion.presentation.controller_periodos import router as periodos_router
 from src.inscripcion.presentation.cohortes_controller import router as cohortes_router
 
+from src.inscripcion.presentation.estadisticas_controller import router as estadisticas_router
+
 from src.config import CORS_ORIGINS
 
 @asynccontextmanager
@@ -33,7 +35,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 PREFIX="/api/v1"
-for r in (auth_router, acceso_router, inscripcion_router, documentos_router, periodos_router, carga_academica_router, graduacion_router, cohortes_router):
+for r in (auth_router, acceso_router, inscripcion_router, documentos_router, periodos_router, carga_academica_router, graduacion_router, cohortes_router, estadisticas_router):
     app.include_router(r, prefix=PREFIX)
 
 def main() -> None:

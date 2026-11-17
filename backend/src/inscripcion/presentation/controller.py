@@ -5,7 +5,18 @@ import os
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
+from starlette.concurrency import run_in_threadpool
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.shared.database.session import get_db
+from src.inscripcion.infrastructure.pdf_legajo import generar_pdf_legajo
+from src.inscripcion.infrastructure.orm_models import Cohorte
+from src.gestion_documental.application.services import listar_documentos
+from src.gestion_documental.presentation.schemas import DocumentoResponse
+from src.seguimiento_graduacion.infrastructure.orm_models import TrabajoFinal
+from src.seguimiento_graduacion.presentation.schemas import TrabajoFinalResponse
 from openpyxl import Workbook
 
 from src.inscripcion.application.service import LegajoService
@@ -176,3 +187,28 @@ async def actualizar_estado(
         ReglaNegocioInvalida, ConflictoLegajo,
     ) as error:
         raise _http_error(error) from error
+
+
+@router.get("/{legajo_id}/exportar-pdf", response_class=Response)
+async def exportar_pdf(
+    legajo_id: UUID,
+    service: LegajoService = Depends(get_legajo_service),
+    usuario: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        legajo = await service.obtener_legajo(legajo_id, usuario_email=usuario.email,
+            usuario_rol=usuario.rol, usuario_id=usuario.id)
+    except (LegajoNoEncontrado, AccesoDenegado) as error:
+        raise _http_error(error) from error
+    cohorte = await db.get(Cohorte, legajo.cohorte_id)
+    documentos = await listar_documentos(db, legajo_id)
+    trabajo = await db.scalar(select(TrabajoFinal).where(TrabajoFinal.legajo_id == legajo_id))
+    contenido = await run_in_threadpool(generar_pdf_legajo,
+        LegajoResponse.model_validate(legajo).model_dump(), cohorte.nombre if cohorte else "No disponible",
+        [DocumentoResponse.model_validate(d).model_dump() for d in documentos],
+        TrabajoFinalResponse.model_validate(trabajo).model_dump() if trabajo else None)
+    return Response(contenido, media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="legajo-{legajo_id}.pdf"',
+        "Cache-Control": "no-store",
+    })

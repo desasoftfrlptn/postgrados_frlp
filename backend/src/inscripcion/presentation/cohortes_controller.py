@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from src.inscripcion.application.service import CohorteService
 from src.inscripcion.presentation.dependencies import get_cohorte_service
 from src.inscripcion.presentation.schemas import CohorteCreate, CohorteInscripcionUpdate, CohorteResponse
+from src.inscripcion.domain.exceptions import CohorteNoEncontrada
 from src.shared.auth.dependencies import require_role
 
 router = APIRouter(prefix="/cohortes", tags=["Cohortes"])
@@ -19,7 +20,7 @@ async def listar_cohortes(
 
 @router.post("", response_model=CohorteResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_role("coordinador"))])
 async def crear_cohorte(
-    data: CohorteCreate, 
+    data: CohorteCreate,
     service: CohorteService = Depends(get_cohorte_service)
 ):
     try:
@@ -34,8 +35,8 @@ async def crear_cohorte(
 
 @router.patch("/{id}/inscripcion", response_model=CohorteResponse, status_code=status.HTTP_200_OK, dependencies=[Depends(require_role("coordinador"))])
 async def gestionar_inscripcion_cohorte(
-    id: UUID, 
-    data: CohorteInscripcionUpdate, 
+    id: UUID,
+    data: CohorteInscripcionUpdate,
     service: CohorteService = Depends(get_cohorte_service)
 ):
     try:
@@ -45,3 +46,10 @@ async def gestionar_inscripcion_cohorte(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/{id}", response_model=CohorteResponse)
+async def detalle_cohorte(id: UUID, service: CohorteService = Depends(get_cohorte_service)):
+    try:
+        return await service.obtener_cohorte(id)
+    except CohorteNoEncontrada as exc:
+        raise HTTPException(404, str(exc)) from exc

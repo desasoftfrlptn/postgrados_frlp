@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { documentosApi } from "@/shared/api/endpoints";
+import { documentosApi, type OpcionesCredenciales } from "@/shared/api/endpoints";
 import { saveBlob } from "@/shared/api/files";
 
-// PENDIENTE (backend): ningún endpoint de documentos tiene router todavía.
-export function useDocumentos(id: string) {
+export function useDocumentos(id: string, opts: OpcionesCredenciales = { auth: true }) {
   return useQuery({
-    queryKey: ["documentos", id],
-    queryFn: () => documentosApi.listar(id),
+    queryKey: ["documentos", id, opts.auth ?? true],
+    queryFn: () => documentosApi.listar(id, opts),
     enabled: Boolean(id),
   });
 }
@@ -14,8 +13,8 @@ export function useDocumentos(id: string) {
 interface ObservarDocumentoPayload {
   legajoId: string;
   docId: string;
-  accion: "OBSERVAR" | "MARCAR_FALTANTE";
-  motivo: string;
+  accion: "APROBAR" | "OBSERVAR" | "MARCAR_FALTANTE";
+  motivo?: string;
 }
 
 export function useObservarDocumento() {
@@ -27,36 +26,49 @@ export function useObservarDocumento() {
     onSuccess: (_data, variables) => {
       // Refresca la lista de documentos de ESE legajo puntual.
       queryClient.invalidateQueries({ queryKey: ["documentos", variables.legajoId] });
+      queryClient.invalidateQueries({ queryKey: ["consulta-estado"] });
     },
   });
 }
 
-// NUEVO: vista previa del PDF en una pestaña nueva. El backend no entrega una URL pública del
-// archivo: se baja con la sesión (Bearer) y se abre como blob. La pestaña se abre en el mismo gesto
-// del clic, antes de esperar la respuesta, para que el navegador no la bloquee como pop-up.
+type AbrirDocumentoPayload = { docId: string } & OpcionesCredenciales;
+
+// Abrir la ventana ANTES de iniciar la mutation conserva el gesto del usuario.
 export function useAbrirDocumento() {
-  return useMutation({
-    mutationFn: async ({ docId }: { docId: string }) => {
-      const ventana = window.open("", "_blank");
+  const mutation = useMutation({
+    mutationFn: async ({ docId, auth = true, ventana }: AbrirDocumentoPayload & { ventana: Window | null }) => {
+      if (!ventana) throw new Error("Habilita las ventanas emergentes para ver el PDF.");
       try {
-        const { blob } = await documentosApi.descargar(docId);
+        const { blob } = await documentosApi.descargar(docId, { auth });
         const url = URL.createObjectURL(new Blob([blob], { type: "application/pdf" }));
-        if (ventana) ventana.location.href = url;
-        else window.open(url, "_blank");
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        if (ventana.closed) URL.revokeObjectURL(url);
+        else {
+          ventana.location.href = url;
+          setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        }
       } catch (error) {
-        ventana?.close();
+        ventana.close();
         throw error;
       }
     },
   });
+  const preparar = (datos: AbrirDocumentoPayload) => {
+    const ventana = window.open("", "_blank");
+    if (ventana) ventana.opener = null;
+    return { ...datos, ventana };
+  };
+  return {
+    ...mutation,
+    mutate: (datos: AbrirDocumentoPayload) => mutation.mutate(preparar(datos)),
+    mutateAsync: (datos: AbrirDocumentoPayload) => mutation.mutateAsync(preparar(datos)),
+  };
 }
 
 // NUEVO: descarga el PDF (GET /documentos/:id/download). `nombre` es el nombre de respaldo.
 export function useDescargarDocumento() {
   return useMutation({
-    mutationFn: async ({ docId, nombre }: { docId: string; nombre?: string }) => {
-      const { blob, filename } = await documentosApi.descargar(docId);
+    mutationFn: async ({ docId, nombre, auth = true }: { docId: string; nombre?: string } & OpcionesCredenciales) => {
+      const { blob, filename } = await documentosApi.descargar(docId, { auth });
       saveBlob(blob, filename ?? nombre ?? "documento.pdf");
     },
   });

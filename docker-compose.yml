@@ -31,6 +31,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      clamav:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 5s
@@ -44,6 +46,8 @@ services:
       JWT_EXPIRATION: ${JWT_EXPIRATION:-8h}
       JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
       STORAGE_PATH: /var/postgrado-storage
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       NODE_ENV: development
@@ -71,6 +75,15 @@ services:
     volumes:
       - ./frontend/src:/app/src
 
+  clamav:
+    image: clamav/clamav:stable
+    container_name: postgrado-clamav
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3310:3310"
+    volumes:
+      - clamav-db:/var/lib/clamav
+
   mailhog:
     image: mailhog/mailhog:latest
     container_name: postgrado-mailhog
@@ -83,3 +96,5 @@ volumes:
     name: postgrado-pgdata
   postgrado-storage:
     name: postgrado-storage
+  clamav-db:
+    name: postgrado-clamav-db

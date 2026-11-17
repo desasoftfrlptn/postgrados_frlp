@@ -255,6 +255,7 @@ export function ConsultarEstado() {
                 <DocumentoPendienteItem
                   key={tipo}
                   tipo={tipo}
+                  motivo={legajo.documentos.find((d) => d.tipo === tipo)?.motivo_observacion}
                   variante="faltante"
                   archivoSeleccionado={archivosStaging.get(tipo)}
                   onSeleccionar={(file) => handleSeleccionarArchivo(tipo, file)}
@@ -287,7 +288,7 @@ export function ConsultarEstado() {
 
 interface DocumentoPendienteItemProps {
   tipo: TipoDocumento;
-  motivo?: string;
+  motivo?: string | null;
   variante: "faltante" | "observado";
   archivoSeleccionado?: File;
   onSeleccionar: (file: File) => void;
@@ -347,7 +348,7 @@ function DocumentoPendienteItem({
             </p>
           ) : (
             <p className="mt-1 text-xs text-ink-muted">
-              Todavía no lo subiste.
+              {motivo ?? "No hay un documento vigente para este requisito."}
             </p>
           )}
           {errorArchivo && (

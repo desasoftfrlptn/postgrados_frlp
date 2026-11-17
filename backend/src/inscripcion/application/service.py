@@ -133,10 +133,10 @@ class CohorteService:
             "fecha_inicio": fecha_inicio
         }
         return await self.repository.crear(datos)
-    
+
     async def listar_cohortes(self) -> List[Any]:
         return await self.repository.obtener()
-    
+
     async def gestionar_inscripcion(self, cohorte_id: UUID, abierta: bool) -> Any:
         cohorte = await self.repository.obtener_por_id(cohorte_id)
         if not cohorte:
@@ -145,4 +145,13 @@ class CohorteService:
         cohorte.inscripcion_abierta = abierta
 
         return await self.repository.modificar(cohorte)
-    
+
+
+    async def obtener_cohorte(self, cohorte_id: UUID) -> Any:
+        cohorte = await self.repository.obtener_por_id(cohorte_id)
+        if cohorte is None:
+            raise CohorteNoEncontrada("Cohorte no encontrada")
+        return cohorte
+
+    async def estadisticas(self, tipo_carrera: str | None = None) -> list[dict[str, Any]]:
+        return await self.repository.estadisticas(tipo_carrera)

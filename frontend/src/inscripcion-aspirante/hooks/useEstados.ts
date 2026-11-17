@@ -12,9 +12,7 @@ export function useConsultaEstado() {
     queryKey: ["consulta-estado"],
     queryFn: async (): Promise<ConsultaLegajoResponse> => {
       const legajo = await accesosApi.legajo();
-      // PENDIENTE (backend): GET /legajos/:id/documentos. Si más adelante /accesos/legajo ya
-      // incluye los documentos, esta segunda llamada se elimina acá sin tocar el componente.
-      const documentos = await documentosApi.listar(legajo.id);
+      const documentos = await documentosApi.listar(legajo.id, { auth: false });
       return {
         id: legajo.id,
         numero_legajo: legajo.numero_legajo,
@@ -29,7 +27,7 @@ export function useConsultaEstado() {
   });
 }
 
-// Subir un documento reabre el legajo en el backend (el estado cambia solo): por eso se refresca la consulta.
+// Refrescar el legajo tras una carga; no inferir cambios de estado ni revisión.
 export function useAdjuntarDocumento(legajoId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -40,6 +38,7 @@ export function useAdjuntarDocumento(legajoId: string | undefined) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["consulta-estado"] });
+      queryClient.invalidateQueries({ queryKey: ["documentos", legajoId] });
     },
   });
 }
