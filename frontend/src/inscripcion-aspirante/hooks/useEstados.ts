@@ -43,10 +43,11 @@ export function useAdjuntarDocumento(legajoId: string | undefined) {
   });
 }
 
-// PENDIENTE (backend): GET /periodos/vigente
-export function useEstadoInscripcionVigente() {
+// Consulta el período de la cohorte autorizada por el enlace, no otra cohorte.
+export function useEstadoInscripcionVigente(cohorteId?: string) {
   return useQuery({
-    queryKey: ["periodo-vigente"],
-    queryFn: periodosApi.vigente,
+    queryKey: ["periodo-vigente", cohorteId],
+    queryFn: () => periodosApi.vigente(cohorteId),
+    enabled: Boolean(cohorteId),
   });
 }

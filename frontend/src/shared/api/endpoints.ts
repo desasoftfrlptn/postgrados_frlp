@@ -162,6 +162,12 @@ export const authApi = {
 
 /* ──────────────────────────── /accesos ──────────────────────────── */
 
+export interface SesionAcceso {
+  tipo: TipoEnlace;
+  cohorte_id: string | null;
+  legajo_id: string | null;
+}
+
 export const accesosApi = {
   // Coordinador.
   crearEnlace: (datos: CrearEnlaceRequest) => api.post<EnlaceCreado>("/accesos", datos),
@@ -183,7 +189,7 @@ export const accesosApi = {
     ),
 
   // 401 = no hay sesión de aspirante (no es "sesión de staff vencida").
-  sesion: () => api.get<{ tipo: TipoEnlace }>("/accesos/sesion", ASPIRANTE),
+  sesion: () => api.get<SesionAcceso>("/accesos/sesion", ASPIRANTE),
 
   cerrarSesion: () => api.delete<void>("/accesos/sesion", ASPIRANTE),
 
@@ -241,7 +247,7 @@ export interface PeriodoVigente {
 
 // Público: lo consulta el aspirante antes de inscribirse.
 export const periodosApi = {
-  vigente: () => api.get<PeriodoVigente>("/periodos/vigente", { auth: false }),
+  vigente: (cohorteId?: string) => api.get<PeriodoVigente>("/periodos/vigente", { auth: false, params: { cohorte_id: cohorteId } }),
 
   listar: (cohorteId: string) => api.get<PeriodoInscripcion[]>(`/cohortes/${enc(cohorteId)}/periodos`),
 

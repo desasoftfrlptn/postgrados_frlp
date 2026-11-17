@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useInscripcion, InscripcionParcialError } from "@/shared/hooks/useInscripcion";
 import { CAMPOS_WIZARD, erroresDeCampo } from "@/shared/api/mappers";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -21,6 +21,7 @@ import { useEstadoInscripcionVigente } from "../hooks/useEstados.ts";
 import { formatFecha } from "@/shared/hooks/usePeriodos.ts";
 import { Spinner } from "@/shared/components/Spinner.tsx";
 import ThemeToggle from "@/shared/components/ThemeToggle.tsx";
+import { useSesionAcceso } from "@/shared/hooks/useAccesos";
 
 const STEPS: Step[] = [
   { id: "personales", label: "Personales" },
@@ -51,14 +52,47 @@ export function InscripcionWizard() {
   // Resultado de la inscripción: qué se registró y qué hay que resolver con la coordinación
   const [resultado, setResultado] = useState<{ registradas: string[]; avisos: string[] } | null>(null);
   const mutation = useInscripcion();
+  const envioEnCurso = useRef(false);
+  const { data: acceso } = useSesionAcceso();
   const {
     data: estado,
     isLoading,
     isError: errorPeriodo,
     error: errorPeriodoDetalle,
     refetch: reintentarPeriodo,
-  } = useEstadoInscripcionVigente();
-  if (isLoading) {
+  } = useEstadoInscripcionVigente(acceso?.cohorte_id ?? undefined);
+  if (resultado) {
+    return (
+      <div className="screen-shell relative">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <div className="screen-card mx-auto max-w-md space-y-4 p-6" role="status" aria-live="polite" aria-atomic="true">
+          <div className="flex items-start gap-2 rounded-xl bg-semaforo-verde-soft p-4 text-sm text-semaforo-verde dark:bg-semaforo-verde-soft-dark">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <div>
+              <h1 className="font-semibold text-lg">{resultado.avisos.length ? "Inscripción registrada con pendientes" : "¡Inscripción enviada correctamente!"}</h1>
+              <p className="mt-1">Registramos: {resultado.registradas.join(", ")}.</p>
+            </div>
+          </div>
+          {resultado.avisos.map((aviso) => (
+            <div
+              key={aviso}
+              role="alert"
+              className="flex items-start gap-2 rounded-xl border border-semaforo-amarillo/30 bg-semaforo-amarillo-soft p-4 text-sm text-semaforo-amarillo dark:bg-semaforo-amarillo-soft-dark"
+            >
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              {aviso}
+            </div>
+          ))}
+          <p className="text-sm text-ink-secondary">
+            La coordinación va a revisar tu solicitud y tu documentación.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  if (isLoading || !acceso?.cohorte_id) {
     return (
       <div className="flex items-center gap-2 p-6 text-ink-secondary">
         <Spinner size="sm" /> Verificando período de inscripción…
@@ -106,37 +140,6 @@ export function InscripcionWizard() {
       </div>
     );
   }
-  if (resultado) {
-    return (
-      <div className="screen-shell relative">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
-        </div>
-        <div className="screen-card mx-auto max-w-md space-y-4 p-6">
-          <div className="flex items-start gap-2 rounded-xl bg-semaforo-verde-soft p-4 text-sm text-semaforo-verde dark:bg-semaforo-verde-soft-dark">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <div>
-              <p className="font-medium">¡Recibimos tu inscripción!</p>
-              <p className="mt-1">Registramos: {resultado.registradas.join(", ")}.</p>
-            </div>
-          </div>
-          {resultado.avisos.map((aviso) => (
-            <div
-              key={aviso}
-              role="alert"
-              className="flex items-start gap-2 rounded-xl border border-semaforo-amarillo/30 bg-semaforo-amarillo-soft p-4 text-sm text-semaforo-amarillo dark:bg-semaforo-amarillo-soft-dark"
-            >
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-              {aviso}
-            </div>
-          ))}
-          <p className="text-sm text-ink-secondary">
-            La coordinación va a revisar tu solicitud y tu documentación.
-          </p>
-        </div>
-      </div>
-    );
-  }
   const goToNextStep = () => {
     setCurrentStep((step) => Math.min(step + 1, STEPS.length - 1));
   };
@@ -166,7 +169,8 @@ export function InscripcionWizard() {
   };
   // Paso 4: dispara el POST real con el payload acumulado de los 3 pasos.
   const handleConfirmar = () => {
-    if (!estado?.cohorte_id) return; // con el período abierto siempre hay cohorte
+    if (envioEnCurso.current || mutation.isPending || resultado || !estado?.cohorte_id) return;
+    envioEnCurso.current = true; // con el período abierto siempre hay cohorte
     setServerErrors(undefined);
     mutation.mutate(
       { datosPersonales, datosAcademicos, datosDocumentos, cohorte_id: estado.cohorte_id },
@@ -182,6 +186,7 @@ export function InscripcionWizard() {
                 : [],
           });
         },
+        onSettled: () => { envioEnCurso.current = false; },
         onError: (error) => {
           // Se registró una carrera pero otra falló: no se puede reintentar (duplicaría la primera)
           if (error instanceof InscripcionParcialError) {
@@ -193,11 +198,10 @@ export function InscripcionWizard() {
             });
             return;
           }
-          // 409/422 con campo: se vuelve al paso 1 y se marca el campo
+          // Conservar la confirmación y los datos; el aspirante elige cuándo corregir.
           const errores = erroresDeCampo(error, CAMPOS_WIZARD);
           if (Object.keys(errores).length > 0) {
             setServerErrors(errores);
-            setCurrentStep(0);
           }
         },
       },
@@ -250,9 +254,14 @@ export function InscripcionWizard() {
           />
         )}
         {mutation.isError && (
-          <p className="px-5 pb-4 text-sm font-medium text-semaforo-rojo">
-            {(mutation.error as Error).message}
+          <div role="alert" className="px-5 pb-4 space-y-3 text-sm font-medium text-semaforo-rojo">
+          <p>
+            No se pudo enviar la inscripción: {mutation.error.message}
           </p>
+          {currentStep === 3 && serverErrors && Object.keys(serverErrors).length > 0 && (
+            <Button type="button" variant="outline" onClick={() => { setCurrentStep(0); mutation.reset(); }}>Corregir datos</Button>
+          )}
+          </div>
         )}
       </main>
     </div>

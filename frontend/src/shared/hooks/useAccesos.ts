@@ -35,11 +35,12 @@ export function useIntercambiarEnlace() {
 
   return useMutation({
     mutationFn: (token: string) => accesosApi.intercambiar(token),
-    onSuccess: ({ tipo }) => {
+    onSuccess: async () => {
       // Que el guard RequireAcceso vea la sesión nueva en vez de un 401 cacheado
-      queryClient.setQueryData(ACCESO_SESION_KEY, { tipo });
+      queryClient.setQueryData(ACCESO_SESION_KEY, await accesosApi.sesion());
       // Y que no se vean datos cacheados de otro aspirante que usó este navegador
       queryClient.removeQueries({ queryKey: ["consulta-estado"] });
+      queryClient.removeQueries({ queryKey: ["documentos"] });
     },
   });
 }
@@ -63,6 +64,7 @@ export function useCerrarSesionAcceso() {
     onSuccess: () => {
       queryClient.removeQueries({ queryKey: ACCESO_SESION_KEY });
       queryClient.removeQueries({ queryKey: ["consulta-estado"] });
+      queryClient.removeQueries({ queryKey: ["documentos"] });
     },
   });
 }

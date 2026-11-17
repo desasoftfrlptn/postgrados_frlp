@@ -41,6 +41,7 @@ export function ConfirmacionStep({
               <button
                 type="button"
                 className="text-xs font-medium text-brand-600 underline-offset-2 hover:underline"
+                disabled={isSubmitting}
                 onClick={() => onEditStep(0)}
               >
                 Editar
@@ -58,6 +59,7 @@ export function ConfirmacionStep({
               <button
                 type="button"
                 className="text-xs font-medium text-brand-600 underline-offset-2 hover:underline"
+                disabled={isSubmitting}
                 onClick={() => onEditStep(1)}
               >
                 Editar
@@ -82,6 +84,7 @@ export function ConfirmacionStep({
               <button
                 type="button"
                 className="text-xs font-medium text-brand-600 underline-offset-2 hover:underline"
+                disabled={isSubmitting}
                 onClick={() => onEditStep(2)}
               >
                 Editar
@@ -97,7 +100,7 @@ export function ConfirmacionStep({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-        <Button variant="ghost" type="button" onClick={onVolverBorrador}>
+        <Button variant="ghost" type="button" disabled={isSubmitting} onClick={onVolverBorrador}>
           Volver al borrador
         </Button>
 
@@ -107,7 +110,7 @@ export function ConfirmacionStep({
           isLoading={isSubmitting}
           disabled={isSubmitting}
         >
-          Confirmar inscripción
+          {isSubmitting ? "Enviando inscripción…" : "Enviar inscripción"}
         </Button>
       </div>
     </section>

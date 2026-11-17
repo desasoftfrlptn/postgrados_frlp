@@ -1,12 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Spinner } from "@/shared/components/Spinner";
 import { Button } from "@/shared/components/Button";
 import { isApiError } from "@/shared/api/client";
 import { accesosApi, type TipoEnlace } from "@/shared/api/endpoints";
 import type { Rol } from "@/shared/types/types";
 import { useAuth } from "./authContext";
+import { ACCESO_SESION_KEY } from "@/shared/hooks/useAccesos";
 
 function PantallaCarga({ texto }: { texto: string }) {
   return (
@@ -92,10 +93,12 @@ export function RequireAcceso({
   const navigate = useNavigate();
 
   const token = new URLSearchParams(location.search).get("token");
+  const queryClient = useQueryClient();
+  const intercambioId = useMemo(() => token ? crypto.randomUUID() : "", [token]);
 
   const sesion = useQuery({
     // No incluir el token en la queryKey para evitar almacenarlo en la caché.
-    queryKey: ["acceso", "sesion", Boolean(token)],
+    queryKey: token ? ["acceso", "intercambio", intercambioId] : ACCESO_SESION_KEY,
 
     queryFn: async () => {
       // Si se ingresó mediante un enlace, primero se intercambia.
@@ -109,12 +112,19 @@ export function RequireAcceso({
 
     retry: false,
     staleTime: token ? 0 : 60_000,
+    gcTime: token ? 0 : 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   // Una vez intercambiado el enlace y verificada la sesión,
   // se elimina el token de la URL.
   useEffect(() => {
     if (token && sesion.isSuccess) {
+      // Mantener la sesión al quitar el token evita desmontar y reiniciar el formulario.
+      queryClient.setQueryData(ACCESO_SESION_KEY, sesion.data);
+      queryClient.removeQueries({ queryKey: ["consulta-estado"] });
+      queryClient.removeQueries({ queryKey: ["documentos"] });
       const params = new URLSearchParams(location.search);
       params.delete("token");
 
@@ -128,7 +138,7 @@ export function RequireAcceso({
         { replace: true }
       );
     }
-  }, [token, sesion.isSuccess, location.pathname, location.search, navigate]);
+  }, [token, sesion.isSuccess, sesion.data, location.pathname, location.search, navigate, queryClient]);
 
   if (sesion.isPending) {
     return (
