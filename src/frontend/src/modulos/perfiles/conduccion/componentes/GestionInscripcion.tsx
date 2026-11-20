@@ -404,18 +404,31 @@ export default function GestionInscripcion({
                 </div>
               </fieldset>
             )}
-            
-            <label>
-              Comentario u observaciones
+
+            <div className="gestion-observaciones">
+              <label htmlFor="observaciones-inscripcion">
+                Observaciones para el aspirante
+              </label>
+
+              <p className="gestion-observaciones-ayuda">
+                Explicá qué debe corregir o completar el aspirante.
+                También podés seleccionar los documentos que debe modificar.
+              </p>
+
               <textarea
+                id="observaciones-inscripcion"
                 value={comentario}
                 maxLength={4000}
                 disabled={bloqueado}
+                placeholder="Escribí aquí las observaciones..."
                 onChange={(event) => setComentario(event.target.value)}
               />
-            </label>
 
-            
+              <small>
+                Estas observaciones serán visibles para el aspirante.
+              </small>
+            </div>
+
             {gestion.estado === "EN_REVISION" && (
               <fieldset
                 className="gestion-documentacion"
@@ -449,8 +462,7 @@ export default function GestionInscripcion({
               </fieldset>
             )}
 
-
-            <div>
+            <div className="gestion-acciones">
               {(accionesPorEstado[gestion.estado] ?? []).map(
                 ({ accion, texto }) => (
                   <button
