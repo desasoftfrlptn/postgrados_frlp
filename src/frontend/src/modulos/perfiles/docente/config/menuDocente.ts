@@ -33,11 +33,7 @@ export const menuDocente: OpcionMenuPerfil[] = [
     icono: "📝",
     ruta: "/dashboard/docente/calificaciones",
   },
-  {
-    texto: "Reportes",
-    icono: "📊",
-    ruta: "/dashboard/docente/reportes",
-  },
+ 
   {
     texto: "Pendientes",
     icono: "⏳",
@@ -47,5 +43,11 @@ export const menuDocente: OpcionMenuPerfil[] = [
     texto: "Colegas",
     icono: "👨‍🏫",
     ruta: "/dashboard/docente/profesores",
-  }
+  },
+
+  {
+    texto: "Reportes",
+    icono: "📊",
+    ruta: "/dashboard/docente/reportes",
+  },
 ];

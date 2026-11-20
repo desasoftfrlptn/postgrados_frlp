@@ -121,13 +121,17 @@ async def test_registrar_asistencia_actualiza_contadores_rf_doc_002(
         estado="APROBADO",
     )
 
-    resultado_mock = MagicMock()
-    resultado_mock.scalars.return_value.all.return_value = [
-        inscripcion_1,
-        inscripcion_2,
+    resultado_inscripciones = MagicMock()
+    resultado_inscripciones.scalars.return_value.all.return_value = [
+    inscripcion_1,
+    inscripcion_2,
     ]
-    db.execute.return_value = resultado_mock
-
+    resultado_clases_previas = MagicMock()
+    resultado_clases_previas.scalars.return_value.all.return_value = []
+    db.execute.side_effect = [
+        resultado_inscripciones,
+        resultado_clases_previas,
+    ]
     monkeypatch.setattr(
         "src.seminarios.aplicacion.servicio.listar_alumnos_seminario",
         AsyncMock(return_value=[]),

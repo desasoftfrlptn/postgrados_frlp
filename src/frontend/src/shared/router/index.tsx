@@ -141,7 +141,7 @@ export const router = createBrowserRouter([
         children: [
           {
             path: "dashboard",
-            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><DashboardEstudiantePage /></ProtectedRoute>,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE", "ALUMNO"]}><DashboardEstudiantePage /></ProtectedRoute>,
           },
           {
             path: "dashboard/general",
@@ -157,23 +157,23 @@ export const router = createBrowserRouter([
           },
           {
             path: "dashboard/estado-academico",
-            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><EstadoAcademicoPage /></ProtectedRoute>,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE", "ALUMNO"]}><EstadoAcademicoPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/trabajo-final",
-            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><TrabajoFinalPage /></ProtectedRoute>,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE", "ALUMNO"]}><TrabajoFinalPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/tutorias",
-            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><TutoriasPage /></ProtectedRoute>,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE", "ALUMNO"]}><TutoriasPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/certificados",
-            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><CertificadosPage /></ProtectedRoute>,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE", "ALUMNO"]}><CertificadosPage /></ProtectedRoute>,
           },
           {
             path: "dashboard/asistencias",
-            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE"]}><AsistenciasEstudiantePage /></ProtectedRoute>,
+            element: <ProtectedRoute rolesPermitidos={["ASPIRANTE", "ALUMNO"]}><AsistenciasEstudiantePage /></ProtectedRoute>,
           },
 
           // DOCENTE

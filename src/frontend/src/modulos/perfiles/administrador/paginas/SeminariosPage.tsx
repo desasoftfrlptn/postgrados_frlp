@@ -186,14 +186,14 @@ export default function SeminariosPage() {
         );
 
 
-        setDocentes(
-          respuestaUsuarios.filter(
-            (usuario) =>
-              usuario.tipo_usuario === "DOCENTE" &&
-              usuario.activo
-          )
-        );
-
+             setDocentes(
+       respuestaUsuarios.filter(
+         (usuario) =>
+           usuario.tipo_usuario === "DOCENTE" &&
+           usuario.activo
+       )
+     );
+     
       } catch (error) {
         setError(
           error instanceof Error

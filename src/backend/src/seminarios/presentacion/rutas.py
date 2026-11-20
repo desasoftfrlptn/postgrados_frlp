@@ -26,6 +26,9 @@ from src.seminarios.aplicacion.servicio import (
     registrar_asistencia_clase,
     listar_cursada_estudiante,
     verificar_seminario_docente,
+    desvincular_alumno_seminario,
+    listar_historial_asistencias_docente,
+    listar_colegas_docentes,
 )
 from src.seminarios.presentacion.esquema import (
     SeminarioCrear,
@@ -37,6 +40,8 @@ from src.seminarios.presentacion.esquema import (
     InscripcionSeminarioCrear,
     AsistenciaClaseRegistrar,
     CursadaEstudianteRespuesta,
+    AsistenciaFechaRespuesta,
+    ColegaDocenteRespuesta,
    
 )
 
@@ -109,6 +114,30 @@ async def obtener_mis_seminarios(
         docente.id,
         db,
     )
+@enrutador.get(
+    "/colegas",
+    response_model=list[ColegaDocenteRespuesta],
+)
+async def obtener_colegas_docentes(
+    db: AsyncSession = Depends(get_db),
+    docente=Depends(obtener_docente_actual),
+):
+    return await listar_colegas_docentes(db)
+
+@enrutador.get(
+    "/mis-asistencias",
+    response_model=list[AsistenciaFechaRespuesta],
+)
+
+async def obtener_mis_asistencias_docente(
+    db: AsyncSession = Depends(get_db),
+    docente=Depends(obtener_docente_actual),
+):
+    return await listar_historial_asistencias_docente(
+        docente.id,
+        db,
+    )
+
 
 @enrutador.get(
     "/mi-cursada",
@@ -206,11 +235,27 @@ async def inscribir_estudiante_en_seminario(
     db: AsyncSession = Depends(get_db),
     docente=Depends(obtener_docente_actual),
 ):
-    await verificar_seminario_docente(seminario_id, docente.id, db)
     return await inscribir_alumno_seminario(
         seminario_id,
         datos.legajo_id,
         datos.dni_pasaporte,
+        docente.id,
+        db,
+    )
+@enrutador.delete(
+    "/{seminario_id}/estudiantes/{legajo_id}",
+    status_code=204,
+)
+async def desvincular_estudiante_de_seminario(
+    seminario_id: UUID,
+    legajo_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    docente=Depends(obtener_docente_actual),
+):
+    await desvincular_alumno_seminario(
+        seminario_id,
+        legajo_id,
+        docente.id,
         db,
     )
 
