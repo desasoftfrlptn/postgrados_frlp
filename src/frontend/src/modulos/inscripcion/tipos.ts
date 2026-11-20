@@ -35,4 +35,6 @@ export interface DatosInscripcion {
 export interface EstadoInscripcion {
   numero_seguimiento: string;
   estado: string;
+  observaciones?: string[];
+  documentacion_pendiente?: string[];
 }

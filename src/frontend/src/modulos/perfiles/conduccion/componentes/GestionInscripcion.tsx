@@ -13,6 +13,7 @@ interface Gestion {
   fecha_matricula: string | null;
   fecha_baja: string | null;
   observaciones: string | null;
+  documentacion_a_corregir: string[];
 }
 
 interface Evento {
@@ -55,6 +56,17 @@ const accionesPorEstado: Record<
   ],
 };
 
+const documentosDisponibles = [
+  { valor: "FORMULARIO_PREINSCRIPCION", texto: "Formulario de preinscripción" },
+  { valor: "FORMULARIO_INSCRIPCION", texto: "Formulario de inscripción" },
+  { valor: "DNI_PASAPORTE", texto: "DNI o pasaporte" },
+  { valor: "PARTIDA_NACIMIENTO", texto: "Partida de nacimiento" },
+  { valor: "CONSTANCIA_CUIT_CUIL", texto: "Constancia CUIT/CUIL" },
+  { valor: "TITULO_GRADO", texto: "Título de grado" },
+  { valor: "TITULO_POSGRADO", texto: "Título de posgrado" },
+  { valor: "FORMULARIO_BECA", texto: "Formulario de beca" },
+];
+
 interface Props {
   legajoId: string;
   onEstadoActualizado?: (estado: string) => void;
@@ -76,6 +88,7 @@ export default function GestionInscripcion({
   const [datosVerificados, setDatosVerificados] = useState(false);
   const [tituloPosgrado, setTituloPosgrado] = useState("");
   const [comentario, setComentario] = useState("");
+  const [documentacionACorregir, setDocumentacionACorregir] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -229,6 +242,8 @@ export default function GestionInscripcion({
           accion,
           estado_esperado: gestion.estado,
           comentario: comentario.trim() || null,
+          documentacion_a_corregir:
+            accion === "OBSERVAR" ? documentacionACorregir : [],
         },
         token,
       );
@@ -236,6 +251,7 @@ export default function GestionInscripcion({
       setGestion(resultado);
       onEstadoActualizado?.(resultado.estado);
       setComentario("");
+      setDocumentacionACorregir([]);
 
       const actualizado = await cargar();
 
@@ -392,6 +408,29 @@ export default function GestionInscripcion({
                 onChange={(event) => setComentario(event.target.value)}
               />
             </label>
+
+            {gestion.estado === "EN_REVISION" && (
+              <fieldset disabled={bloqueado}>
+                <legend>Documentación que debe corregir el aspirante</legend>
+
+                {documentosDisponibles.map((documento) => (
+                  <label key={documento.valor}>
+                    <input
+                      type="checkbox"
+                      checked={documentacionACorregir.includes(documento.valor)}
+                      onChange={(event) => {
+                        setDocumentacionACorregir((actuales) =>
+                          event.target.checked
+                            ? [...actuales, documento.valor]
+                            : actuales.filter((valor) => valor !== documento.valor),
+                        );
+                      }}
+                    />
+                    {documento.texto}
+                  </label>
+                ))}
+              </fieldset>
+            )}
 
             <div>
               {(accionesPorEstado[gestion.estado] ?? []).map(

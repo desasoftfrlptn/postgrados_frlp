@@ -157,3 +157,5 @@ class LegajoActualizarPerfil(BaseModel):
 class EstadoInscripcionRespuesta(BaseModel):
     numero_seguimiento: str
     estado: str
+    observaciones: Optional[str] = None
+    documentacion_a_corregir: list[str] = []

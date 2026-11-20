@@ -40,6 +40,11 @@ class AccionLegajoPeticion(BaseModel):
         default=None,
         max_length=4000,
     )
+
+    documentacion_a_corregir: list[str] = Field(
+        default_factory=list,
+    )
+
     @field_validator("comentario")
     @classmethod
     def normalizar_comentario(cls, valor):
@@ -47,3 +52,27 @@ class AccionLegajoPeticion(BaseModel):
             return None
 
         return valor.strip() or None
+
+    @field_validator("documentacion_a_corregir")
+    @classmethod
+    def validar_documentacion_a_corregir(cls, documentos):
+        documentos_permitidos = {
+            "FORMULARIO_PREINSCRIPCION",
+            "FORMULARIO_INSCRIPCION",
+            "DNI_PASAPORTE",
+            "PARTIDA_NACIMIENTO",
+            "CONSTANCIA_CUIT_CUIL",
+            "TITULO_GRADO",
+            "TITULO_POSGRADO",
+            "FORMULARIO_BECA",
+        }
+
+        if len(documentos) != len(set(documentos)):
+            raise ValueError("No se permiten documentos duplicados.")
+
+        documentos_invalidos = set(documentos) - documentos_permitidos
+
+        if documentos_invalidos:
+            raise ValueError("Se recibieron tipos de documentos no permitidos.")
+
+        return documentos

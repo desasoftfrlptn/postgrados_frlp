@@ -67,6 +67,13 @@ class GestionLegajoORM(Base):
         nullable=True,
     )
 
+    documentacion_a_corregir = Column(
+        JSON,
+        nullable=False,
+        default=list,
+        server_default="[]",
+    )
+
 
 class NumeracionCohorteORM(Base):
     __tablename__ = "numeracion_legajos_cohortes"
