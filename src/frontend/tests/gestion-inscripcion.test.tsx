@@ -277,3 +277,44 @@ it("permite reintentar una consulta fallida", async () => {
     await screen.findByText("PENDIENTE"),
   ).toBeInTheDocument();
 });
+
+
+it("envía una observación con comentario", async () => {
+  gestionActual.estado = "EN_REVISION";
+
+  vi.mocked(api.post).mockImplementationOnce(async <T,>() => {
+    gestionActual.estado = "OBSERVADO";
+    gestionActual.observaciones = "Falta el título";
+    return { ...gestionActual } as T;
+  });
+
+  render(<GestionInscripcion legajoId="legajo-1" />);
+
+  const boton = await screen.findByRole("button", {
+    name: "Solicitar correcciones",
+  });
+
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: "Comentario u observaciones",
+    }),
+    { target: { value: "Falta el título" } },
+  );
+
+  await waitFor(() => expect(boton).toBeEnabled());
+  fireEvent.click(boton);
+
+  await waitFor(() => {
+    expect(api.post).toHaveBeenCalledWith(
+      "/conduccion/legajos/legajo-1/acciones",
+      {
+        accion: "OBSERVAR",
+        estado_esperado: "EN_REVISION",
+        comentario: "Falta el título",
+      },
+      "token-prueba",
+    );
+  });
+
+  expect(await screen.findByText("OBSERVADO")).toBeInTheDocument();
+});

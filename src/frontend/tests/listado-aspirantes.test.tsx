@@ -211,3 +211,60 @@ describe("Listado de aspirantes - Filtros", () => {
     });
   });
 });
+
+
+
+it("busca aspirantes por documento", async () => {
+  await seleccionarCohorte();
+
+  fireEvent.change(screen.getByLabelText("Documento"), {
+    target: { value: "41000001" },
+  });
+
+  await waitFor(() => {
+    expect(api.get).toHaveBeenCalledWith(
+      "/inscripcion/?cohorte_id=cohorte-1&dni=41000001",
+      "token-coordinador",
+    );
+  });
+});
+
+it("busca aspirantes por apellido", async () => {
+  await seleccionarCohorte();
+
+  fireEvent.change(screen.getByLabelText("Apellido"), {
+    target: { value: "Becatreinta" },
+  });
+
+  await waitFor(() => {
+    expect(api.get).toHaveBeenCalledWith(
+      "/inscripcion/?cohorte_id=cohorte-1&apellido=Becatreinta",
+      "token-coordinador",
+    );
+  });
+});
+
+
+it("muestra un error si no se pueden cargar los aspirantes", async () => {
+  await seleccionarCohorte();
+
+  vi.mocked(api.get).mockRejectedValueOnce(
+    new Error("No se pudieron cargar los aspirantes."),
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Más filtros" }),
+  );
+
+  fireEvent.change(screen.getByLabelText("Estado"), {
+    target: { value: "PENDIENTE" },
+  });
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "No se pudieron cargar los aspirantes.",
+  );
+
+  expect(
+    screen.getByRole("button", { name: "Reintentar" }),
+  ).toBeInTheDocument();
+});
