@@ -246,3 +246,16 @@ async def modificar_configuracion(
         seccion,
         db,
     )
+
+
+async def restablecer_configuracion(
+    seccion: str,
+    db: AsyncSession,
+) -> dict[str, str]:
+    valores_originales = validar_seccion(seccion)
+
+    return await modificar_configuracion(
+        seccion,
+        valores_originales.copy(),
+        db,
+    )

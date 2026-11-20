@@ -20,6 +20,7 @@ vi.mock("../src/shared/api/client", () => ({
   api: {
     get: vi.fn(),
     put: vi.fn(),
+    post: vi.fn(),
   },
 }));
 
@@ -70,45 +71,97 @@ beforeEach(() => {
       ).valores,
     }) as never
   );
+
+  vi.mocked(api.post).mockResolvedValue(
+    configuracion as never
+  );
 });
 
 describe("Administración del Inicio público", () => {
-  it("carga los valores guardados", async () => {
-    render(<InicioAdmin />);
-
-    expect(
-      await screen.findByDisplayValue(
-        "Bienvenido a Posgrados"
-      )
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByDisplayValue(
-        "Consultar estado de inscripción"
-      )
-    ).toBeInTheDocument();
-
-    expect(api.get).toHaveBeenCalledWith(
-      "/configuracion-publica/home"
-    );
-  });
-
-  it("permite modificar y guardar el título principal", async () => {
+  it("muestra la configuración en modo lectura", async () => {
     render(<InicioAdmin />);
 
     const titulo = await screen.findByDisplayValue(
       "Bienvenido a Posgrados"
     );
 
+    expect(titulo).toBeDisabled();
+
+    expect(
+      screen.getByRole("button", { name: "Modificar" })
+    ).toBeEnabled();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Restablecer configuración predeterminada",
+      })
+    ).toBeEnabled();
+
+    expect(
+      screen.queryByRole("button", { name: "Guardar cambios" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("habilita la edición y permite cancelarla", async () => {
+    render(<InicioAdmin />);
+
+    const titulo = await screen.findByDisplayValue(
+      "Bienvenido a Posgrados"
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Modificar" })
+    );
+
+    expect(titulo).toBeEnabled();
+
+    expect(
+      screen.getByRole("status")
+    ).toHaveTextContent("Estás modificando");
+
     fireEvent.change(titulo, {
-      target: {
-        value: "Nuevo título del Inicio",
-      },
+      target: { value: "Título sin guardar" },
     });
 
     fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar" })
+    );
+
+    expect(titulo).toHaveValue("Bienvenido a Posgrados");
+    expect(titulo).toBeDisabled();
+    expect(api.put).not.toHaveBeenCalled();
+  });
+
+  it("solicita confirmación antes de guardar", async () => {
+    render(<InicioAdmin />);
+
+    const titulo = await screen.findByDisplayValue(
+      "Bienvenido a Posgrados"
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Modificar" })
+    );
+
+    fireEvent.change(titulo, {
+      target: { value: "Nuevo título" },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Guardar cambios" })
+    );
+
+    expect(
+      screen.getByRole("alertdialog", {
+        name: "¿Guardar los cambios?",
+      })
+    ).toBeInTheDocument();
+
+    expect(api.put).not.toHaveBeenCalled();
+
+    fireEvent.click(
       screen.getByRole("button", {
-        name: "Guardar cambios",
+        name: "Confirmar guardado",
       })
     );
 
@@ -117,7 +170,7 @@ describe("Administración del Inicio público", () => {
         "/configuracion-publica/home",
         {
           valores: expect.objectContaining({
-            hero_titulo: "Nuevo título del Inicio",
+            hero_titulo: "Nuevo título",
           }),
         },
         "token-admin"
@@ -129,38 +182,73 @@ describe("Administración del Inicio público", () => {
         "La página de inicio fue actualizada correctamente."
       )
     ).toBeInTheDocument();
+
+    expect(titulo).toBeDisabled();
   });
 
-  it("permite editar el botón de estado de inscripción", async () => {
+  it("permite cancelar la confirmación de guardado", async () => {
     render(<InicioAdmin />);
 
-    const campo = await screen.findByDisplayValue(
-      "Consultar estado de inscripción"
+    await screen.findByDisplayValue("Bienvenido a Posgrados");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Modificar" })
     );
 
-    fireEvent.change(campo, {
-      target: {
-        value: "Ver estado de mi trámite",
-      },
-    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Guardar cambios" })
+    );
+
+    fireEvent.click(
+      screen.getByRole("alertdialog").querySelector(
+        ".admin-inicio-boton-secundario"
+      ) as HTMLButtonElement
+    );
+
+    expect(api.put).not.toHaveBeenCalled();
+
+    expect(
+      screen.getByRole("button", { name: "Guardar cambios" })
+    ).toBeInTheDocument();
+  });
+
+  it("restablece los valores solo después de confirmar", async () => {
+    render(<InicioAdmin />);
+
+    await screen.findByDisplayValue("Bienvenido a Posgrados");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Guardar cambios",
+        name: "Restablecer configuración predeterminada",
+      })
+    );
+
+    expect(
+      screen.getByRole("alertdialog", {
+        name: "¿Restablecer la configuración?",
+      })
+    ).toBeInTheDocument();
+
+    expect(api.post).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Confirmar restablecimiento",
       })
     );
 
     await waitFor(() => {
-      expect(api.put).toHaveBeenCalledWith(
-        "/configuracion-publica/home",
-        {
-          valores: expect.objectContaining({
-            boton_estado_inscripcion:
-              "Ver estado de mi trámite",
-          }),
-        },
+      expect(api.post).toHaveBeenCalledWith(
+        "/configuracion-publica/home/restablecer",
+        undefined,
         "token-admin"
       );
     });
+
+    expect(
+      await screen.findByText(
+        "Se restableció la configuración predeterminada del Inicio."
+      )
+    ).toBeInTheDocument();
   });
 });
