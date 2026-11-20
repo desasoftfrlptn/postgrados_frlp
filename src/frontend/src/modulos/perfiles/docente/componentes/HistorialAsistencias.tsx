@@ -8,36 +8,26 @@ interface SeminarioDocente {
   carrera_nombre: string;
 }
 
-interface AlumnoSeminario {
-  inscripcion_id: string;
-  legajo_id: string;
-  dni_pasaporte: string;
-  apellido: string;
-  nombre: string;
-  carrera_elegida: string;
-  asistencias: number;
-  total_clases: number;
-  porcentaje_asistencia: number;
-}
-
-interface RegistroResumen {
-  inscripcion_id: string;
+interface AsistenciaPorFecha {
+  id: string;
   seminario_id: string;
   seminario_nombre: string;
+  legajo_id: string;
   dni_pasaporte: string;
   alumno: string;
   carrera_elegida: string;
-  asistencias: number;
-  total_clases: number;
+  fecha: string;
+  presente: boolean;
   porcentaje_asistencia: number;
 }
 
 export default function HistorialAsistencias() {
   const { user } = useAuth();
   const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
-  const [registros, setRegistros] = useState<RegistroResumen[]>([]);
+  const [registros, setRegistros] = useState<AsistenciaPorFecha[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [seminarioFiltro, setSeminarioFiltro] = useState("");
+  const [fechaFiltro, setFechaFiltro] = useState("");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,33 +39,12 @@ export default function HistorialAsistencias() {
       }
       setCargando(true);
       try {
-        const listaSeminarios = await api.get<SeminarioDocente[]>(
-          "/seminarios/mis-seminarios",
-          user.token
-        );
+        const [listaSeminarios, listaAsistencias] = await Promise.all([
+          api.get<SeminarioDocente[]>("/seminarios/mis-seminarios", user.token),
+          api.get<AsistenciaPorFecha[]>("/seminarios/mis-asistencias", user.token),
+        ]);
         setSeminarios(listaSeminarios);
-
-        const acumulados: RegistroResumen[] = [];
-        for (const sem of listaSeminarios) {
-          const alumnos = await api.get<AlumnoSeminario[]>(
-            `/seminarios/${sem.id}/estudiantes`,
-            user.token
-          );
-          for (const a of alumnos) {
-            acumulados.push({
-              inscripcion_id: a.inscripcion_id,
-              seminario_id: sem.id,
-              seminario_nombre: sem.nombre,
-              dni_pasaporte: a.dni_pasaporte,
-              alumno: `${a.apellido}, ${a.nombre}`,
-              carrera_elegida: a.carrera_elegida,
-              asistencias: a.asistencias,
-              total_clases: a.total_clases,
-              porcentaje_asistencia: a.porcentaje_asistencia,
-            });
-          }
-        }
-        setRegistros(acumulados);
+        setRegistros(listaAsistencias);
         setError(null);
       } catch (err) {
         setError(
@@ -96,24 +65,27 @@ export default function HistorialAsistencias() {
       .includes(busqueda.toLowerCase());
     const coincideSeminario =
       !seminarioFiltro || r.seminario_id === seminarioFiltro;
-    return coincideAlumno && coincideSeminario;
+    const coincideFecha = !fechaFiltro || r.fecha === fechaFiltro;
+    return coincideAlumno && coincideSeminario && coincideFecha;
   });
 
   const limpiarFiltros = () => {
     setBusqueda("");
     setSeminarioFiltro("");
+    setFechaFiltro("");
   };
 
-  const hayFiltros = busqueda !== "" || seminarioFiltro !== "";
+  const hayFiltros =
+    busqueda !== "" || seminarioFiltro !== "" || fechaFiltro !== "";
 
   return (
     <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <header className="mb-6">
         <h2 className="text-xl font-bold text-gray-900">
-          Asistencias cargadas
+          Asistencias cargadas por clase
         </h2>
         <p className="text-sm text-gray-500 mt-1">
-          Consultá el resumen de presentismo acumulado por seminario y estudiante (BR-002).
+          Consultá las asistencias registradas por seminario, fecha de clase y estudiante (BR-002).
         </p>
       </header>
 
@@ -126,7 +98,7 @@ export default function HistorialAsistencias() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         <div className="flex flex-col">
           <label
             htmlFor="buscar-asistencia"
@@ -165,6 +137,22 @@ export default function HistorialAsistencias() {
             ))}
           </select>
         </div>
+
+        <div className="flex flex-col">
+          <label
+            htmlFor="filtrar-fecha"
+            className="text-sm font-semibold text-gray-700 mb-2"
+          >
+            Fecha de Clase
+          </label>
+          <input
+            id="filtrar-fecha"
+            type="date"
+            value={fechaFiltro}
+            onChange={(event) => setFechaFiltro(event.target.value)}
+            className="border border-gray-300 rounded-md p-2 bg-gray-50"
+          />
+        </div>
       </div>
 
       <div className="flex justify-between items-center gap-4 mb-5">
@@ -191,12 +179,12 @@ export default function HistorialAsistencias() {
           <thead className="bg-slate-100 text-slate-700 text-sm">
             <tr>
               <th scope="col" className="p-4 border-b">Seminario</th>
+              <th scope="col" className="p-4 border-b text-center">Fecha de Clase</th>
               <th scope="col" className="p-4 border-b">DNI</th>
               <th scope="col" className="p-4 border-b">Estudiante</th>
               <th scope="col" className="p-4 border-b">Carrera</th>
-              <th scope="col" className="p-4 border-b text-center">Clases Presentes</th>
-              <th scope="col" className="p-4 border-b text-center">% Asistencia</th>
-              <th scope="col" className="p-4 border-b text-center">Condición</th>
+              <th scope="col" className="p-4 border-b text-center">Estado en la Clase</th>
+              <th scope="col" className="p-4 border-b text-center">% Acumulado</th>
             </tr>
           </thead>
 
@@ -210,47 +198,46 @@ export default function HistorialAsistencias() {
             )}
 
             {!cargando &&
-              asistenciasFiltradas.map((r) => {
-                const regular = r.porcentaje_asistencia >= 75;
-                return (
-                  <tr key={r.inscripcion_id} className="hover:bg-blue-50">
-                    <td className="p-4 text-sm text-slate-700">
-                      {r.seminario_nombre}
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {r.dni_pasaporte}
-                    </td>
-                    <td className="p-4 text-sm font-semibold text-slate-800">
-                      {r.alumno}
-                    </td>
-                    <td className="p-4 text-sm text-slate-600">
-                      {r.carrera_elegida}
-                    </td>
-                    <td className="p-4 text-sm text-center text-slate-700">
-                      {r.asistencias} / {r.total_clases}
-                    </td>
-                    <td className="p-4 text-sm text-center font-bold text-slate-800">
-                      {r.porcentaje_asistencia}%
-                    </td>
-                    <td className="p-4 text-sm text-center">
-                      <span
-                        className={
-                          regular
-                            ? "font-semibold text-emerald-700"
-                            : "font-semibold text-red-700"
-                        }
-                      >
-                        {regular ? "Regular (>=75%)" : "Bajo (<75%)"}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+              asistenciasFiltradas.map((r) => (
+                <tr key={r.id} className="hover:bg-blue-50">
+                  <td className="p-4 text-sm text-slate-700">
+                    {r.seminario_nombre}
+                  </td>
+                  <td className="p-4 text-sm text-center text-slate-600 font-medium">
+                    <time dateTime={r.fecha}>
+                      {new Date(r.fecha).toLocaleDateString("es-AR")}
+                    </time>
+                  </td>
+                  <td className="p-4 text-sm text-slate-600">
+                    {r.dni_pasaporte}
+                  </td>
+                  <td className="p-4 text-sm font-semibold text-slate-800">
+                    {r.alumno}
+                  </td>
+                  <td className="p-4 text-sm text-slate-600">
+                    {r.carrera_elegida}
+                  </td>
+                  <td className="p-4 text-sm text-center">
+                    <span
+                      className={
+                        r.presente
+                          ? "font-semibold text-emerald-700"
+                          : "font-semibold text-red-700"
+                      }
+                    >
+                      {r.presente ? "Presente" : "Ausente"}
+                    </span>
+                  </td>
+                  <td className="p-4 text-sm text-center font-bold text-slate-800">
+                    {r.porcentaje_asistencia}%
+                  </td>
+                </tr>
+              ))}
 
             {!cargando && asistenciasFiltradas.length === 0 && (
               <tr>
                 <td colSpan={7} className="p-8 text-center text-gray-500">
-                  No se encontraron registros con los filtros seleccionados.
+                  No se encontraron asistencias registradas para los filtros seleccionados.
                 </td>
               </tr>
             )}

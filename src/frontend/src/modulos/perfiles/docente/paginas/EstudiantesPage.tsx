@@ -18,6 +18,7 @@ interface AlumnoSeminario {
   correo_electronico: string;
   carrera_elegida: string;
   estado: string;
+    nota_final: number | null;
 }
 
 export default function EstudiantesPage() {
@@ -107,32 +108,67 @@ useEffect(() => {
   cargarEstudiantes();
 }, [seminarioId, user?.token]);
 
-const asociarEstudiante = async (event: React.FormEvent) => {
-  event.preventDefault();
-  setMensaje(null);
-  setError(null);
+  const asociarEstudiante = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setMensaje(null);
+    setError(null);
 
-  if (!user?.token || !seminarioId || !dniNuevo.trim()) return;
+    if (!user?.token) return;
+    if (!seminarioId) {
+      setError("Seleccioná un seminario asignado antes de inscribir.");
+      return;
+    }
+    if (!dniNuevo.trim()) {
+      setError("Ingresá el DNI del estudiante a inscribir.");
+      return;
+    }
 
-  try {
-    const nuevo = await api.post<AlumnoSeminario>(
-      `/seminarios/${seminarioId}/estudiantes`,
-      { dni_pasaporte: dniNuevo.trim() },
-      user.token
-    );
-    setEstudiantes((prev) => [...prev, nuevo]);
-    setDniNuevo("");
-    setMensaje(
-      `Estudiante ${nuevo.apellido}, ${nuevo.nombre} asociado al seminario.`
-    );
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "No se pudo asociar al estudiante."
-    );
-  }
-};
+    try {
+      const nuevo = await api.post<AlumnoSeminario>(
+        `/seminarios/${seminarioId}/estudiantes`,
+        { dni_pasaporte: dniNuevo.trim() },
+        user.token
+      );
+      setEstudiantes((prev) => [...prev, nuevo]);
+      setDniNuevo("");
+      setMensaje(
+        `Estudiante ${nuevo.apellido}, ${nuevo.nombre} asociado al seminario.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo asociar al estudiante."
+      );
+    }
+  };
+
+  const desvincularEstudiante = async (estudiante: AlumnoSeminario) => {
+    setMensaje(null);
+    setError(null);
+
+    if (!user?.token || !seminarioId) return;
+
+    try {
+      await api.delete(
+        `/seminarios/${seminarioId}/estudiantes/${estudiante.legajo_id}`,
+        user.token
+      );
+      setEstudiantes((prev) =>
+        prev.filter((e) => e.legajo_id !== estudiante.legajo_id)
+      );
+      setMensaje(
+        `Estudiante ${estudiante.apellido}, ${estudiante.nombre} desvinculado del seminario.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo desvincular al estudiante."
+      );
+    }
+  };
+
 
 const seminarioActual = seminarios.find((s) => s.id === seminarioId);
 const estudiantesFiltrados = estudiantes.filter((e) =>
@@ -237,12 +273,13 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                 <th scope="col" className="p-4 font-bold">Seminario</th>
                 <th scope="col" className="p-4 font-bold">Carrera de Posgrado</th>
                 <th scope="col" className="p-4 font-bold text-center">Contacto</th>
+                <th scope="col" className="p-4 font-bold text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {cargando && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-slate-500">
+                  <td colSpan={6} className="p-4 text-center text-slate-500">
                     Cargando estudiantes...
                   </td>
                 </tr>
@@ -266,6 +303,7 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                     {estudiante.carrera_elegida}
                   </td>
                   
+  
                   <td className="p-4 text-center">
                     {/* Enlace de correo semántico y accesible */}
                     <a 
@@ -277,7 +315,25 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                     </a>
                   </td>
 
-                </tr>
+               <td className="p-4 text-center">
+                 <button
+                   type="button"
+                   disabled={estudiante.nota_final !== null}
+                   onClick={() => desvincularEstudiante(estudiante)}
+                   className="px-3 py-1 bg-red-100 hover:bg-red-200 disabled:bg-slate-100 disabled:text-slate-400 text-red-700 font-semibold rounded-md text-xs transition-colors"
+                   title={
+                     estudiante.nota_final !== null
+                       ? "No se puede desvincular porque ya tiene nota final"
+                       : "Desvincular estudiante del seminario"
+                   }
+                 >
+                   Desvincular
+                 </button>
+               </td>
+
+             </tr>
+
+                
               ))}
             </tbody>
           </table>

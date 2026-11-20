@@ -30,7 +30,7 @@ interface Usuario {
   apellido: string;
   dni: string;
   correo_electronico: string;
-  rol: Rol;
+  tipo_usuario: Rol;
   activo: boolean;
 }
 
@@ -189,7 +189,7 @@ export default function SeminariosPage() {
         setDocentes(
           respuestaUsuarios.filter(
             (usuario) =>
-              usuario.rol === "DOCENTE"
+              usuario.tipo_usuario === "DOCENTE"
           )
         );
 
