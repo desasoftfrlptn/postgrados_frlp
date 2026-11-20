@@ -1,0 +1,49 @@
+/* Estilos del encabezado de la página de noticias. */
+
+.noticias-hero {
+  min-height: 310px;
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  color: var(--color-text-light);
+  background-color: #002b4c;
+  background-size: cover;
+  background-position: center 67%;
+  background-repeat: no-repeat;
+}
+
+.noticias-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    90deg,
+    rgba(0, 20, 40, 0.9) 0%,
+    rgba(0, 20, 40, 0.7) 30%,
+    rgba(0, 20, 40, 0.35) 55%,
+    rgba(0, 20, 40, 0.08) 75%,
+    transparent 100%
+  );
+}
+
+.noticias-hero-contenido {
+  width: min(
+    calc(100% - var(--espaciado-lateral) * 2),
+    var(--ancho-maximo)
+  );
+  margin: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.noticias-hero h1 {
+  margin: 0 0 14px;
+  font-size: clamp(40px, 3.2vw, 54px);
+}
+
+.noticias-hero p {
+  margin: 0;
+  font-size: 16px;
+}
