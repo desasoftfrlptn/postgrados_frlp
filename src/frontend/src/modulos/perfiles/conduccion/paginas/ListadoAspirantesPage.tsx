@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -225,6 +225,14 @@ export default function ListadoAspirantesPage() {
   }
   const legajoGestionando =
     legajos.find((legajo) => legajo.id === legajoGestionandoId) ?? null;
+  const actualizarEstadoGestion = useCallback(
+    (estado: string) => {
+      if (legajoGestionando) {
+        alActualizarEstado(legajoGestionando.id, estado);
+      }
+    },
+    [legajoGestionando?.id],
+  );
   const hayFiltros = Object.values(filtros).some((valor) => valor.trim() !== "");
   const cantidadFiltrosAvanzados =
     Number(Boolean(filtros.carrera)) +
@@ -513,9 +521,7 @@ export default function ListadoAspirantesPage() {
           <GestionInscripcion
             key={legajoGestionando.id}
             legajoId={legajoGestionando.id}
-            onEstadoActualizado={(estado) =>
-              alActualizarEstado(legajoGestionando.id, estado)
-            }
+            onEstadoActualizado={actualizarEstadoGestion}
           />
         </section>
       )}
