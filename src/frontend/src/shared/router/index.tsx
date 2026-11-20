@@ -30,7 +30,6 @@ import DocentesPage from "../../modulos/perfiles/administrador/paginas/DocentesP
 import CarrerasPage from "../../modulos/perfiles/administrador/paginas/CarrerasPage";
 import SeminariosPage from "../../modulos/perfiles/administrador/paginas/SeminariosPage";
 import CohortesPage from "../../modulos/perfiles/administrador/paginas/CohortesPage";
-import CalendarioAcademicoPage from "../../modulos/perfiles/administrador/paginas/CalendarioAcademicoPage";
 import EstadisticasPage from "../../modulos/perfiles/administrador/paginas/EstadisticasPage";
 import ReportesAdminPage from "../../modulos/perfiles/administrador/paginas/ReportesPage";
 import HomeAdministradorPage from "../../modulos/perfiles/administrador/paginas/HomeAdministradorPage";
@@ -313,10 +312,6 @@ export const router = createBrowserRouter([
           {
             path: "dashboard/administrador/cohortes",
             element: <CohortesPage />,
-          },
-          {
-            path: "dashboard/administrador/calendario",
-            element: <CalendarioAcademicoPage />,
           },
           {
             path: "dashboard/administrador/estadisticas",
