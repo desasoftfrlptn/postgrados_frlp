@@ -1,0 +1,193 @@
+
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
+
+import "./ConfirmacionModal.css";
+
+interface ConfirmacionModalProps {
+  abierto: boolean;
+  titulo: string;
+  descripcion: string;
+  alConfirmar: () => void | Promise<void>;
+  alCancelar: () => void;
+  textoConfirmar?: string;
+  textoCancelar?: string;
+  confirmando?: boolean;
+  peligroso?: boolean;
+}
+
+export default function ConfirmacionModal({
+  abierto,
+  titulo,
+  descripcion,
+  alConfirmar,
+  alCancelar,
+  textoConfirmar = "Confirmar",
+  textoCancelar = "Cancelar",
+  confirmando = false,
+  peligroso = false,
+}: ConfirmacionModalProps) {
+  const id = useId();
+
+  const dialogoRef = useRef<HTMLDivElement>(null);
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+  const bloqueoRef = useRef(false);
+
+  const [procesando, setProcesando] = useState(false);
+  const [errorOperacion, setErrorOperacion] = useState("");
+
+  const ocupado = procesando || confirmando;
+
+  // Coloca el foco en Cancelar al abrir el modal.
+  // Devuelve el foco al control anterior al cerrarlo.
+  useEffect(() => {
+    if (!abierto) return;
+
+    const focoAnterior = document.activeElement;
+
+    cancelarRef.current?.focus();
+
+    return () => {
+      if (focoAnterior instanceof HTMLElement) {
+        focoAnterior.focus();
+      }
+    };
+  }, [abierto]);
+
+  // Mantiene la navegación por teclado dentro del modal.
+  useEffect(() => {
+    if (!abierto) return;
+
+    function manejarTeclado(evento: KeyboardEvent) {
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+
+        if (!ocupado) {
+          alCancelar();
+        }
+
+        return;
+      }
+
+      if (evento.key !== "Tab") return;
+
+      const botones = Array.from(
+        dialogoRef.current?.querySelectorAll<HTMLButtonElement>(
+          "button:not(:disabled)"
+        ) ?? []
+      );
+
+      if (botones.length === 0) {
+        evento.preventDefault();
+        return;
+      }
+
+      const primero = botones[0];
+      const ultimo = botones[botones.length - 1];
+
+      if (
+        evento.shiftKey &&
+        document.activeElement === primero
+      ) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (
+        !evento.shiftKey &&
+        document.activeElement === ultimo
+      ) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    }
+
+    document.addEventListener("keydown", manejarTeclado);
+
+    return () => {
+      document.removeEventListener("keydown", manejarTeclado);
+    };
+  }, [abierto, ocupado, alCancelar]);
+
+  async function confirmar() {
+    if (!abierto || ocupado || bloqueoRef.current) {
+      return;
+    }
+
+    bloqueoRef.current = true;
+    setProcesando(true);
+    setErrorOperacion("");
+
+    try {
+      await alConfirmar();
+    } catch {
+      setErrorOperacion(
+        "No se pudo completar la operación. Intentá nuevamente."
+      );
+    } finally {
+      bloqueoRef.current = false;
+      setProcesando(false);
+    }
+  }
+
+  if (!abierto) return null;
+
+  return (
+    <div className="confirmacion-modal__fondo">
+      <div
+        ref={dialogoRef}
+        className="confirmacion-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={`${id}-titulo`}
+        aria-describedby={`${id}-descripcion`}
+      >
+        <h2 id={`${id}-titulo`}>
+          {titulo}
+        </h2>
+
+        <p id={`${id}-descripcion`}>
+          {descripcion}
+        </p>
+
+        {errorOperacion && (
+          <p
+            className="confirmacion-modal__error"
+            role="alert"
+          >
+            {errorOperacion}
+          </p>
+        )}
+
+        <div className="confirmacion-modal__acciones">
+          <button
+            ref={cancelarRef}
+            type="button"
+            className="confirmacion-modal__cancelar"
+            onClick={alCancelar}
+            disabled={ocupado}
+          >
+            {textoCancelar}
+          </button>
+
+          <button
+            type="button"
+            className={
+              peligroso
+                ? "confirmacion-modal__confirmar confirmacion-modal__confirmar--peligro"
+                : "confirmacion-modal__confirmar"
+            }
+            onClick={() => void confirmar()}
+            disabled={ocupado}
+          >
+            {ocupado
+              ? "Procesando..."
+              : textoConfirmar}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

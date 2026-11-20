@@ -1,0 +1,94 @@
+
+.confirmacion-modal__fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.confirmacion-modal {
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+}
+
+.confirmacion-modal h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.confirmacion-modal p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.confirmacion-modal__acciones {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.confirmacion-modal__acciones button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.confirmacion-modal__acciones button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirmacion-modal__acciones button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}
+
+.confirmacion-modal__cancelar {
+  border: 1px solid #bdc9d6;
+  background: #ffffff;
+  color: #26394a;
+}
+
+.confirmacion-modal__confirmar {
+  border: 1px solid #174a77;
+  background: #174a77;
+  color: #ffffff;
+}
+
+.confirmacion-modal__confirmar--peligro {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+
+@media (max-width: 600px) {
+  .confirmacion-modal__acciones {
+    flex-direction: column;
+  }
+
+  .confirmacion-modal__acciones button {
+    width: 100%;
+  }
+}
+
+.confirmacion-modal__error {
+  margin-top: 16px !important;
+  padding: 10px 12px;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  font-size: 14px;
+}

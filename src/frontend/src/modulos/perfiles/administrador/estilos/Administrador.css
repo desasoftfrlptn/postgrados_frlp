@@ -1,0 +1,274 @@
+/* Estilos específicos de las páginas del perfil Administrador. */
+
+.admin-dashboard {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.admin-dashboard-encabezado {
+  margin-bottom: 28px;
+}
+
+.admin-dashboard-encabezado h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-dashboard-encabezado p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+
+/* Resumen */
+
+.admin-resumen {
+  margin-bottom: 36px;
+}
+
+.admin-resumen-grilla {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-tarjeta {
+  min-height: 170px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-tarjeta:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.admin-tarjeta-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-tarjeta-encabezado h2 {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-tarjeta-icono {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+.admin-tarjeta-valor {
+  margin: 14px 0 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-tarjeta-pie {
+  margin-top: 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-tarjeta-detalle {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-tarjeta-enlace {
+  flex-shrink: 0;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-tarjeta-enlace:hover {
+  text-decoration: underline;
+}
+
+.admin-tarjeta-enlace:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+
+/* Accesos rápidos */
+
+.admin-accesos {
+  margin-top: 8px;
+}
+
+.admin-seccion-encabezado {
+  margin-bottom: 16px;
+}
+
+.admin-seccion-encabezado h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.admin-seccion-encabezado p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.admin-paneles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-panel {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.admin-panel > header {
+  padding: 20px 22px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-panel > header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.admin-panel > header p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.admin-accesos-lista {
+  margin: 0;
+  padding: 10px;
+  list-style: none;
+}
+
+.admin-accesos-lista li + li {
+  margin-top: 4px;
+}
+
+.admin-acceso {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  color: #1f2937;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.admin-acceso:hover {
+  background: #f8fafc;
+}
+
+.admin-acceso:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.admin-acceso-icono {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+.admin-acceso-contenido {
+  min-width: 0;
+}
+
+.admin-acceso-titulo {
+  display: block;
+  margin-bottom: 3px;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admin-acceso-descripcion {
+  display: block;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-acceso-flecha {
+  color: #94a3b8;
+  font-size: 18px;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+  .admin-resumen-grilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .admin-paneles {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-dashboard-encabezado h1 {
+    font-size: 26px;
+  }
+
+  .admin-resumen-grilla {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tarjeta {
+    min-height: auto;
+  }
+
+  .admin-acceso {
+    grid-template-columns: 36px 1fr auto;
+  }
+}
