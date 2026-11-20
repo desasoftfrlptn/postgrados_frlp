@@ -1,5 +1,5 @@
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 
 import { api } from "../../../../../shared/api/client";
 import { useAuth } from "../../../../manejo-sesion/useAuth";
@@ -91,17 +91,25 @@ export default function InicioAdmin() {
 
   const [valores, setValores] =
     useState<Record<string, string>>({});
+
   const [valoresGuardados, setValoresGuardados] =
     useState<Record<string, string>>({});
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [editando, setEditando] = useState(false);
+
   const [confirmacion, setConfirmacion] =
     useState<AccionConfirmacion>(null);
 
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
+
+  const hayCambios = campos.some(
+    (campo) =>
+      (valores[campo.clave] ?? "") !==
+      (valoresGuardados[campo.clave] ?? "")
+  );
 
   useEffect(() => {
     let activo = true;
@@ -117,6 +125,7 @@ export default function InicioAdmin() {
 
         setValores({ ...respuesta.valores });
         setValoresGuardados({ ...respuesta.valores });
+        setError("");
       } catch (error) {
         if (!activo) return;
 
@@ -126,7 +135,9 @@ export default function InicioAdmin() {
             : "No se pudo cargar la configuración."
         );
       } finally {
-        if (activo) setCargando(false);
+        if (activo) {
+          setCargando(false);
+        }
       }
     };
 
@@ -137,33 +148,51 @@ export default function InicioAdmin() {
     };
   }, []);
 
-  const modificarCampo = (clave: string, valor: string) => {
-    setValores((actual) => ({
-      ...actual,
+  const modificarCampo = (
+    clave: string,
+    valor: string
+  ) => {
+    if (!editando || guardando) return;
+
+    setValores((anteriores) => ({
+      ...anteriores,
       [clave]: valor,
     }));
   };
 
   const comenzarEdicion = () => {
+    if (guardando || !user) return;
+
+    setValores({ ...valoresGuardados });
+    setConfirmacion(null);
     setError("");
     setMensaje("");
     setEditando(true);
   };
 
   const cancelarEdicion = () => {
+    if (guardando) return;
+
     setValores({ ...valoresGuardados });
     setEditando(false);
+    setConfirmacion(null);
     setError("");
     setMensaje("");
   };
 
-  const solicitarGuardado = (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault();
+  const solicitarGuardado = () => {
+    if (!user || !editando || guardando || !hayCambios) {
+      return;
+    }
 
-    if (!editando || guardando || !user) return;
+    const hayCamposVacios = campos.some(
+      (campo) => !(valores[campo.clave] ?? "").trim()
+    );
 
-    if (campos.some((campo) => !valores[campo.clave]?.trim())) {
-      setError("Todos los campos de Inicio deben tener contenido.");
+    if (hayCamposVacios) {
+      setError(
+        "Todos los campos de Inicio deben tener contenido."
+      );
       return;
     }
 
@@ -171,10 +200,22 @@ export default function InicioAdmin() {
     setConfirmacion("guardar");
   };
 
+  const solicitarRestablecimiento = () => {
+    if (!user || editando || guardando) return;
+
+    setError("");
+    setMensaje("");
+    setConfirmacion("restablecer");
+  };
+
   const confirmarAccion = async () => {
     if (!user || !confirmacion || guardando) return;
 
     const accion = confirmacion;
+
+    if (accion === "guardar" && (!editando || !hayCambios)) {
+      return;
+    }
 
     setConfirmacion(null);
     setGuardando(true);
@@ -185,17 +226,19 @@ export default function InicioAdmin() {
       let respuesta: ConfiguracionPublicaRespuesta;
 
       if (accion === "restablecer") {
-        respuesta = await api.post<ConfiguracionPublicaRespuesta>(
-          "/configuracion-publica/home/restablecer",
-          undefined,
-          user.token
-        );
+        respuesta =
+          await api.post<ConfiguracionPublicaRespuesta>(
+            "/configuracion-publica/home/restablecer",
+            undefined,
+            user.token
+          );
       } else {
-        respuesta = await api.put<ConfiguracionPublicaRespuesta>(
-          "/configuracion-publica/home",
-          { valores },
-          user.token
-        );
+        respuesta =
+          await api.put<ConfiguracionPublicaRespuesta>(
+            "/configuracion-publica/home",
+            { valores },
+            user.token
+          );
       }
 
       setValores({ ...respuesta.valores });
@@ -228,81 +271,90 @@ export default function InicioAdmin() {
 
   return (
     <>
-      <MensajeHomeAdmin error={error} mensaje={mensaje} />
+      <MensajeHomeAdmin
+        error={error}
+        mensaje={mensaje}
+      />
 
       <article className="admin-home-panel">
         <header>
           <h2>Página de inicio</h2>
+
           <p>
-            Administrá el contenido principal y los accesos
-            destacados del Home.
+            Administrá el contenido principal y los
+            accesos destacados del Home.
           </p>
         </header>
 
         {editando && (
           <p className="admin-inicio-aviso" role="status">
             Estás modificando la página pública de Inicio.
-            Los cambios se aplicarán cuando confirmes el guardado.
+            Los cambios se aplicarán cuando confirmes
+            el guardado.
           </p>
         )}
 
-        <form onSubmit={solicitarGuardado}>
-          <fieldset
-            className="admin-home-campos admin-inicio-campos"
-            disabled={!editando || guardando}
-          >
-            {campos.map((campo) => (
-              <CampoConfiguracion
-                key={campo.clave}
-                id={`home-${campo.clave.replaceAll("_", "-")}`}
-                etiqueta={campo.etiqueta}
-                multilinea={campo.multilinea ?? false}
-                valor={valores[campo.clave] ?? ""}
-                alCambiar={(valor) =>
-                  modificarCampo(campo.clave, valor)
-                }
-              />
-            ))}
-          </fieldset>
+        <fieldset
+          className="admin-home-campos admin-inicio-campos"
+          disabled={!editando || guardando}
+        >
+          {campos.map((campo) => (
+            <CampoConfiguracion
+              key={campo.clave}
+              id={`home-${campo.clave.replaceAll("_", "-")}`}
+              etiqueta={campo.etiqueta}
+              multilinea={campo.multilinea ?? false}
+              valor={valores[campo.clave] ?? ""}
+              alCambiar={(valor) =>
+                modificarCampo(campo.clave, valor)
+              }
+            />
+          ))}
+        </fieldset>
 
-          <footer className="admin-home-acciones admin-inicio-acciones">
-            {editando ? (
-              <>
-                <button
-                  type="button"
-                  className="admin-inicio-boton-secundario"
-                  onClick={cancelarEdicion}
-                  disabled={guardando}
-                >
-                  Cancelar
-                </button>
+        <footer className="admin-home-acciones admin-inicio-acciones">
+          {editando ? (
+            <>
+              <button
+                type="button"
+                className="admin-inicio-boton-secundario"
+                onClick={cancelarEdicion}
+                disabled={guardando}
+              >
+                Cancelar
+              </button>
 
-                <button type="submit" disabled={guardando}>
-                  {guardando ? "Guardando..." : "Guardar cambios"}
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="admin-inicio-boton-secundario"
-                  onClick={() => setConfirmacion("restablecer")}
-                  disabled={guardando || !user}
-                >
-                  Restablecer configuración predeterminada
-                </button>
+              <button
+                type="button"
+                onClick={solicitarGuardado}
+                disabled={guardando || !hayCambios}
+              >
+                {guardando
+                  ? "Guardando..."
+                  : "Guardar cambios"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="admin-inicio-boton-secundario"
+                onClick={solicitarRestablecimiento}
+                disabled={guardando || !user}
+              >
+                Restablecer configuración predeterminada
+              </button>
 
-                <button
-                  type="button"
-                  onClick={comenzarEdicion}
-                  disabled={guardando || !user}
-                >
-                  Modificar
-                </button>
-              </>
-            )}
-          </footer>
-        </form>
+              <button
+                type="button"
+                onClick={comenzarEdicion}
+                disabled={guardando || !user}
+              >
+                Modificar
+              </button>
+            </>
+          )}
+        </footer>
       </article>
 
       {confirmacion && (

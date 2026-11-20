@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import {
   beforeEach,
@@ -186,31 +187,52 @@ describe("Administración del Inicio público", () => {
     expect(titulo).toBeDisabled();
   });
 
+
   it("permite cancelar la confirmación de guardado", async () => {
     render(<InicioAdmin />);
 
-    await screen.findByDisplayValue("Bienvenido a Posgrados");
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Modificar" })
+    const titulo = await screen.findByDisplayValue(
+      "Bienvenido a Posgrados"
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Guardar cambios" })
+      screen.getByRole("button", {
+        name: "Modificar",
+      })
     );
+
+    const guardar = screen.getByRole("button", {
+      name: "Guardar cambios",
+    });
+
+    expect(guardar).toBeDisabled();
+
+    fireEvent.change(titulo, {
+      target: { value: "Título modificado" },
+    });
+
+    expect(guardar).toBeEnabled();
+
+    fireEvent.click(guardar);
+
+    const dialogo = screen.getByRole("alertdialog", {
+      name: "¿Guardar los cambios?",
+    });
 
     fireEvent.click(
-      screen.getByRole("alertdialog").querySelector(
-        ".admin-inicio-boton-secundario"
-      ) as HTMLButtonElement
+      within(dialogo).getByRole("button", {
+        name: "Cancelar",
+      })
     );
-
-    expect(api.put).not.toHaveBeenCalled();
 
     expect(
-      screen.getByRole("button", { name: "Guardar cambios" })
-    ).toBeInTheDocument();
+      screen.queryByRole("alertdialog")
+    ).not.toBeInTheDocument();
+
+    expect(api.put).not.toHaveBeenCalled();
+    expect(titulo).toHaveValue("Título modificado");
   });
+
 
   it("restablece los valores solo después de confirmar", async () => {
     render(<InicioAdmin />);
@@ -251,4 +273,41 @@ describe("Administración del Inicio público", () => {
       )
     ).toBeInTheDocument();
   });
+
+
+  it("Modificar habilita los campos sin abrir confirmación", async () => {
+    render(<InicioAdmin />);
+
+    const titulo = await screen.findByDisplayValue(
+      "Bienvenido a Posgrados"
+    );
+
+    expect(titulo).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Modificar",
+      })
+    );
+
+    expect(titulo).toBeEnabled();
+
+    expect(
+      screen.getByRole("status")
+    ).toHaveTextContent("Estás modificando");
+
+    expect(
+      screen.queryByRole("alertdialog")
+    ).not.toBeInTheDocument();
+
+    expect(api.put).not.toHaveBeenCalled();
+    expect(api.post).not.toHaveBeenCalled();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Guardar cambios",
+      })
+    ).toBeInTheDocument();
+  });
+
 });

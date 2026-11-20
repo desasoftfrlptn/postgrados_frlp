@@ -88,6 +88,24 @@ export default function NoticiasAdmin() {
   const [busqueda, setBusqueda] =
     useState("");
 
+  const [noticiaPendiente, setNoticiaPendiente] =
+    useState<Noticia | null>(null);
+
+  const [actualizandoEstado, setActualizandoEstado] =
+    useState(false);
+
+  // Los avisos se ocultan solos, sin cuadros nativos del navegador.
+  useEffect(() => {
+    if (!mensaje && !error) return;
+
+    const temporizador = window.setTimeout(() => {
+      setMensaje("");
+      setError("");
+    }, 5000);
+
+    return () => window.clearTimeout(temporizador);
+  }, [mensaje, error]);
+
 
   const cargarNoticias = async () => {
     if (!user?.token) {
@@ -353,57 +371,44 @@ export default function NoticiasAdmin() {
   };
 
 
-  const cambiarEstado = async (
-    noticia: Noticia
-  ) => {
-    if (!user?.token) {
+  const solicitarCambioEstado = (noticia: Noticia) => {
+    if (!user?.token || actualizandoEstado || guardando) return;
+    setNoticiaPendiente(noticia);
+  };
+
+  const confirmarCambioEstado = async () => {
+    if (!user?.token || !noticiaPendiente || actualizandoEstado) {
       return;
     }
 
-    const nuevoEstado =
-      !noticia.activo;
-
-    const accion =
-      nuevoEstado
-        ? "publicar"
-        : "despublicar";
-
-    const confirmado =
-      window.confirm(
-        `¿Querés ${accion} "${noticia.titulo}"?`
-      );
-
-    if (!confirmado) {
-      return;
-    }
+    const noticia = noticiaPendiente;
+    const nuevoEstado = !noticia.activo;
+    setNoticiaPendiente(null);
+    setActualizandoEstado(true);
+    setError("");
+    setMensaje("");
 
     try {
-      setError("");
-      setMensaje("");
-
       await api.patch<Noticia>(
         `/noticias/${noticia.id}/estado`,
-        {
-          activo:
-            nuevoEstado,
-        },
+        { activo: nuevoEstado },
         user.token
       );
 
+      await cargarNoticias();
       setMensaje(
         nuevoEstado
-          ? "La noticia fue publicada."
-          : "La noticia fue despublicada."
+          ? "La noticia fue publicada correctamente."
+          : "La noticia fue despublicada correctamente."
       );
-
-      await cargarNoticias();
-
     } catch (error) {
       setError(
         error instanceof Error
           ? error.message
-          : "No se pudo modificar la noticia"
+          : "No se pudo cambiar el estado de la noticia."
       );
+    } finally {
+      setActualizandoEstado(false);
     }
   };
 
@@ -761,10 +766,11 @@ export default function NoticiasAdmin() {
                             <button
                               type="button"
                               onClick={() =>
-                                cambiarEstado(
+                                solicitarCambioEstado(
                                   noticia
                                 )
                               }
+                              disabled={actualizandoEstado || guardando}
                             >
                               {noticia.activo
                                 ? "Despublicar"
@@ -792,6 +798,48 @@ export default function NoticiasAdmin() {
           )}
         </section>
       </article>
+      {noticiaPendiente && (
+        <div className="admin-inicio-modal-fondo">
+          <section
+            className="admin-inicio-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="noticia-confirmacion-titulo"
+            aria-describedby="noticia-confirmacion-descripcion"
+          >
+            <h3 id="noticia-confirmacion-titulo">
+              {noticiaPendiente.activo
+                ? "¿Despublicar noticia?"
+                : "¿Publicar noticia?"}
+            </h3>
+
+            <p id="noticia-confirmacion-descripcion">
+              {noticiaPendiente.activo
+                ? `La noticia «${noticiaPendiente.titulo}» dejará de mostrarse en el sitio público.`
+                : `La noticia «${noticiaPendiente.titulo}» estará visible en el sitio público.`}
+            </p>
+
+            <div className="admin-inicio-modal-acciones">
+              <button
+                type="button"
+                className="admin-inicio-boton-secundario"
+                onClick={() => setNoticiaPendiente(null)}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void confirmarCambioEstado()}
+              >
+                {noticiaPendiente.activo
+                  ? "Confirmar despublicación"
+                  : "Confirmar publicación"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }
