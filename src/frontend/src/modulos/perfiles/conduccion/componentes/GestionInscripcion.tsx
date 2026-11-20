@@ -13,6 +13,7 @@ interface Gestion {
   fecha_matricula: string | null;
   fecha_baja: string | null;
   observaciones: string | null;
+  documentacion_a_corregir: string[];
 }
 
 interface Evento {
@@ -55,6 +56,17 @@ const accionesPorEstado: Record<
   ],
 };
 
+const documentosDisponibles = [
+  { valor: "FORMULARIO_PREINSCRIPCION", texto: "Formulario de preinscripción" },
+  { valor: "FORMULARIO_INSCRIPCION", texto: "Formulario de inscripción" },
+  { valor: "DNI_PASAPORTE", texto: "DNI o pasaporte" },
+  { valor: "PARTIDA_NACIMIENTO", texto: "Partida de nacimiento" },
+  { valor: "CONSTANCIA_CUIT_CUIL", texto: "Constancia CUIT/CUIL" },
+  { valor: "TITULO_GRADO", texto: "Título de grado" },
+  { valor: "TITULO_POSGRADO", texto: "Título de posgrado" },
+  { valor: "FORMULARIO_BECA", texto: "Formulario de beca" },
+];
+
 interface Props {
   legajoId: string;
   onEstadoActualizado?: (estado: string) => void;
@@ -76,6 +88,7 @@ export default function GestionInscripcion({
   const [datosVerificados, setDatosVerificados] = useState(false);
   const [tituloPosgrado, setTituloPosgrado] = useState("");
   const [comentario, setComentario] = useState("");
+  const [documentacionACorregir, setDocumentacionACorregir] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -204,8 +217,14 @@ export default function GestionInscripcion({
       return;
     }
 
-    if (accion === "OBSERVAR" && !comentario.trim()) {
-      setError("Escribí qué debe corregir el aspirante.");
+    if (
+      accion === "OBSERVAR" &&
+      !comentario.trim() &&
+      documentacionACorregir.length === 0
+    ) {
+      setError(
+        "Escribí una observación o seleccioná al menos un documento para corregir."
+      );
       return;
     }
 
@@ -229,6 +248,8 @@ export default function GestionInscripcion({
           accion,
           estado_esperado: gestion.estado,
           comentario: comentario.trim() || null,
+          documentacion_a_corregir:
+            accion === "OBSERVAR" ? documentacionACorregir : [],
         },
         token,
       );
@@ -236,6 +257,7 @@ export default function GestionInscripcion({
       setGestion(resultado);
       onEstadoActualizado?.(resultado.estado);
       setComentario("");
+      setDocumentacionACorregir([]);
 
       const actualizado = await cargar();
 
@@ -382,18 +404,65 @@ export default function GestionInscripcion({
                 </div>
               </fieldset>
             )}
-            
-            <label>
-              Comentario u observaciones
+
+            <div className="gestion-observaciones">
+              <label htmlFor="observaciones-inscripcion">
+                Observaciones para el aspirante
+              </label>
+
+              <p className="gestion-observaciones-ayuda">
+                Explicá qué debe corregir o completar el aspirante.
+                También podés seleccionar los documentos que debe modificar.
+              </p>
+
               <textarea
+                id="observaciones-inscripcion"
                 value={comentario}
                 maxLength={4000}
                 disabled={bloqueado}
+                placeholder="Escribí aquí las observaciones..."
                 onChange={(event) => setComentario(event.target.value)}
               />
-            </label>
 
-            <div>
+              <small>
+                Estas observaciones serán visibles para el aspirante.
+              </small>
+            </div>
+
+            {gestion.estado === "EN_REVISION" && (
+              <fieldset
+                className="gestion-documentacion"
+                disabled={bloqueado}
+              >
+                <legend>Documentación que debe corregir el aspirante</legend>
+
+                <div className="gestion-documentos-grid">
+                  {documentosDisponibles.map((documento) => (
+                    <label
+                      key={documento.valor}
+                      className="gestion-documento-opcion"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={documentacionACorregir.includes(documento.valor)}
+                        onChange={(event) => {
+                          setDocumentacionACorregir((actuales) =>
+                            event.target.checked
+                              ? [...actuales, documento.valor]
+                              : actuales.filter(
+                                  (valor) => valor !== documento.valor
+                                )
+                          );
+                        }}
+                      />
+                      <span>{documento.texto}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
+            <div className="gestion-acciones">
               {(accionesPorEstado[gestion.estado] ?? []).map(
                 ({ accion, texto }) => (
                   <button

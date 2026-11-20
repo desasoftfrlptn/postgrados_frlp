@@ -541,9 +541,15 @@ async def consultar_estado_inscripcion(
             detail="No se encontró una inscripción con esos datos.",
         )
 
+    gestion = await db.get(GestionLegajoORM, legajo.id)
+
     return EstadoInscripcionRespuesta(
         numero_seguimiento=legajo.numero_seguimiento,
         estado=legajo.estado,
+        observaciones=gestion.observaciones if gestion else None,
+        documentacion_a_corregir=(
+            gestion.documentacion_a_corregir if gestion else []
+        ),
     )
 
 @enrutador.get(

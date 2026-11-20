@@ -195,7 +195,11 @@ def resumen_gestion(legajo, gestion):
         ),
         "fecha_baja": gestion.fecha_baja if gestion else None,
         "observaciones": gestion.observaciones if gestion else None,
-    }
+    
+        "documentacion_a_corregir": (
+            gestion.documentacion_a_corregir if gestion else []
+            ),
+     }
 
 
 async def consultar_gestion(db, legajo_id, usuario):
@@ -451,8 +455,10 @@ async def aplicar_accion(
 
     elif datos.accion == AccionLegajo.OBSERVAR:
         gestion.observaciones = cambio.comentario
+        gestion.documentacion_a_corregir = (
+            datos.documentacion_a_corregir
+        )
         gestion.datos_verificados = False
-
     legajo.estado = cambio.estado_nuevo
 
     registrar_auditoria(
