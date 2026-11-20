@@ -217,8 +217,14 @@ export default function GestionInscripcion({
       return;
     }
 
-    if (accion === "OBSERVAR" && !comentario.trim()) {
-      setError("Escribí qué debe corregir el aspirante.");
+    if (
+      accion === "OBSERVAR" &&
+      !comentario.trim() &&
+      documentacionACorregir.length === 0
+    ) {
+      setError(
+        "Escribí una observación o seleccioná al menos un documento para corregir."
+      );
       return;
     }
 
@@ -409,28 +415,40 @@ export default function GestionInscripcion({
               />
             </label>
 
+            
             {gestion.estado === "EN_REVISION" && (
-              <fieldset disabled={bloqueado}>
+              <fieldset
+                className="gestion-documentacion"
+                disabled={bloqueado}
+              >
                 <legend>Documentación que debe corregir el aspirante</legend>
 
-                {documentosDisponibles.map((documento) => (
-                  <label key={documento.valor}>
-                    <input
-                      type="checkbox"
-                      checked={documentacionACorregir.includes(documento.valor)}
-                      onChange={(event) => {
-                        setDocumentacionACorregir((actuales) =>
-                          event.target.checked
-                            ? [...actuales, documento.valor]
-                            : actuales.filter((valor) => valor !== documento.valor),
-                        );
-                      }}
-                    />
-                    {documento.texto}
-                  </label>
-                ))}
+                <div className="gestion-documentos-grid">
+                  {documentosDisponibles.map((documento) => (
+                    <label
+                      key={documento.valor}
+                      className="gestion-documento-opcion"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={documentacionACorregir.includes(documento.valor)}
+                        onChange={(event) => {
+                          setDocumentacionACorregir((actuales) =>
+                            event.target.checked
+                              ? [...actuales, documento.valor]
+                              : actuales.filter(
+                                  (valor) => valor !== documento.valor
+                                )
+                          );
+                        }}
+                      />
+                      <span>{documento.texto}</span>
+                    </label>
+                  ))}
+                </div>
               </fieldset>
             )}
+
 
             <div>
               {(accionesPorEstado[gestion.estado] ?? []).map(
