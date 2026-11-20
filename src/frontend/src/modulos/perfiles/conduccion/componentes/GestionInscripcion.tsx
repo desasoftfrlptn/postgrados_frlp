@@ -292,56 +292,97 @@ export default function GestionInscripcion({
 
         {gestion && (
           <>
-            <p>
-              Estado: <strong>{gestion.estado}</strong>
-            </p>
+            <div className="gestion-resumen">
+              <div className="gestion-resumen-item">
+                <span>Estado de la inscripción</span>
+                <strong className="gestion-estado">
+                  {gestion.estado.replaceAll("_", " ")}
+                </strong>
+              </div>
 
-            <p>
-              Número de legajo:{" "}
-              {gestion.numero_legajo ?? "Todavía no asignado"}
-            </p>
+              <div className="gestion-resumen-item">
+                <span>Número de legajo</span>
+                <strong>
+                  {gestion.numero_legajo ?? "Todavía no asignado"}
+                </strong>
+              </div>
+            </div>
 
             {gestion.observaciones && (
               <p>Últimas observaciones: {gestion.observaciones}</p>
             )}
 
             {puedeVerificar && (
-              <fieldset disabled={bloqueado}>
+              <fieldset
+                className="gestion-verificacion"
+                disabled={bloqueado}
+              >
                 <legend>Verificación del legajo</legend>
 
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={datosVerificados}
-                    onChange={(event) =>
-                      setDatosVerificados(event.target.checked)
-                    }
-                  />
-                  Revisé los datos personales y académicos
-                </label>
+                <p className="gestion-ayuda">
+                  Completá los siguientes datos antes de aprobar la inscripción.
+                </p>
 
-                <label>
-                  ¿Tiene título de posgrado?
+                <div className="gestion-campo">
+                  <label className="gestion-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={datosVerificados}
+                      onChange={(event) =>
+                        setDatosVerificados(event.target.checked)
+                      }
+                    />
+                    <span>
+                      Revisé los datos personales y académicos
+                      <small>
+                        Confirmá que la información del aspirante sea correcta.
+                      </small>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="gestion-campo">
+                  <label htmlFor="titulo-posgrado">
+                    ¿Tiene título de posgrado?
+                    <span className="gestion-obligatorio">Obligatorio</span>
+                  </label>
+
                   <select
+                    id="titulo-posgrado"
+                    className={
+                      tituloPosgrado === ""
+                        ? "gestion-input gestion-input-pendiente"
+                        : "gestion-input"
+                    }
                     value={tituloPosgrado}
                     onChange={(event) => setTituloPosgrado(event.target.value)}
+                    required
                   >
-                    <option value="">Seleccionar</option>
+                    <option value="">Seleccionar una opción</option>
                     <option value="si">Sí</option>
                     <option value="no">No</option>
                   </select>
-                </label>
 
-                <button
-                  type="button"
-                  disabled={tituloPosgrado === ""}
-                  onClick={() => void guardarVerificacion()}
-                >
-                  Guardar verificación
-                </button>
+                  {tituloPosgrado === "" && (
+                    <small className="gestion-campo-ayuda">
+                      Seleccioná Sí o No para completar este campo.
+                    </small>
+                  )}
+                </div>
+
+                <div className="gestion-verificacion-acciones">
+                  <button
+                    type="button"
+                    className="gestion-boton-guardar"
+                    disabled={tituloPosgrado === ""}
+                    onClick={() => void guardarVerificacion()}
+                  >
+                    Guardar verificación
+                  </button>
+                </div>
               </fieldset>
             )}
-
+            
             <label>
               Comentario u observaciones
               <textarea
