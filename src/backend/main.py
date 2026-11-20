@@ -35,6 +35,7 @@ from src.inscripcion.infraestructura import (
     orm_modelos as _legajos,
 )
 from src.conduccion import modelos as _conduccion
+from src.eventos import modelos as _eventos
 
 # Registrar rutas.
 from src.usuarios.rutas import enrutador as usuarios_rutas
@@ -56,7 +57,7 @@ from src.inscripcion.presentacion.cohortes_rutas import (
 )
 from src.conduccion.rutas import enrutador as conduccion_rutas
 from src.inscripcion.presentacion.documentos_rutas import enrutador as documentos_rutas
-
+from src.eventos.rutas import enrutador as eventos_rutas
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -113,3 +114,4 @@ app.include_router(configuracion_publica_rutas)
 app.include_router(noticias_rutas)
 app.include_router(cohortes_rutas)
 app.include_router(conduccion_rutas)
+app.include_router(eventos_rutas)

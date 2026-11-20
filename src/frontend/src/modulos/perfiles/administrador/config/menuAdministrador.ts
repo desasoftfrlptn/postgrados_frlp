@@ -48,13 +48,6 @@ export const menuAdministrador:
       "/dashboard/administrador/cohortes",
   },
   {
-    texto:
-      "Calendario Académico",
-    icono: "🗓️",
-    ruta:
-      "/dashboard/administrador/calendario",
-  },
-  {
     texto: "Estadísticas",
     icono: "📊",
     ruta:

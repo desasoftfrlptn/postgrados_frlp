@@ -1,13 +1,12 @@
-// Componente utilizado para mostrar la información de una carrera.
 
 import { Link } from "react-router-dom";
 
-type Props = {
-  id: number;
+interface Props {
+  id: string;
   tipo: string;
   nombre: string;
   descripcion: string;
-};
+}
 
 export default function TarjetaCarrera({
   id,

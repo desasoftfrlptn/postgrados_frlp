@@ -1,20 +1,63 @@
-// Página pública con la oferta de carreras de posgrado.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { api } from "../../../shared/api/client";
 import TarjetaCarrera from "../componentes/TarjetaCarrera";
-import { carrerasFalsas } from "../mocks/carrerasFalsas";
-
 import "./PaginaCarreras.css";
 
-export default function PaginaCarreras() {
-  const [filtro, setFiltro] = useState("Todas");
+interface Carrera {
+  id: string;
+  nombre: string;
+  tipo: string;
+  descripcion: string;
+  duracion: string;
+  activo: boolean;
+}
 
-  const carrerasFiltradas =
-    filtro === "Todas"
-      ? carrerasFalsas
-      : carrerasFalsas.filter((carrera) => carrera.tipo === filtro);
+const categorias = [
+  { valor: "Todas", nombre: "Todas" },
+  { valor: "Especializacion", nombre: "Especializaciones" },
+  { valor: "Maestria", nombre: "Maestrías" },
+  { valor: "Doctorado", nombre: "Doctorados" },
+];
+
+function mostrarTipo(tipo: string) {
+  if (tipo === "Especializacion") return "Especialización";
+  if (tipo === "Maestria") return "Maestría";
+  if (tipo === "Doctorado") return "Doctorado";
+  return tipo;
+}
+
+export default function PaginaCarreras() {
+  const [carreras, setCarreras] = useState<Carrera[]>([]);
+  const [filtro, setFiltro] = useState("Todas");
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+
+  // Obtener las carreras desde el Backend.
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarCarreras() {
+      try {
+        const resultado = await api.get<Carrera[]>("/carreras");
+        if (activo) setCarreras(resultado.filter((c) => c.activo));
+      } catch {
+        if (activo) setError("No se pudieron cargar las carreras.");
+      } finally {
+        if (activo) setCargando(false);
+      }
+    }
+
+    void cargarCarreras();
+    return () => { activo = false; };
+  }, []);
+
+  // Filtrar las carreras por categoría.
+  const carrerasFiltradas = carreras.filter(
+    (carrera) => filtro === "Todas" || carrera.tipo === filtro
+  );
 
   return (
     <section className="carreras-fondo">
@@ -22,80 +65,58 @@ export default function PaginaCarreras() {
         <header className="carreras-encabezado">
           <h1>Carreras de Posgrado</h1>
           <p>
-            Conocé nuestra oferta académica de especializaciones, maestrías y
-            doctorados.
+            Conocé nuestra oferta académica de especializaciones,
+            maestrías y doctorados.
           </p>
         </header>
 
         <nav className="carreras-filtros" aria-label="Filtrar carreras">
-          <button
-            type="button"
-            className={filtro === "Todas" ? "activo" : ""}
-            onClick={() => setFiltro("Todas")}
-          >
-            Todas
-          </button>
-
-          <button
-            type="button"
-            className={filtro === "Especialización" ? "activo" : ""}
-            onClick={() => setFiltro("Especialización")}
-          >
-            Especializaciones
-          </button>
-
-          <button
-            type="button"
-            className={filtro === "Maestría" ? "activo" : ""}
-            onClick={() => setFiltro("Maestría")}
-          >
-            Maestrías
-          </button>
-
-          <button
-            type="button"
-            className={filtro === "Posgrado" ? "activo" : ""}
-            onClick={() => setFiltro("Posgrado")}
-          >
-            Posgrados
-          </button>
+          {categorias.map((categoria) => (
+            <button
+              key={categoria.valor}
+              type="button"
+              className={filtro === categoria.valor ? "activo" : ""}
+              aria-pressed={filtro === categoria.valor}
+              onClick={() => setFiltro(categoria.valor)}
+            >
+              {categoria.nombre}
+            </button>
+          ))}
         </nav>
 
-        <section className="carreras-listado">
-          {carrerasFiltradas.map((carrera) => (
-            <TarjetaCarrera
-              key={carrera.id}
-              id={carrera.id}
-              tipo={carrera.tipo}
-              nombre={carrera.nombre}
-              descripcion={carrera.descripcion}
-            />
-          ))}
-        </section>
+        {cargando && <p role="status">Cargando carreras...</p>}
+        {error && <p role="alert">{error}</p>}
+
+        {!cargando && !error && (
+          <section className="carreras-listado">
+            {carrerasFiltradas.length === 0 ? (
+              <p>No hay carreras disponibles en esta categoría.</p>
+            ) : (
+              carrerasFiltradas.map((carrera) => (
+                <TarjetaCarrera
+                  key={carrera.id}
+                  id={carrera.id}
+                  tipo={mostrarTipo(carrera.tipo)}
+                  nombre={carrera.nombre}
+                  descripcion={carrera.descripcion}
+                />
+              ))
+            )}
+          </section>
+        )}
 
         <section className="carreras-inscripcion">
-          <span className="carreras-pregunta" aria-hidden="true">
-            ?
-          </span>
+          <span className="carreras-pregunta" aria-hidden="true">?</span>
 
           <section>
             <strong>¿Querés inscribirte?</strong>
             <p>
-              Completá el formulario de inscripción online y adjuntá la
-              documentación requerida.
+              Completá el formulario de inscripción online y adjuntá
+              la documentación requerida.
             </p>
           </section>
 
           <Link to="/inscripcion">
-            <svg
-              className="carreras-inscripcion-icono"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path d="M6 2h8l4 4v16H6V2Z" />
-              <path d="M14 2v5h5M9 12h6M9 16h6" />
-            </svg>
-
             Inscribite ahora
           </Link>
         </section>
