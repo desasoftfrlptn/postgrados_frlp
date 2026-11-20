@@ -1,30 +1,105 @@
-# React + TypeScript + Vite
+# Sistema de Posgrado UTN FRLP — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Aplicación web del Sistema de Posgrado de la Universidad Tecnológica Nacional, Facultad Regional La Plata.
 
-Currently, two official plugins are available:
+## Tecnologías
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- React 19
+- TypeScript
+- Vite 8
+- React Router
+- Tailwind CSS
+- Vitest
+- React Testing Library
 
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/)
+## Requisitos
 
-## React Compiler
+- Node.js compatible con las dependencias del proyecto.
+- npm.
+- Backend del Sistema de Posgrado disponible para las funciones que requieren API.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Instalación
 
-## Expanding the Oxlint configuration
+Desde la carpeta `src/frontend`:
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+```bash
+npm ci
+```
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## Configuración del entorno
+
+Crear un archivo `.env` tomando como referencia `.env.example`.
+
+Variables utilizadas:
+
+| Variable | Descripción |
+|---|---|
+| `VITE_API_URL` | URL base de los endpoints del Backend |
+| `VITE_API_BASE` | URL base para imágenes y documentos |
+| `VITE_USE_POLLING` | Activa polling para el servidor de desarrollo cuando es necesario |
+
+Las variables que comienzan con `VITE_` se incorporan al código del cliente. No incluir contraseñas, tokens ni secretos.
+
+## Desarrollo
+
+```bash
+npm run dev
+```
+
+El servidor de desarrollo está configurado para utilizar el puerto `3000`.
+
+## Compilación
+
+```bash
+npm run build
+```
+
+## Calidad del código
+
+```bash
+npm run lint
+```
+
+## Pruebas automatizadas
+
+```bash
+npm run test:run
+```
+
+Para ejecutar Vitest en modo interactivo:
+
+```bash
+npm run test
+```
+
+## Organización del código
+
+- `src/shared/`: API, componentes y recursos compartidos.
+- `src/modulos/home/`: página de inicio pública.
+- `src/modulos/carreras/`: oferta académica pública.
+- `src/modulos/noticias/`: noticias.
+- `src/modulos/calendario/`: calendario académico.
+- `src/modulos/contacto/`: contacto.
+- `src/modulos/preguntas-frecuentes/`: preguntas frecuentes.
+- `src/modulos/inscripcion/`: inscripción y seguimiento.
+- `src/modulos/manejo-sesion/`: autenticación y gestión de sesión.
+- `src/modulos/perfiles/`: módulos de Administración, Conducción, Docente y Estudiante.
+- `tests/`: pruebas automatizadas.
+
+## Componentes compartidos
+
+Los componentes reutilizables deben ubicarse en `src/shared/` o, cuando correspondan exclusivamente a las vistas de perfiles, en `src/modulos/perfiles/shared/`.
+
+Los estilos específicos de cada componente o módulo se mantienen en archivos CSS separados cuando resulte apropiado.
+
+## Verificaciones antes de integrar cambios
+
+Ejecutar:
+
+```bash
+npm run lint
+npm run build
+npm run test:run
+```
+
+Trabajar sobre la rama correspondiente y verificar los cambios antes de integrarlos a `main`.
