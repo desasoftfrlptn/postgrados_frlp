@@ -18,7 +18,7 @@ CONFIGURACION_INICIAL = {
         ),
         "boton_inscripcion": "Inscribite ahora",
         "boton_informacion": "Solicitar información",
-
+        "boton_estado_inscripcion": "Consultar estado de inscripción",
         "tarjeta_carreras_titulo": "Carreras de Posgrado",
         "tarjeta_carreras_descripcion": (
             "Conocé nuestra oferta académica de especializaciones, "
