@@ -11,10 +11,13 @@ from src.usuarios.servicio import (
     obtener_administrador_actual,
 )
 from src.compartido.conexion import get_db
+
 from src.configuracion_publica.aplicacion.servicio import (
     modificar_configuracion,
     obtener_configuracion,
+    restablecer_configuracion,
 )
+
 from src.configuracion_publica.presentacion.esquema import (
     ConfiguracionSeccionModificar,
     ConfiguracionSeccionRespuesta,
@@ -79,5 +82,24 @@ async def actualizar_configuracion(
 
     return ConfiguracionSeccionRespuesta(
         seccion=seccion,
+        valores=valores,
+    )
+
+
+@enrutador.post(
+    "/home/restablecer",
+    response_model=ConfiguracionSeccionRespuesta,
+)
+async def restablecer_inicio(
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    valores = await restablecer_configuracion(
+        "home",
+        db,
+    )
+
+    return ConfiguracionSeccionRespuesta(
+        seccion="home",
         valores=valores,
     )

@@ -1,76 +1,100 @@
-// Página pública de inicio del Sistema de Posgrado UTN FRLP.
 
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
+import { api } from "../../../shared/api/client";
 import imagenHero from "../../../imagenes/hero-home.png";
 
 import "./HomePage.css";
 
-
 const valoresIniciales = {
   hero_titulo:
     "Bienvenido al Sistema de Posgrado UTN FRLP",
-
   hero_descripcion:
     "Gestioná tu inscripción, consultá tu estado académico y accedé a toda la información de tu carrera.",
-
-  boton_inscripcion:
-    "Inscribite ahora",
-
-  boton_informacion:
-    "Solicitar información",
-
+  boton_inscripcion: "Inscribite ahora",
+  boton_informacion: "Solicitar información",
   boton_estado_inscripcion:
     "Consultar estado de inscripción",
 
-  tarjeta_carreras_titulo:
-    "Carreras de Posgrado",
-
+  tarjeta_carreras_titulo: "Carreras de Posgrado",
   tarjeta_carreras_descripcion:
     "Conocé nuestra oferta académica de especializaciones, maestrías y doctorados.",
+  tarjeta_carreras_enlace: "Ver carreras",
 
-  tarjeta_carreras_enlace:
-    "Ver carreras",
-
-  tarjeta_calendario_titulo:
-    "Calendario Académico",
-
+  tarjeta_calendario_titulo: "Calendario Académico",
   tarjeta_calendario_descripcion:
     "Consultá el calendario de clases, exámenes, inscripciones y fechas importantes.",
+  tarjeta_calendario_enlace: "Ver calendario",
 
-  tarjeta_calendario_enlace:
-    "Ver calendario",
-
-  tarjeta_noticias_titulo:
-    "Novedades",
-
+  tarjeta_noticias_titulo: "Novedades",
   tarjeta_noticias_descripcion:
     "Enterate de las últimas noticias y comunicados de la facultad.",
+  tarjeta_noticias_enlace: "Ver novedades",
 
-  tarjeta_noticias_enlace:
-    "Ver novedades",
-
-  tarjeta_faq_titulo:
-    "¿Tenés dudas?",
-
+  tarjeta_faq_titulo: "¿Tenés dudas?",
   tarjeta_faq_descripcion:
     "Respondemos las preguntas más frecuentes sobre el posgrado.",
-
-  tarjeta_faq_enlace:
-    "Ir a preguntas frecuentes",
+  tarjeta_faq_enlace: "Ir a preguntas frecuentes",
 };
 
+type ConfiguracionInicio = typeof valoresIniciales;
+
+interface ConfiguracionPublicaRespuesta {
+  seccion: string;
+  valores: Record<string, string>;
+}
 
 export default function HomePage() {
-  const configuracion = valoresIniciales;
+  const [configuracion, setConfiguracion] =
+    useState<ConfiguracionInicio>(valoresIniciales);
+
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarConfiguracion = async () => {
+      try {
+        const respuesta =
+          await api.get<ConfiguracionPublicaRespuesta>(
+            "/configuracion-publica/home"
+          );
+
+        if (!activo) return;
+
+        setConfiguracion({
+          ...valoresIniciales,
+          ...respuesta.valores,
+        });
+
+        setError("");
+      } catch {
+        if (!activo) return;
+
+        setError(
+          "No se pudo cargar la configuración actualizada del inicio."
+        );
+      }
+    };
+
+    void cargarConfiguracion();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   return (
     <>
+      {error && (
+        <p role="alert">{error}</p>
+      )}
+
       <section
         className="home-hero"
         style={{
-          backgroundImage:
-            `url(${imagenHero})`,
+          backgroundImage: `url(${imagenHero})`,
         }}
         aria-labelledby="home-titulo"
       >
@@ -79,11 +103,7 @@ export default function HomePage() {
             {configuracion.hero_titulo}
           </h1>
 
-          <p>
-            {
-              configuracion.hero_descripcion
-            }
-          </p>
+          <p>{configuracion.hero_descripcion}</p>
 
           <nav
             className="home-acciones"
@@ -100,10 +120,7 @@ export default function HomePage() {
                 <path d="M6 2h9l5 5v15H6V2Zm8 2v5h5" />
                 <path d="M9 13h8M9 17h8" />
               </svg>
-
-              {
-                configuracion.boton_inscripcion
-              }
+              {configuracion.boton_inscripcion}
             </Link>
 
             <Link
@@ -117,33 +134,26 @@ export default function HomePage() {
                 <path d="M3 5h18v14H3V5Z" />
                 <path d="m3 6 9 7 9-7" />
               </svg>
-
-              {
-                configuracion.boton_informacion
-              }
+              {configuracion.boton_informacion}
             </Link>
 
             <Link
-            className="home-boton home-boton-secundario"
-            to="/estado-inscripcion"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
+              className="home-boton home-boton-secundario"
+              to="/estado-inscripcion"
             >
-              <path d="M5 3h14v18H5V3Z" />
-              <path d="M8 8h8M8 12h8M8 16h5" />
-              <path d="m15 16 2 2 4-4" />
-            </svg>
-
-            {
-              configuracion.boton_estado_inscripcion
-            }
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path d="M5 3h14v18H5V3Z" />
+                <path d="M8 8h8M8 12h8M8 16h5" />
+                <path d="m15 16 2 2 4-4" />
+              </svg>
+              {configuracion.boton_estado_inscripcion}
             </Link>
           </nav>
         </section>
       </section>
-
 
       <section
         className="home-accesos"
@@ -155,7 +165,6 @@ export default function HomePage() {
         >
           Accesos principales
         </h2>
-
 
         <article className="home-tarjeta">
           <span
@@ -169,33 +178,18 @@ export default function HomePage() {
           </span>
 
           <section className="home-tarjeta-contenido">
-            <h3>
-              {
-                configuracion
-                  .tarjeta_carreras_titulo
-              }
-            </h3>
+            <h3>{configuracion.tarjeta_carreras_titulo}</h3>
 
             <p>
-              {
-                configuracion
-                  .tarjeta_carreras_descripcion
-              }
+              {configuracion.tarjeta_carreras_descripcion}
             </p>
 
             <Link to="/carreras">
-              {
-                configuracion
-                  .tarjeta_carreras_enlace
-              }{" "}
-
-              <span aria-hidden="true">
-                →
-              </span>
+              {configuracion.tarjeta_carreras_enlace}{" "}
+              <span aria-hidden="true">→</span>
             </Link>
           </section>
         </article>
-
 
         <article className="home-tarjeta">
           <span
@@ -210,39 +204,25 @@ export default function HomePage() {
                 height="15"
                 rx="2"
               />
-
               <path d="M8 3v4M16 3v4M4 9h16M8 13h2M14 13h2M8 17h2M14 17h2" />
             </svg>
           </span>
 
           <section className="home-tarjeta-contenido">
             <h3>
-              {
-                configuracion
-                  .tarjeta_calendario_titulo
-              }
+              {configuracion.tarjeta_calendario_titulo}
             </h3>
 
             <p>
-              {
-                configuracion
-                  .tarjeta_calendario_descripcion
-              }
+              {configuracion.tarjeta_calendario_descripcion}
             </p>
 
             <Link to="/calendario">
-              {
-                configuracion
-                  .tarjeta_calendario_enlace
-              }{" "}
-
-              <span aria-hidden="true">
-                →
-              </span>
+              {configuracion.tarjeta_calendario_enlace}{" "}
+              <span aria-hidden="true">→</span>
             </Link>
           </section>
         </article>
-
 
         <article className="home-tarjeta">
           <span
@@ -256,33 +236,18 @@ export default function HomePage() {
           </span>
 
           <section className="home-tarjeta-contenido">
-            <h3>
-              {
-                configuracion
-                  .tarjeta_noticias_titulo
-              }
-            </h3>
+            <h3>{configuracion.tarjeta_noticias_titulo}</h3>
 
             <p>
-              {
-                configuracion
-                  .tarjeta_noticias_descripcion
-              }
+              {configuracion.tarjeta_noticias_descripcion}
             </p>
 
             <Link to="/noticias">
-              {
-                configuracion
-                  .tarjeta_noticias_enlace
-              }{" "}
-
-              <span aria-hidden="true">
-                →
-              </span>
+              {configuracion.tarjeta_noticias_enlace}{" "}
+              <span aria-hidden="true">→</span>
             </Link>
           </section>
         </article>
-
 
         <article className="home-tarjeta">
           <span
@@ -293,29 +258,15 @@ export default function HomePage() {
           </span>
 
           <section className="home-tarjeta-contenido">
-            <h3>
-              {
-                configuracion
-                  .tarjeta_faq_titulo
-              }
-            </h3>
+            <h3>{configuracion.tarjeta_faq_titulo}</h3>
 
             <p>
-              {
-                configuracion
-                  .tarjeta_faq_descripcion
-              }
+              {configuracion.tarjeta_faq_descripcion}
             </p>
 
             <Link to="/faq">
-              {
-                configuracion
-                  .tarjeta_faq_enlace
-              }{" "}
-
-              <span aria-hidden="true">
-                →
-              </span>
+              {configuracion.tarjeta_faq_enlace}{" "}
+              <span aria-hidden="true">→</span>
             </Link>
           </section>
         </article>
