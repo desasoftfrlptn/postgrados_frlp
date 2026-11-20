@@ -1,4 +1,4 @@
-/* Estilos compartidos por los perfiles de estudiante y docente. */
+/* Estilos compartidos por los perfiles de Administración, Conducción, Docente y Estudiante. */
 
 .perfil-layout {
   min-height: 100vh;
@@ -34,9 +34,13 @@
   font-size: 14px;
 }
 
+/* Navegación compartida por todos los perfiles. */
 .perfil-menu {
   flex: 1;
+  min-height: 0;
   padding: 24px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .perfil-menu-lista {
@@ -68,11 +72,18 @@
   background: #1e293b;
 }
 
+/* Accesibilidad: foco visible en la navegación de todos los perfiles. */
 .perfil-menu-enlace:focus-visible,
 .perfil-boton-prueba:focus-visible,
 .perfil-cerrar-sesion:focus-visible {
   outline: 2px solid #60a5fa;
   outline-offset: 2px;
+}
+
+.perfil-header-icono:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .perfil-menu-enlace-activo {
@@ -410,6 +421,7 @@
     flex-direction: column;
   }
 
+
   .perfil-sidebar {
     width: 100%;
     min-height: auto;
@@ -448,11 +460,6 @@
     font-size: 15px;
   }
 
-  .perfil-header-icono:focus-visible {
-  outline: 2px solid #2563eb;
-  outline-offset: 3px;
-  border-radius: 4px;
-  }
 
   .perfil-header-icono {
     border-radius: 4px;

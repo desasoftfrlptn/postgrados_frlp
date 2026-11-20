@@ -1,3 +1,4 @@
+
 const API_URL =
   import.meta.env.VITE_API_URL ??
   "http://127.0.0.1:8000/api/v1";
@@ -6,191 +7,211 @@ const API_BASE =
   import.meta.env.VITE_API_BASE ??
   "http://127.0.0.1:8000";
 
+const MENSAJE_ERROR_GENERAL =
+  "No se pudo completar la operación.";
+
+const MENSAJE_ERROR_CONEXION =
+  "No se pudo conectar con el servidor. Verificá tu conexión e intentá nuevamente.";
 
 interface ErrorValidacion {
-  msg?: string;
+  msg?: unknown;
 }
 
+interface RespuestaError {
+  detail?: unknown;
+  message?: unknown;
+}
 
-function obtenerMensajeError(
-  data: unknown
-): string {
-  if (
-    data === null ||
-    typeof data !== "object"
-  ) {
+// Extrae mensajes comprensibles de los errores del Backend.
+function obtenerMensajeError(data: unknown): string {
+  if (data === null || typeof data !== "object") {
     return "Ocurrió un error inesperado.";
   }
 
-  const respuestaError = data as {
-    detail?: unknown;
-    message?: unknown;
-  };
-
+  const error = data as RespuestaError;
 
   if (
-    typeof respuestaError.detail === "string"
+    typeof error.detail === "string" &&
+    error.detail.trim()
   ) {
-    return respuestaError.detail;
+    return error.detail;
   }
 
+  // FastAPI puede devolver varios errores de validación.
+  if (Array.isArray(error.detail)) {
+    const mensajes = error.detail
+      .map((item: unknown) => {
+        if (
+          item !== null &&
+          typeof item === "object" &&
+          "msg" in item
+        ) {
+          const validacion = item as ErrorValidacion;
 
-  if (
-    Array.isArray(
-      respuestaError.detail
-    )
-  ) {
-    const mensajes =
-      respuestaError.detail
-        .map((error) => {
-          if (
-            error &&
-            typeof error === "object" &&
-            "msg" in error
-          ) {
-            const errorValidacion =
-              error as ErrorValidacion;
+          return typeof validacion.msg === "string"
+            ? validacion.msg
+            : null;
+        }
 
-            return (
-              errorValidacion.msg ??
-              null
-            );
-          }
-
-          return null;
-        })
-        .filter(
-          (mensaje): mensaje is string =>
-            mensaje !== null
-        );
-
+        return typeof item === "string" ? item : null;
+      })
+      .filter(
+        (mensaje): mensaje is string =>
+          typeof mensaje === "string" &&
+          mensaje.trim().length > 0
+      );
 
     if (mensajes.length > 0) {
       return mensajes.join(" - ");
     }
   }
 
-
   if (
-    typeof respuestaError.message === "string"
+    typeof error.message === "string" &&
+    error.message.trim()
   ) {
-    return respuestaError.message;
+    return error.message;
   }
 
-
-  return "No se pudo completar la operación.";
+  return MENSAJE_ERROR_GENERAL;
 }
 
-
+// Construye los encabezados sin interferir con FormData.
 function crearHeaders(
   token?: string,
-  esFormData = false
+  tieneCuerpoJSON = false
 ): Headers {
-  const headers =
-    new Headers();
+  const headers = new Headers();
 
-
-  if (!esFormData) {
-    headers.set(
-      "Content-Type",
-      "application/json"
-    );
+  if (tieneCuerpoJSON) {
+    headers.set("Content-Type", "application/json");
   }
-
 
   if (token) {
-    headers.set(
-      "Authorization",
-      `Bearer ${token}`
-    );
+    headers.set("Authorization", `Bearer ${token}`);
   }
-
 
   return headers;
 }
 
+// Lee una respuesta JSON o detecta respuestas vacías.
+async function leerRespuesta(
+  respuesta: Response
+): Promise<unknown> {
+  if (respuesta.status === 204 || respuesta.status === 205) {
+    return undefined;
+  }
 
+  const contenido = await respuesta.text();
+
+  if (!contenido.trim()) {
+    return undefined;
+  }
+
+  return JSON.parse(contenido) as unknown;
+}
+
+// Centraliza solicitudes, autenticación y errores HTTP.
 async function request<T>(
   ruta: string,
   opciones: RequestInit,
   token?: string,
   comoArchivo = false
 ): Promise<T> {
-  const respuesta =
-    await fetch(
-      `${API_URL}${ruta}`,
-      {
-        ...opciones,
-        headers:
-          crearHeaders(
-            token,
-            opciones.body instanceof FormData
-          ),
-      }
-    );
+  let respuesta: Response;
 
-  if (respuesta.status === 401 && token) {
-  window.dispatchEvent(
-    new CustomEvent<string>("sesion-invalidada", {
-      detail: token,
-    })
-  );
-}
-
-
-  if (!respuesta.ok) {
-    let data: unknown;
-
-    try {
-      data =
-        await respuesta.json();
-    } catch {
-      data = null;
+  try {
+    respuesta = await fetch(`${API_URL}${ruta}`, {
+      ...opciones,
+      headers: crearHeaders(
+        token,
+        opciones.body !== undefined &&
+          !(opciones.body instanceof FormData)
+      ),
+    });
+  } catch (error: unknown) {
+    // No convertir una cancelación en un error de conexión.
+    if (
+      error instanceof DOMException &&
+      error.name === "AbortError"
+    ) {
+      throw error;
     }
 
+    // Errores de red generados por fetch.
+    if (error instanceof TypeError) {
+      throw new Error(MENSAJE_ERROR_CONEXION, {
+        cause: error,
+      });
+    }
 
-    throw new Error(
-      obtenerMensajeError(
-        data
-      )
+    throw error;
+  }
+
+  // Mantiene el contrato actual con AuthProvider.
+  if (respuesta.status === 401 && token) {
+    window.dispatchEvent(
+      new CustomEvent<string>("sesion-invalidada", {
+        detail: token,
+      })
     );
   }
 
+  if (!respuesta.ok) {
+    let data: unknown = null;
 
-  if (
-    respuesta.status === 204
-  ) {
+    try {
+      data = await leerRespuesta(respuesta);
+    } catch {
+      // El servidor puede responder con HTML o texto.
+    }
+
+    throw new Error(obtenerMensajeError(data));
+  }
+
+  if (respuesta.status === 204 || respuesta.status === 205) {
     return undefined as T;
   }
 
+  if (comoArchivo) {
+    return (await respuesta.blob()) as T;
+  }
 
-  if (comoArchivo) return await respuesta.blob() as T;
+  const contenido = await respuesta.text();
 
-  const data =
-    await respuesta.json();
+  if (!contenido.trim()) {
+    return undefined as T;
+  }
 
-
-  return data as T;
+  try {
+    return JSON.parse(contenido) as T;
+  } catch {
+    throw new Error(
+      "El servidor devolvió una respuesta con formato inválido."
+    );
+  }
 }
 
-
+// Operaciones HTTP utilizadas por los módulos.
 export const api = {
-  descargar(ruta: string, token: string): Promise<Blob> {
-    return request<Blob>(ruta, { method: "GET" }, token, true);
+  descargar(
+    ruta: string,
+    token: string
+  ): Promise<Blob> {
+    return request<Blob>(
+      ruta,
+      { method: "GET" },
+      token,
+      true
+    );
   },
+
   get<T>(
     ruta: string,
     token?: string
   ): Promise<T> {
-    return request<T>(
-      ruta,
-      {
-        method: "GET",
-      },
-      token
-    );
+    return request<T>(ruta, { method: "GET" }, token);
   },
-
 
   post<T>(
     ruta: string,
@@ -210,7 +231,6 @@ export const api = {
     );
   },
 
-
   put<T>(
     ruta: string,
     datos?: unknown,
@@ -228,7 +248,6 @@ export const api = {
       token
     );
   },
-
 
   patch<T>(
     ruta: string,
@@ -248,20 +267,16 @@ export const api = {
     );
   },
 
-
   delete<T>(
     ruta: string,
     token?: string
   ): Promise<T> {
     return request<T>(
       ruta,
-      {
-        method: "DELETE",
-      },
+      { method: "DELETE" },
       token
     );
   },
-
 
   postForm<T>(
     ruta: string,
@@ -277,7 +292,6 @@ export const api = {
       token
     );
   },
-
 
   putForm<T>(
     ruta: string,
@@ -295,14 +309,11 @@ export const api = {
   },
 };
 
-
+// Construye URLs para imágenes y documentos públicos.
 export function obtenerUrlArchivo(
   ruta: string | null
 ): string {
-  if (!ruta) {
-    return "";
-  }
-
+  if (!ruta) return "";
 
   if (
     ruta.startsWith("http://") ||
@@ -311,13 +322,9 @@ export function obtenerUrlArchivo(
     return ruta;
   }
 
-
-  if (
-    ruta.startsWith("/")
-  ) {
+  if (ruta.startsWith("/")) {
     return `${API_BASE}${ruta}`;
   }
-
 
   return `${API_BASE}/${ruta}`;
 }

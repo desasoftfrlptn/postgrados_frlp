@@ -1,5 +1,7 @@
+
 import type { OpcionMenuPerfil } from "../../shared/componentes/BarraNavegacionPerfil";
 
+// Navegación del perfil Estudiante.
 export const menuEstudiante: OpcionMenuPerfil[] = [
   {
     texto: "Inicio",
@@ -7,17 +9,12 @@ export const menuEstudiante: OpcionMenuPerfil[] = [
     ruta: "/dashboard",
   },
   {
-    texto: "Mi Perfil",
-    icono: "👤",
-    ruta: "/dashboard/perfil",
-  },
-  {
-    texto: "Estado Académico",
+    texto: "Estado académico",
     icono: "📊",
     ruta: "/dashboard/estado-academico",
   },
   {
-    texto: "Trabajo Final / Tesis",
+    texto: "Trabajo final / Tesis",
     icono: "📝",
     ruta: "/dashboard/trabajo-final",
   },
@@ -35,5 +32,10 @@ export const menuEstudiante: OpcionMenuPerfil[] = [
     texto: "Asistencias",
     icono: "📋",
     ruta: "/dashboard/asistencias",
+  },
+  {
+    texto: "Mi perfil",
+    icono: "👤",
+    ruta: "/dashboard/perfil",
   },
 ];

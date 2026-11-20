@@ -1,13 +1,3 @@
-
-/* ==========================================================
-   MÓDULOS DEL EQUIPO DE CONDUCCIÓN
-   Estilos consistentes con las tarjetas de UTN FRLP
-   ========================================================== */
-
-/* ----------------------------------------------------------
-   1. ESTRUCTURA GENERAL
-   ---------------------------------------------------------- */
-
 .cc-pagina {
   max-width: 1440px;
   width: 100%;
@@ -307,19 +297,8 @@
 }
 
 /* ----------------------------------------------------------
-   10. NAVEGACIÓN Y ACCESIBILIDAD
+   10. ACCESIBILIDAD DE CONTROLES DE CONDUCCIÓN
    ---------------------------------------------------------- */
-
-/*
- * El menú conserva visible el botón "Cerrar Sesión"
- * aunque existan muchas opciones de navegación.
- */
-
-.perfil-menu[aria-label*="coordinador"] {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
 
 .cc-btn:focus-visible,
 .cc-filtro select:focus-visible,

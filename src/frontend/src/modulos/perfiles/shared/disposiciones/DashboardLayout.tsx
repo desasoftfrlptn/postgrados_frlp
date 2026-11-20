@@ -10,52 +10,58 @@ import { menuAdministrador } from "../../administrador/config/menuAdministrador"
 import { menuConduccion } from "../../conduccion/config/menuConduccion";
 
 import BarraNavegacionPerfil from "../componentes/BarraNavegacionPerfil";
+import type { OpcionMenuPerfil } from "../componentes/BarraNavegacionPerfil";
 
 import "../estilos/PerfilesCompartidos.css";
+
+// Nombres visibles de los roles del sistema.
+const etiquetasRol: Record<Rol, string> = {
+  ADMIN: "Administrador",
+  ASPIRANTE: "Aspirante",
+  ALUMNO: "Alumno",
+  COORDINADOR: "Coordinador",
+  CPR: "CPR",
+  DOCENTE: "Docente",
+};
+
+// Menú de navegación correspondiente a cada rol.
+const menusPorRol: Record<Rol, OpcionMenuPerfil[]> = {
+  ADMIN: menuAdministrador,
+  ASPIRANTE: menuEstudiante,
+  ALUMNO: menuEstudiante,
+  COORDINADOR: menuConduccion,
+  CPR: [],
+  DOCENTE: menuDocente,
+};
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-
-  const etiquetasRol: Record<Rol, string> = {
-    ADMIN: "Administrador",
-    ASPIRANTE: "Aspirante",
-    ALUMNO: "Alumno",
-    COORDINADOR: "Coordinador",
-    CPR: "CPR",
-    DOCENTE: "Docente",
-  };
 
   const rolUsuario = user
     ? etiquetasRol[user.rol]
     : "Sin sesión";
 
   const nombreUsuario = user
-    ? user.nombre + " " + user.apellido
+    ? `${user.nombre} ${user.apellido}`.trim()
     : "Usuario";
 
   const inicialesUsuario = user
-    ? (user.nombre.charAt(0) + user.apellido.charAt(0)).toUpperCase()
+    ? `${user.nombre.charAt(0)}${user.apellido.charAt(0)}`.toUpperCase()
     : "";
 
-  const opcionesMenu =
-    user?.rol === "DOCENTE"
-      ? menuDocente
-      : (user?.rol === "ASPIRANTE" || user?.rol === "ALUMNO")
-        ? menuEstudiante
-        : user?.rol === "ADMIN"
-          ? menuAdministrador
-          : user?.rol === "COORDINADOR"
-            ? menuConduccion
-            : [];
+  const opcionesMenu = user
+    ? menusPorRol[user.rol]
+    : [];
 
-  const cerrarSesion = () => {
+  function cerrarSesion() {
     logout();
-    navigate("/login");
-  };
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className="perfil-layout animate-fade-in">
+      {/* Navegación compartida de los perfiles */}
       <aside className="perfil-sidebar">
         <header className="perfil-sidebar-encabezado">
           <h2>UTN FRLP</h2>
@@ -73,14 +79,16 @@ export default function DashboardLayout() {
             className="perfil-cerrar-sesion"
             onClick={cerrarSesion}
           >
-            Cerrar Sesión
+            Cerrar sesión
           </button>
         </footer>
       </aside>
 
+      {/* Contenedor principal del perfil */}
       <div className="perfil-contenedor">
         <header className="perfil-header">
           <div className="perfil-header-contenido">
+            {/* Pendiente: conectar mensajería real */}
             <button
               type="button"
               className="perfil-header-icono"
@@ -89,6 +97,7 @@ export default function DashboardLayout() {
               <span aria-hidden="true">✉️</span>
             </button>
 
+            {/* Pendiente: conectar notificaciones reales */}
             <button
               type="button"
               className="perfil-header-icono"

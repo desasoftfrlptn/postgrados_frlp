@@ -555,3 +555,30 @@
     width: 100%;
   }
 }
+
+/* =========================================
+   VALIDACIONES DE CAMPOS DE ADMINISTRACIÓN
+   ========================================= */
+
+.admin-home-campo [aria-invalid="true"] {
+  border-color: #dc2626;
+  background-color: #fffafa;
+}
+
+.admin-home-campo [aria-invalid="true"]:focus-visible {
+  outline: 2px solid #dc2626;
+  outline-offset: 2px;
+}
+
+.admin-home-campo-error {
+  margin: 6px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.admin-home-campo :is(input, textarea, select):disabled {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  cursor: not-allowed;
+}

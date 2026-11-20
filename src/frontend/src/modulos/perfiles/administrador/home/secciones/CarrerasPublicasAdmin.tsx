@@ -1,10 +1,5 @@
-// Administra los textos generales de la página pública de carreras.
 
-import {
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useState } from "react";
 
 import { api } from "../../../../../shared/api/client";
 import { useAuth } from "../../../../manejo-sesion/useAuth";
@@ -16,11 +11,38 @@ import type {
   ConfiguracionPublicaRespuesta,
 } from "../tipos/homeAdmin";
 
+const campos = [
+  {
+    clave: "titulo",
+    etiqueta: "Título de la página",
+  },
+  {
+    clave: "descripcion",
+    etiqueta: "Descripción de la página",
+    multilinea: true,
+  },
+  {
+    clave: "inscripcion_titulo",
+    etiqueta: "Título del bloque de inscripción",
+  },
+  {
+    clave: "inscripcion_descripcion",
+    etiqueta: "Descripción del bloque de inscripción",
+    multilinea: true,
+  },
+  {
+    clave: "inscripcion_boton",
+    etiqueta: "Texto del botón de inscripción",
+  },
+];
 
 export default function CarrerasPublicasAdmin() {
   const { user } = useAuth();
 
   const [valores, setValores] =
+    useState<Record<string, string>>({});
+
+  const [valoresGuardados, setValoresGuardados] =
     useState<Record<string, string>>({});
 
   const [cargando, setCargando] =
@@ -29,79 +51,150 @@ export default function CarrerasPublicasAdmin() {
   const [guardando, setGuardando] =
     useState(false);
 
+  const [editando, setEditando] =
+    useState(false);
+
+  const [confirmarGuardado, setConfirmarGuardado] =
+    useState(false);
+
   const [error, setError] =
     useState("");
 
   const [mensaje, setMensaje] =
     useState("");
 
+  const hayCambios = campos.some(
+    (campo) =>
+      (valores[campo.clave] ?? "") !==
+      (valoresGuardados[campo.clave] ?? "")
+  );
 
   useEffect(() => {
+    let activo = true;
+
     const cargar = async () => {
       try {
-        setCargando(true);
-        setError("");
-
         const respuesta =
           await api.get<ConfiguracionPublicaRespuesta>(
             "/configuracion-publica/carreras"
           );
 
-        setValores(
-          respuesta.valores
-        );
+        if (!activo) return;
+
+        setValores({ ...respuesta.valores });
+        setValoresGuardados({
+          ...respuesta.valores,
+        });
+        setError("");
       } catch (error) {
+        if (!activo) return;
+
         setError(
           error instanceof Error
             ? error.message
-            : "No se pudo cargar la configuración de carreras"
+            : "No se pudo cargar la configuración de Carreras."
         );
       } finally {
-        setCargando(false);
+        if (activo) {
+          setCargando(false);
+        }
       }
     };
 
-    cargar();
-  }, []);
+    void cargar();
 
+    return () => {
+      activo = false;
+    };
+  }, []);
 
   const modificarCampo = (
     clave: string,
     valor: string
   ) => {
+    if (!editando || guardando) return;
+
     setValores((anteriores) => ({
       ...anteriores,
       [clave]: valor,
     }));
   };
 
+  const comenzarEdicion = () => {
+    if (guardando || !user) return;
 
-  const guardar = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault();
+    setValores({ ...valoresGuardados });
+    setConfirmarGuardado(false);
+    setError("");
+    setMensaje("");
+    setEditando(true);
+  };
 
-    if (!user) {
+  const cancelarEdicion = () => {
+    if (guardando) return;
+
+    setValores({ ...valoresGuardados });
+    setEditando(false);
+    setConfirmarGuardado(false);
+    setError("");
+    setMensaje("");
+  };
+
+  const solicitarGuardado = () => {
+    if (
+      !user ||
+      !editando ||
+      guardando ||
+      !hayCambios
+    ) {
       return;
     }
 
-    try {
-      setGuardando(true);
-      setError("");
-      setMensaje("");
+    const hayCamposVacios = campos.some(
+      (campo) =>
+        !(valores[campo.clave] ?? "").trim()
+    );
 
+    if (hayCamposVacios) {
+      setError(
+        "Todos los campos de Carreras deben tener contenido."
+      );
+      return;
+    }
+
+    setError("");
+    setConfirmarGuardado(true);
+  };
+
+  const guardar = async () => {
+    if (
+      !user ||
+      !editando ||
+      guardando ||
+      !confirmarGuardado ||
+      !hayCambios
+    ) {
+      return;
+    }
+
+    setConfirmarGuardado(false);
+    setGuardando(true);
+    setError("");
+    setMensaje("");
+
+    try {
       const respuesta =
         await api.put<ConfiguracionPublicaRespuesta>(
           "/configuracion-publica/carreras",
-          {
-            valores,
-          },
+          { valores },
           user.token
         );
 
-      setValores(
-        respuesta.valores
-      );
+      setValores({ ...respuesta.valores });
+      setValoresGuardados({
+        ...respuesta.valores,
+      });
+      setEditando(false);
 
       setMensaje(
         "La configuración de Carreras fue actualizada correctamente."
@@ -110,13 +203,12 @@ export default function CarrerasPublicasAdmin() {
       setError(
         error instanceof Error
           ? error.message
-          : "No se pudieron guardar los cambios"
+          : "No se pudieron guardar los cambios."
       );
     } finally {
       setGuardando(false);
     }
   };
-
 
   if (cargando) {
     return (
@@ -125,7 +217,6 @@ export default function CarrerasPublicasAdmin() {
       </p>
     );
   }
-
 
   return (
     <>
@@ -136,9 +227,7 @@ export default function CarrerasPublicasAdmin() {
 
       <article className="admin-home-panel">
         <header>
-          <h2>
-            Carreras públicas
-          </h2>
+          <h2>Carreras públicas</h2>
 
           <p>
             Administrá los textos generales que
@@ -146,91 +235,125 @@ export default function CarrerasPublicasAdmin() {
           </p>
         </header>
 
-        <form onSubmit={guardar}>
-          <div className="admin-home-campos">
-            <CampoConfiguracion
-              id="carreras-titulo"
-              etiqueta="Título de la página"
-              valor={valores.titulo ?? ""}
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "titulo",
-                  valor
-                )
-              }
-            />
+        {editando && (
+          <p
+            className="admin-inicio-aviso"
+            role="status"
+          >
+            Estás modificando la página pública
+            de Carreras. Los cambios se aplicarán
+            cuando confirmes el guardado.
+          </p>
+        )}
 
+        <fieldset
+          className="admin-home-campos admin-inicio-campos"
+          disabled={!editando || guardando}
+        >
+          {campos.map((campo) => (
             <CampoConfiguracion
-              id="carreras-descripcion"
-              etiqueta="Descripción de la página"
-              multilinea
+              key={campo.clave}
+              id={`carreras-${campo.clave.replaceAll(
+                "_",
+                "-"
+              )}`}
+              etiqueta={campo.etiqueta}
+              multilinea={
+                campo.multilinea ?? false
+              }
               valor={
-                valores.descripcion ?? ""
+                valores[campo.clave] ?? ""
               }
               alCambiar={(valor) =>
                 modificarCampo(
-                  "descripcion",
+                  campo.clave,
                   valor
                 )
               }
             />
+          ))}
+        </fieldset>
 
-            <CampoConfiguracion
-              id="carreras-inscripcion-titulo"
-              etiqueta="Título del bloque de inscripción"
-              valor={
-                valores.inscripcion_titulo ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "inscripcion_titulo",
-                  valor
-                )
-              }
-            />
+        <footer
+          className="admin-home-acciones admin-inicio-acciones"
+        >
+          {editando ? (
+            <>
+              <button
+                type="button"
+                className="admin-inicio-boton-secundario"
+                onClick={cancelarEdicion}
+                disabled={guardando}
+              >
+                Cancelar
+              </button>
 
-            <CampoConfiguracion
-              id="carreras-inscripcion-descripcion"
-              etiqueta="Descripción del bloque de inscripción"
-              multilinea
-              valor={
-                valores.inscripcion_descripcion ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "inscripcion_descripcion",
-                  valor
-                )
-              }
-            />
-
-            <CampoConfiguracion
-              id="carreras-inscripcion-boton"
-              etiqueta="Texto del botón de inscripción"
-              valor={
-                valores.inscripcion_boton ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "inscripcion_boton",
-                  valor
-                )
-              }
-            />
-          </div>
-
-          <footer className="admin-home-acciones">
+              <button
+                type="button"
+                onClick={solicitarGuardado}
+                disabled={
+                  guardando || !hayCambios
+                }
+              >
+                {guardando
+                  ? "Guardando..."
+                  : "Guardar cambios"}
+              </button>
+            </>
+          ) : (
             <button
-              type="submit"
-              disabled={guardando}
+              type="button"
+              onClick={comenzarEdicion}
+              disabled={
+                guardando || !user
+              }
             >
-              {guardando
-                ? "Guardando..."
-                : "Guardar cambios"}
+              Modificar
             </button>
-          </footer>
-        </form>
+          )}
+        </footer>
       </article>
+
+      {confirmarGuardado && (
+        <div className="admin-inicio-modal-fondo">
+          <section
+            className="admin-inicio-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="carreras-confirmacion-titulo"
+            aria-describedby="carreras-confirmacion-descripcion"
+          >
+            <h3 id="carreras-confirmacion-titulo">
+              ¿Guardar los cambios?
+            </h3>
+
+            <p id="carreras-confirmacion-descripcion">
+              Los nuevos textos se mostrarán
+              en la página pública de Carreras
+              después de guardar.
+            </p>
+
+            <div className="admin-inicio-modal-acciones">
+              <button
+                type="button"
+                className="admin-inicio-boton-secundario"
+                onClick={() =>
+                  setConfirmarGuardado(false)
+                }
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void guardar()}
+              >
+                Confirmar guardado
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
     </>
   );
 }

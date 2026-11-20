@@ -182,13 +182,26 @@ describe("Cliente HTTP", () => {
     expect(leerJSON).not.toHaveBeenCalled();
   });
 
-  it("propaga los errores de conexión", async () => {
-    fetchSimulado.mockRejectedValueOnce(
-      new TypeError("Failed to fetch"),
-    );
 
-    await expect(
-      api.get("/autenticacion/me", "token"),
-    ).rejects.toThrow("Failed to fetch");
+  it("muestra un mensaje claro y conserva la causa del error de conexión", async () => {
+    const errorOriginal = new TypeError("Failed to fetch");
+
+    fetchSimulado.mockRejectedValueOnce(errorOriginal);
+
+    try {
+      await api.get("/autenticacion/me", "token");
+      expect.fail("Se esperaba un error de conexión");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+
+      const errorCapturado = error as Error;
+
+      expect(errorCapturado.message).toBe(
+        "No se pudo conectar con el servidor. Verificá tu conexión e intentá nuevamente."
+      );
+
+      expect(errorCapturado.cause).toBe(errorOriginal);
+    }
   });
+
 });

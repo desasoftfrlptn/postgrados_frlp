@@ -1,6 +1,7 @@
 
 import type { OpcionMenuPerfil } from "../../shared/componentes/BarraNavegacionPerfil";
 
+// Navegación del Equipo de Conducción.
 export const menuConduccion: OpcionMenuPerfil[] = [
   {
     texto: "Inicio",
