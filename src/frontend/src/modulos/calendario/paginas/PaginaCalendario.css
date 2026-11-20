@@ -272,3 +272,132 @@
     gap: 12px;
   }
 }
+
+
+/* Mejoras visuales del calendario público */
+
+.calendario {
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+}
+
+.calendario-encabezado {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 20px;
+}
+
+.calendario-anio select {
+  width: 120px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+}
+
+.calendario-evento {
+  min-height: 78px;
+  margin-bottom: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.calendario-evento-fecha {
+  width: 76px;
+}
+
+.calendario-evento-info {
+  padding: 16px;
+}
+
+.calendario-evento-info h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.calendario-evento-info p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.calendario-panel {
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+}
+
+.calendario-navegacion {
+  height: 64px;
+  background: #f8fafc;
+  border: 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.calendario-navegacion button {
+  background: #2563eb;
+}
+
+.calendario-dias {
+  background: #fff;
+  gap: 5px;
+}
+
+.calendario-dia {
+  width: 38px;
+  height: 38px;
+  color: #334155;
+}
+
+.calendario-dia-clases,
+.calendario-dia-inscripcion,
+.calendario-dia-examen,
+.calendario-dia-feriado,
+.calendario-dia-otros {
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendario-leyenda {
+  margin: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+@media (max-width: 600px) {
+  .calendario-fondo {
+    padding: 12px;
+  }
+
+  .calendario {
+    padding: 24px 16px;
+    border-radius: 16px;
+  }
+
+  .calendario-dias {
+    padding: 8px 4px 16px;
+    gap: 2px;
+  }
+
+  .calendario-dia {
+    width: 32px;
+    height: 32px;
+  }
+
+  .calendario-leyenda {
+    grid-template-columns: 1fr;
+  }
+}
+
+.calendario-evento-tipo {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}

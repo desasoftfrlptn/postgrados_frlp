@@ -133,7 +133,8 @@
 }
 
 .admin-home-campo input,
-.admin-home-campo textarea {
+.admin-home-campo textarea,
+.admin-home-campo select {
   width: 100%;
   padding: 10px 11px;
   color: #1f2937;
@@ -149,7 +150,8 @@
 }
 
 .admin-home-campo input:focus-visible,
-.admin-home-campo textarea:focus-visible {
+.admin-home-campo textarea:focus-visible,
+.admin-home-campo select:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
@@ -196,6 +198,7 @@
   .admin-home-panel form {
     padding: 20px;
   }
+}
 
 /* Noticias */
 
@@ -332,4 +335,116 @@
     grid-column: auto;
   }
 }
+
+
+/* Configuración del calendario en modo lectura */
+
+.admin-home-formulario-lectura {
+  padding: 24px;
+}
+
+.admin-home-formulario-lectura .admin-home-campo strong {
+  margin-bottom: 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-home-formulario-lectura .admin-home-campo p {
+  margin: 0;
+  color: #1f2937;
+  font-size: 16px;
+}
+
+.admin-home-acciones {
+  gap: 12px;
+}
+
+/* Separación de la gestión de eventos */
+
+.admin-calendario-eventos {
+  margin-top: 20px;
+}
+
+.admin-calendario-eventos .admin-noticias-listado h3 {
+  margin-top: 0;
+  margin-bottom: 18px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.admin-calendario-eventos .admin-noticias-tabla {
+  min-width: 620px;
+}
+
+
+/* Confirmación para activar y desactivar eventos */
+
+.admin-evento-confirmacion-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.admin-evento-confirmacion {
+  width: 100%;
+  max-width: 460px;
+  padding: 28px;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+.admin-evento-confirmacion h2 {
+  margin: 0 0 14px;
+  color: #111827;
+  font-size: 22px;
+}
+
+.admin-evento-confirmacion p {
+  margin: 0 0 12px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.admin-evento-confirmacion-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.admin-evento-confirmacion-acciones button {
+  padding: 10px 16px;
+  color: #ffffff;
+  background: #2563eb;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-evento-confirmacion-acciones button:hover {
+  background: #1d4ed8;
+}
+
+.admin-evento-confirmacion-acciones button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 480px) {
+  .admin-evento-confirmacion {
+    padding: 20px;
+  }
+
+  .admin-evento-confirmacion-acciones {
+    flex-direction: column-reverse;
+  }
 }

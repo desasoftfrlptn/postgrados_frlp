@@ -15,18 +15,6 @@ interface Gestion {
   observaciones: string | null;
 }
 
-interface Completitud {
-  legajo_id: string;
-  completitud: {
-    porcentaje: number;
-    documentos_requeridos: number;
-    documentos_presentados: number;
-    documentos_faltantes: string[];
-    completo: boolean;
-  } | null;
-  pendiente: string | null;
-}
-
 interface Evento {
   id: string;
   actor_id: string | null;
@@ -84,7 +72,6 @@ export default function GestionInscripcion({
   const token = user?.token;
 
   const [gestion, setGestion] = useState<Gestion | null>(null);
-  const [completitud, setCompletitud] = useState<Completitud | null>(null);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [datosVerificados, setDatosVerificados] = useState(false);
   const [tituloPosgrado, setTituloPosgrado] = useState("");
@@ -107,7 +94,6 @@ export default function GestionInscripcion({
 
     if (!token) {
       setGestion(null);
-      setCompletitud(null);
       setEventos([]);
       setCargando(false);
       return false;
@@ -117,9 +103,8 @@ export default function GestionInscripcion({
     setError("");
 
     try {
-      const [datos, documentos, historial] = await Promise.all([
+      const [datos, historial] = await Promise.all([
         api.get<Gestion>(`${base}/gestion`, token),
-        api.get<Completitud>(`${base}/completitud`, token),
         api.get<Evento[]>(`${base}/auditoria`, token),
       ]);
 
@@ -128,7 +113,6 @@ export default function GestionInscripcion({
       }
 
       setGestion(datos);
-      setCompletitud(documentos);
       setEventos(historial);
       setDatosVerificados(datos.datos_verificados);
       setTituloPosgrado(
@@ -356,33 +340,6 @@ export default function GestionInscripcion({
                   Guardar verificación
                 </button>
               </fieldset>
-            )}
-
-            <h3>Completitud documental</h3>
-
-            {completitud?.completitud ? (
-              <>
-                <p>
-                  {completitud.completitud.porcentaje}% —{" "}
-                  {completitud.completitud.documentos_presentados}
-                  {" de "}
-                  {completitud.completitud.documentos_requeridos}
-                  {" documentos"}
-                </p>
-
-                <ul>
-                  {completitud.completitud.documentos_faltantes.map(
-                    (documento) => (
-                      <li key={documento}>{documento}</li>
-                    ),
-                  )}
-                </ul>
-              </>
-            ) : (
-              <p>
-                {completitud?.pendiente ??
-                  "Todavía no se calculó la completitud."}
-              </p>
             )}
 
             <label>

@@ -1,114 +1,110 @@
-// Administra los parámetros generales del calendario académico público.
 
-import {
-  useEffect,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { api } from "../../../../../shared/api/client";
 import { useAuth } from "../../../../manejo-sesion/useAuth";
-
-import CampoConfiguracion from "../componentes/CampoConfiguracion";
 import MensajeHomeAdmin from "../componentes/MensajeHomeAdmin";
+import EventosAdmin from "./EventosAdmin";
 
-import type {
-  ConfiguracionPublicaRespuesta,
-} from "../tipos/homeAdmin";
-
+interface ConfiguracionCalendario {
+  valores: Record<string, string>;
+}
 
 export default function CalendarioPublicoAdmin() {
   const { user } = useAuth();
 
-  const [valores, setValores] =
-    useState<Record<string, string>>({});
+  const [valores, setValores] = useState<Record<string, string>>({});
+  const [originales, setOriginales] = useState<Record<string, string>>({});
 
-  const [cargando, setCargando] =
-    useState(true);
+  const [editando, setEditando] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
-  const [guardando, setGuardando] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [mensaje, setMensaje] =
-    useState("");
-
+  const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
 
   useEffect(() => {
-    const cargar = async () => {
+  if (!mensaje) return;
+
+  const temporizador = window.setTimeout(() => {
+    setMensaje("");
+  }, 5000);
+
+  return () => {
+    window.clearTimeout(temporizador);
+  };
+  }, [mensaje]);
+
+  useEffect(() => {
+    let activo = true;
+
+    async function cargarConfiguracion() {
       try {
-        setCargando(true);
-        setError("");
+        const respuesta = await api.get<ConfiguracionCalendario>(
+          "/configuracion-publica/calendario"
+        );
 
-        const respuesta =
-          await api.get<ConfiguracionPublicaRespuesta>(
-            "/configuracion-publica/calendario"
+        if (activo) {
+          setValores(respuesta.valores);
+          setOriginales(respuesta.valores);
+        }
+      } catch {
+        if (activo) {
+          setError(
+            "No se pudo cargar la configuración del calendario."
           );
-
-        setValores(
-          respuesta.valores
-        );
-      } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "No se pudo cargar la configuración del calendario"
-        );
+        }
       } finally {
-        setCargando(false);
+        if (activo) {
+          setCargando(false);
+        }
       }
-    };
+    }
 
-    cargar();
+    void cargarConfiguracion();
+
+    return () => {
+      activo = false;
+    };
   }, []);
 
+  function modificar() {
+    setError("");
+    setMensaje("");
+    setEditando(true);
+  }
 
-  const modificarCampo = (
-    clave: string,
-    valor: string
-  ) => {
-    setValores((anteriores) => ({
-      ...anteriores,
+  function modificarCampo(clave: string, valor: string) {
+    setValores((anterior) => ({
+      ...anterior,
       [clave]: valor,
     }));
-  };
+  }
 
+  function cancelar() {
+    setValores({ ...originales });
+    setEditando(false);
+    setError("");
+    setMensaje("");
+  }
 
-  const guardar = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
+  async function guardar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user) {
+    if (!user?.token) {
+      setError("Necesitás iniciar sesión para guardar cambios.");
       return;
     }
 
-    const anioMinimo = Number(
-      valores.anio_minimo
-    );
-
-    const anioMaximo = Number(
-      valores.anio_maximo
-    );
+    const minimo = Number(valores.anio_minimo);
+    const maximo = Number(valores.anio_maximo);
 
     if (
-      !Number.isInteger(anioMinimo) ||
-      !Number.isInteger(anioMaximo)
+      !Number.isInteger(minimo) ||
+      !Number.isInteger(maximo) ||
+      minimo > maximo
     ) {
-      setError(
-        "Los años deben ser números enteros."
-      );
-
-      return;
-    }
-
-    if (anioMinimo > anioMaximo) {
-      setError(
-        "El año mínimo no puede ser mayor que el año máximo."
-      );
-
+      setError("El rango de años ingresado no es válido.");
       return;
     }
 
@@ -117,136 +113,158 @@ export default function CalendarioPublicoAdmin() {
       setError("");
       setMensaje("");
 
-      const respuesta =
-        await api.put<ConfiguracionPublicaRespuesta>(
-          "/configuracion-publica/calendario",
-          {
-            valores,
-          },
-          user.token
-        );
-
-      setValores(
-        respuesta.valores
+      const respuesta = await api.put<ConfiguracionCalendario>(
+        "/configuracion-publica/calendario",
+        { valores },
+        user.token
       );
+
+      setValores(respuesta.valores);
+      setOriginales(respuesta.valores);
+      setEditando(false);
 
       setMensaje(
         "La configuración del calendario fue actualizada correctamente."
       );
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "No se pudieron guardar los cambios"
-      );
+    } catch {
+      setError("No se pudieron guardar los cambios.");
     } finally {
       setGuardando(false);
     }
-  };
-
-
-  if (cargando) {
-    return (
-      <p className="admin-home-cargando">
-        Cargando configuración...
-      </p>
-    );
   }
-
 
   return (
     <>
-      <MensajeHomeAdmin
-        error={error}
-        mensaje={mensaje}
-      />
+      <MensajeHomeAdmin error={error} mensaje={mensaje} />
 
       <article className="admin-home-panel">
         <header>
-          <h2>
-            Calendario público
-          </h2>
-
+          <h2>Calendario público</h2>
           <p>
-            Administrá la información general y
-            el rango de años visible.
+            Administrá la información general y el rango de años visible.
           </p>
         </header>
 
-        <form onSubmit={guardar}>
-          <div className="admin-home-campos">
-            <CampoConfiguracion
-              id="calendario-titulo"
-              etiqueta="Título de la página"
-              valor={
-                valores.titulo ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "titulo",
-                  valor
-                )
-              }
-            />
+        {cargando ? (
+          <p className="admin-home-cargando">
+            Cargando configuración...
+          </p>
+        ) : !editando ? (
+          <div className="admin-home-formulario-lectura">
+            <div className="admin-home-campos">
+              <div className="admin-home-campo">
+                <strong>Título de la página</strong>
+                <p>{valores.titulo}</p>
+              </div>
 
-            <CampoConfiguracion
-              id="calendario-descripcion"
-              etiqueta="Descripción"
-              multilinea
-              valor={
-                valores.descripcion ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "descripcion",
-                  valor
-                )
-              }
-            />
+              <div className="admin-home-campo">
+                <strong>Descripción</strong>
+                <p>{valores.descripcion}</p>
+              </div>
 
-            <CampoConfiguracion
-              id="calendario-anio-minimo"
-              etiqueta="Año mínimo visible"
-              tipo="number"
-              valor={
-                valores.anio_minimo ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "anio_minimo",
-                  valor
-                )
-              }
-            />
+              <div className="admin-home-campo">
+                <strong>Año mínimo visible</strong>
+                <p>{valores.anio_minimo}</p>
+              </div>
 
-            <CampoConfiguracion
-              id="calendario-anio-maximo"
-              etiqueta="Año máximo visible"
-              tipo="number"
-              valor={
-                valores.anio_maximo ?? ""
-              }
-              alCambiar={(valor) =>
-                modificarCampo(
-                  "anio_maximo",
-                  valor
-                )
-              }
-            />
+              <div className="admin-home-campo">
+                <strong>Año máximo visible</strong>
+                <p>{valores.anio_maximo}</p>
+              </div>
+            </div>
+
+            <footer className="admin-home-acciones">
+              <button
+                type="button"
+                onClick={modificar}
+              >
+                Modificar
+              </button>
+            </footer>
           </div>
+        ) : (
+          <form onSubmit={guardar}>
+            <div className="admin-home-campos">
+              <div className="admin-home-campo">
+                <label htmlFor="calendario-titulo">
+                  Título de la página
+                </label>
+                <input
+                  id="calendario-titulo"
+                  type="text"
+                  required
+                  value={valores.titulo ?? ""}
+                  onChange={(e) =>
+                    modificarCampo("titulo", e.target.value)
+                  }
+                />
+              </div>
 
-          <footer className="admin-home-acciones">
-            <button
-              type="submit"
-              disabled={guardando}
-            >
-              {guardando
-                ? "Guardando..."
-                : "Guardar cambios"}
-            </button>
-          </footer>
-        </form>
+              <div className="admin-home-campo">
+                <label htmlFor="calendario-descripcion">
+                  Descripción
+                </label>
+                <textarea
+                  id="calendario-descripcion"
+                  rows={3}
+                  required
+                  value={valores.descripcion ?? ""}
+                  onChange={(e) =>
+                    modificarCampo("descripcion", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="admin-home-campo">
+                <label htmlFor="calendario-anio-minimo">
+                  Año mínimo visible
+                </label>
+                <input
+                  id="calendario-anio-minimo"
+                  type="number"
+                  required
+                  value={valores.anio_minimo ?? ""}
+                  onChange={(e) =>
+                    modificarCampo("anio_minimo", e.target.value)
+                  }
+                />
+              </div>
+
+              <div className="admin-home-campo">
+                <label htmlFor="calendario-anio-maximo">
+                  Año máximo visible
+                </label>
+                <input
+                  id="calendario-anio-maximo"
+                  type="number"
+                  required
+                  value={valores.anio_maximo ?? ""}
+                  onChange={(e) =>
+                    modificarCampo("anio_maximo", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+
+            <footer className="admin-home-acciones">
+              <button
+                type="button"
+                className="admin-noticias-cancelar"
+                onClick={cancelar}
+                disabled={guardando}
+              >
+                Cancelar
+              </button>
+
+              <button type="submit" disabled={guardando}>
+                {guardando ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </footer>
+          </form>
+        )}
       </article>
+
+      <EventosAdmin />
     </>
   );
 }
