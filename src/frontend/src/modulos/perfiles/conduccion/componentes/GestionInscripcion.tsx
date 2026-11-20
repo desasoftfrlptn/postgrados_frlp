@@ -401,6 +401,7 @@ export default function GestionInscripcion({
                   <button
                     key={accion}
                     type="button"
+                    className="conduccion-listado-boton-secundario"
                     disabled={bloqueado}
                     onClick={() => void ejecutarAccion(accion)}
                   >
