@@ -1,4 +1,3 @@
-
 import {
   useEffect,
   useId,
@@ -20,7 +19,11 @@ interface ConfirmacionModalProps {
   peligroso?: boolean;
 }
 
-export default function ConfirmacionModal({
+export default function ConfirmacionModal(props: ConfirmacionModalProps) {
+  return props.abierto ? <ConfirmacionContenido {...props} /> : null;
+}
+
+function ConfirmacionContenido({
   abierto,
   titulo,
   descripcion,
@@ -58,6 +61,15 @@ export default function ConfirmacionModal({
     };
   }, [abierto]);
 
+  // Durante el procesamiento, los botones se deshabilitan.
+  // El diálogo conserva el foco hasta que vuelva a estar disponible.
+  useEffect(() => {
+    if (ocupado) dialogoRef.current?.focus();
+    else if (document.activeElement === dialogoRef.current) {
+      cancelarRef.current?.focus();
+    }
+  }, [ocupado]);
+
   // Mantiene la navegación por teclado dentro del modal.
   useEffect(() => {
     if (!abierto) return;
@@ -91,13 +103,13 @@ export default function ConfirmacionModal({
 
       if (
         evento.shiftKey &&
-        document.activeElement === primero
+        (document.activeElement === primero || !botones.includes(document.activeElement as HTMLButtonElement))
       ) {
         evento.preventDefault();
         ultimo.focus();
       } else if (
         !evento.shiftKey &&
-        document.activeElement === ultimo
+        (document.activeElement === ultimo || !botones.includes(document.activeElement as HTMLButtonElement))
       ) {
         evento.preventDefault();
         primero.focus();
@@ -140,6 +152,8 @@ export default function ConfirmacionModal({
         ref={dialogoRef}
         className="confirmacion-modal"
         role="alertdialog"
+        tabIndex={-1}
+        aria-busy={ocupado}
         aria-modal="true"
         aria-labelledby={`${id}-titulo`}
         aria-describedby={`${id}-descripcion`}

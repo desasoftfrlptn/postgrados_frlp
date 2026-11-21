@@ -1,8 +1,8 @@
-
 import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 
 import {
@@ -135,4 +135,31 @@ describe("ConfirmacionModal", () => {
       })
     ).toHaveFocus();
   });
+});
+
+it("no conserva el error de una apertura anterior", async () => {
+  const props = {
+    titulo: "Confirmar",
+    descripcion: "Operación de prueba",
+    alConfirmar: vi.fn().mockRejectedValueOnce(new Error("Error")),
+    alCancelar: vi.fn(),
+  };
+  const { rerender } = render(<ConfirmacionModal {...props} abierto />);
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar" }));
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole("button", { name: "Confirmar" })).toBeEnabled());
+  rerender(<ConfirmacionModal {...props} abierto={false} />);
+  rerender(<ConfirmacionModal {...props} abierto />);
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+it("mantiene el foco dentro del diálogo al pulsar Tab", () => {
+  render(<ConfirmacionModal abierto titulo="Confirmar" descripcion="Prueba" alConfirmar={vi.fn()} alCancelar={vi.fn()} />);
+  const cancelar = screen.getByRole("button", { name: "Cancelar" });
+  const confirmar = screen.getByRole("button", { name: "Confirmar" });
+  expect(cancelar).toHaveFocus();
+  fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+  expect(confirmar).toHaveFocus();
+  fireEvent.keyDown(document, { key: "Tab" });
+  expect(cancelar).toHaveFocus();
 });

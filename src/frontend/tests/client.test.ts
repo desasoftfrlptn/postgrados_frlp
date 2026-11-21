@@ -205,3 +205,35 @@ describe("Cliente HTTP", () => {
   });
 
 });
+
+// Casos adicionales del contrato HTTP compartido.
+describe("Respuestas y cuerpos HTTP", () => {
+  it("envía FormData sin fijar Content-Type", async () => {
+    const datos = new FormData();
+    datos.append("documento", "prueba");
+    fetchSimulado.mockResolvedValueOnce(respuestaJSON({}));
+    await api.postForm("/documentos", datos, "token");
+    const opciones = fetchSimulado.mock.calls[0][1];
+    expect(opciones?.body).toBe(datos);
+    expect(new Headers(opciones?.headers).has("Content-Type")).toBe(false);
+    expect(new Headers(opciones?.headers).get("Authorization")).toBe("Bearer token");
+  });
+
+  it("rechaza una respuesta exitosa con JSON inválido", async () => {
+    fetchSimulado.mockResolvedValueOnce(new Response("<html>Error</html>"));
+    await expect(api.get("/ejemplo")).rejects.toThrow(
+      "El servidor devolvió una respuesta con formato inválido."
+    );
+  });
+
+  it("acepta una respuesta 205 vacía", async () => {
+    fetchSimulado.mockResolvedValueOnce(new Response(null, { status: 205 }));
+    await expect(api.put("/ejemplo", {})).resolves.toBeUndefined();
+  });
+
+  it("conserva una cancelación de fetch", async () => {
+    const error = new DOMException("Cancelado", "AbortError");
+    fetchSimulado.mockRejectedValueOnce(error);
+    await expect(api.get("/ejemplo")).rejects.toBe(error);
+  });
+});

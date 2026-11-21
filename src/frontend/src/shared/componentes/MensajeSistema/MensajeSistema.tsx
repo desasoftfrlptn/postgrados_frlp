@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import "./MensajeSistema.css";
 
@@ -22,39 +21,43 @@ const iconos: Record<TipoMensaje, string> = {
   informacion: "i",
 };
 
-export default function MensajeSistema({
+export default function MensajeSistema(props: MensajeSistemaProps) {
+  if (!props.texto.trim()) return null;
+
+  return (
+    <MensajeContenido
+      key={JSON.stringify([props.tipo, props.texto])}
+      {...props}
+    />
+  );
+}
+
+function MensajeContenido({
   tipo,
   texto,
-  duracion = 5000,
+  duracion = tipo === "error" ? 0 : 5000,
   alCerrar,
 }: MensajeSistemaProps) {
-  // Identifica el contenido de la notificación actual.
-  const clave = JSON.stringify([tipo, texto]);
-
-  const [mensajeOculto, setMensajeOculto] =
-    useState<string | null>(null);
-
-  const visible =
-    Boolean(texto) && mensajeOculto !== clave;
+  const [visible, setVisible] = useState(true);
 
   // Cierra automáticamente el mensaje cuando corresponde.
   useEffect(() => {
     if (!visible || duracion <= 0) return;
 
     const temporizador = window.setTimeout(() => {
-      setMensajeOculto(clave);
+      setVisible(false);
       alCerrar?.();
     }, duracion);
 
     return () => {
       window.clearTimeout(temporizador);
     };
-  }, [clave, duracion, visible, alCerrar]);
+  }, [duracion, visible, alCerrar]);
 
   function cerrar() {
     if (!visible) return;
 
-    setMensajeOculto(clave);
+    setVisible(false);
     alCerrar?.();
   }
 

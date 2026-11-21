@@ -1,5 +1,5 @@
-
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -112,4 +112,33 @@ describe("MensajeSistema", () => {
       screen.queryByRole("status")
     ).not.toBeInTheDocument();
   });
+});
+
+it("vuelve a mostrar un mensaje anterior después de otro mensaje", () => {
+  const { rerender } = render(<MensajeSistema tipo="exito" texto="Guardado" />);
+  fireEvent.click(screen.getByRole("button", { name: "Cerrar notificación" }));
+  rerender(<MensajeSistema tipo="exito" texto="Actualizado" />);
+  rerender(<MensajeSistema tipo="exito" texto="Guardado" />);
+  expect(screen.getByRole("status")).toHaveTextContent("Guardado");
+});
+
+it("no muestra un texto compuesto únicamente por espacios", () => {
+  render(<MensajeSistema tipo="informacion" texto="   " />);
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+});
+
+it("mantiene los errores visibles por defecto", () => {
+  vi.useFakeTimers();
+  render(<MensajeSistema tipo="error" texto="No se pudo guardar" />);
+  act(() => { vi.advanceTimersByTime(10000); });
+  expect(screen.getByRole("alert")).toBeInTheDocument();
+});
+
+it("cierra automáticamente un mensaje con duración definida", () => {
+  vi.useFakeTimers();
+  const alCerrar = vi.fn();
+  render(<MensajeSistema tipo="exito" texto="Guardado" duracion={1000} alCerrar={alCerrar} />);
+  act(() => { vi.advanceTimersByTime(1000); });
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(alCerrar).toHaveBeenCalledOnce();
 });
