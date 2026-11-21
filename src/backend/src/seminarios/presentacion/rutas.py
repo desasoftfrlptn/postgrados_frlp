@@ -29,6 +29,10 @@ from src.seminarios.aplicacion.servicio import (
     desvincular_alumno_seminario,
     listar_historial_asistencias_docente,
     listar_colegas_docentes,
+    anular_calificacion_seminario,
+    listar_seminarios_disponibles_estudiante,
+    autoinscribir_estudiante_seminario,
+    autodesinscribir_estudiante_seminario,
 )
 from src.seminarios.presentacion.esquema import (
     SeminarioCrear,
@@ -153,6 +157,23 @@ async def obtener_mi_cursada(
         usuario.dni or "",
         db,
     )
+
+
+@enrutador.get(
+    "/disponibles",
+    response_model=list[SeminarioRespuesta],
+)
+async def obtener_seminarios_disponibles(
+    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(credenciales.credentials, db)
+    return await listar_seminarios_disponibles_estudiante(
+        usuario.correo_electronico,
+        usuario.dni or "",
+        db,
+    )
+
 @enrutador.post(
     "",
     response_model=SeminarioRespuesta,
@@ -294,5 +315,58 @@ async def registrar_asistencia_seminario(
         datos.fecha,
         datos.presentes_legajo_ids,
         docente.id,
+        db,
+    )
+
+@enrutador.delete(
+    "/{seminario_id}/estudiantes/{legajo_id}/calificacion",
+    response_model=AlumnoSeminarioRespuesta,
+)
+async def eliminar_calificacion_estudiante(
+    seminario_id: UUID,
+    legajo_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    docente=Depends(obtener_docente_actual),
+):
+    return await anular_calificacion_seminario(
+        seminario_id,
+        legajo_id,
+        docente.id,
+        db,
+    )
+
+@enrutador.post(
+    "/{seminario_id}/mi-inscripcion",
+    response_model=CursadaEstudianteRespuesta,
+    status_code=201,
+)
+async def inscribirme_en_seminario(
+    seminario_id: UUID,
+    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(credenciales.credentials, db)
+    return await autoinscribir_estudiante_seminario(
+        seminario_id,
+        usuario.correo_electronico,
+        usuario.dni or "",
+        db,
+    )
+
+
+@enrutador.delete(
+    "/{seminario_id}/mi-inscripcion",
+    status_code=204,
+)
+async def desinscribirme_de_seminario(
+    seminario_id: UUID,
+    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(credenciales.credentials, db)
+    await autodesinscribir_estudiante_seminario(
+        seminario_id,
+        usuario.correo_electronico,
+        usuario.dni or "",
         db,
     )

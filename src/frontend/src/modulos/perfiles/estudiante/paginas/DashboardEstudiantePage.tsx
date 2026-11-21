@@ -36,6 +36,14 @@ interface MiLegajo {
   carrera_elegida: string;
   estado: string;
   dni_pasaporte: string;
+  numero_seguimiento: string;
+}
+
+interface SeguimientoInscripcion {
+  numero_seguimiento: string;
+  estado: string;
+  observaciones: string | null;
+  documentacion_a_corregir: string[];
 }
 
 interface CursadaSeminario {
@@ -53,6 +61,7 @@ export default function DashboardEstudiantePage() {
   const { user } = useAuth();
   const [legajo, setLegajo] = useState<MiLegajo | null>(null);
   const [cursada, setCursada] = useState<CursadaSeminario[]>([]);
+  const [seguimiento, setSeguimiento] = useState<SeguimientoInscripcion | null>(null);
   const [cargandoLegajo, setCargandoLegajo] = useState(true);
   const [errorLegajo, setErrorLegajo] = useState<string | null>(null);
 
@@ -70,6 +79,14 @@ export default function DashboardEstudiantePage() {
         );
         setLegajo(respuestaLegajo);
         setErrorLegajo(null);
+        if (respuestaLegajo.numero_seguimiento && 
+    respuestaLegajo.dni_pasaporte) {
+          const seg = await api.get<SeguimientoInscripcion>(
+         
+    `/inscripcion/seguimiento/${encodeURIComponent(respuestaLegajo.numero_seguimiento)}?dni_pasaporte=${encodeURIComponent(respuestaLegajo.dni_pasaporte)}`
+          );
+            setSeguimiento(seg);
+        }
       } catch (err) {
         setErrorLegajo(
           err instanceof Error ? err.message : "Sin legajo registrado"
@@ -267,22 +284,68 @@ export default function DashboardEstudiantePage() {
             </h2>
           </header>
 
-          <div className="p-6">
-            <div className="flex items-start gap-4 bg-blue-50 p-5 rounded-lg border border-blue-100">
-              <span className="text-2xl" aria-hidden="true">
-                🔔
-              </span>
-              <div>
-                <h3 className="text-sm font-bold text-blue-900">
-                  Seguimiento de cursada
-                </h3>
-                <p className="text-sm text-blue-700 mt-1 leading-relaxed">
-                  Recordá mantener al menos 75% de asistencia (BR-002) y nota
-                  final mayor o igual a 4 (BR-003) para aprobar tus seminarios.
-                </p>
-              </div>
-            </div>
-          </div>
+          <ul className="p-6 space-y-4">
+            {seguimiento?.observaciones && (
+              <li className="flex items-start gap-4 bg-red-50 p-4 rounded-lg border border-red-200">
+                <span className="text-2xl" aria-hidden="true">⚠️</span>
+                <div>
+                  <h3 className="text-sm font-bold text-red-900">
+                    Observación en tu Legajo ({seguimiento.numero_seguimiento})
+                  </h3>
+                  <p className="text-sm text-red-700 mt-1">
+                    {seguimiento.observaciones}
+                  </p>
+                  {seguimiento.documentacion_a_corregir.length > 0 && (
+                    <p className="text-xs font-semibold text-red-800 mt-2">
+                      Documentación a corregir: {seguimiento.documentacion_a_corregir.join(", ")}
+                    </p>
+                  )}
+                </div>
+              </li>
+            )}
+
+             {cursada
+               .filter((s) => s.nota_final !== null || s.porcentaje_asistencia < 75)
+               .map((s) => (
+                 <li
+                   key={`notif-${s.inscripcion_id}`}
+                   className={`flex items-start gap-4 p-4 rounded-lg border ${
+                   s.porcentaje_asistencia < 75
+                      ? "bg-amber-50 border-amber-200"
+                     : "bg-emerald-50 border-emerald-200"
+                  }`}
+                >
+                   <span className="text-2xl" aria-hidden="true">🔔</span>
+                   <div>
+                     <h3 className="text-sm font-bold text-slate-900">
+                       {s.seminario_nombre}
+                     </h3>
+                    <p className="text-sm text-slate-700 mt-1">
+                      {s.nota_final !== null
+                        ? `Calificación final registrada: ${s.nota_final} (${s.estado}).`
+                        : `Atención: tu asistencia actual es ${s.porcentaje_asistencia}% (mínimo requerido: 75%).`}
+                    </p>
+                  </div>
+                </li>
+              ))}
+
+            {!seguimiento?.observaciones &&
+              cursada.every(
+                (s) => s.nota_final === null && s.porcentaje_asistencia >= 75
+              ) && (
+                <li className="flex items-start gap-4 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                  <span className="text-2xl" aria-hidden="true">🔔</span>
+                  <div>
+                    <h3 className="text-sm font-bold text-blue-900">
+                      Sin alertas pendientes
+                    </h3>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Tu legajo ({legajo?.numero_seguimiento ?? "en trámite"}) y tus seminarios no registran observaciones pendientes.
+                    </p>
+                  </div>
+                </li>
+               )}
+          </ul>
         </article>
       </section>
     </section>

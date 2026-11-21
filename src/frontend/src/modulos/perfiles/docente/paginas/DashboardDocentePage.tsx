@@ -11,6 +11,10 @@ interface SeminarioDocente {
   carrera_nombre: string;
   fecha_inicio: string;
 }
+interface AlumnoResumen {
+  total_clases: number;
+  nota_final: number | null;
+}
 
 interface TarjetaDocenteProps {
   titulo: string;
@@ -57,10 +61,12 @@ function TarjetaDocente({
 
 export default function DashboardDocentePage() {
   const { user } = useAuth();
-    const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
+  const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
+  const [notasPendientes, setNotasPendientes] = useState<number>(0);
+  const [seminariosSinClases, setSeminariosSinClases] = useState<number>(0);
   const [totalEstudiantes, setTotalEstudiantes] = useState<number>(0);
 
-  useEffect(() => {
+    useEffect(() => {
     async function cargarResumen() {
       if (!user?.token) return;
       try {
@@ -71,14 +77,22 @@ export default function DashboardDocentePage() {
         setSeminarios(lista);
 
         let acumulado = 0;
+        let sinNota = 0;
+        let sinClases = 0;
         for (const sem of lista) {
-          const alumnos = await api.get<unknown[]>(
+          const alumnos = await api.get<AlumnoResumen[]>(
             `/seminarios/${sem.id}/estudiantes`,
             user.token
           );
           acumulado += alumnos.length;
+          sinNota += alumnos.filter((a) => a.nota_final === null).length;
+          if (alumnos.length > 0 && alumnos.every((a) => a.total_clases === 0)) {
+            sinClases += 1;
+          }
         }
         setTotalEstudiantes(acumulado);
+        setNotasPendientes(sinNota);
+        setSeminariosSinClases(sinClases);
       } catch {
         // Si aún no tiene seminarios asignados, mantiene 0
       }
@@ -164,17 +178,19 @@ export default function DashboardDocentePage() {
             </h2>
           </header>
 
-          <ul className="p-4 space-y-4">
+                       <ul className="p-4 space-y-4">
             <li className="flex items-start gap-4 bg-red-50 p-4 rounded-lg border border-red-100">
               <span className="text-2xl" aria-hidden="true">
                 🔔
               </span>
               <div>
                 <h3 className="text-sm font-bold text-red-900">
-                  Recordatorio: Carga de notas
+                  Actas de cierre: {notasPendientes} calificación/es pendiente/s
                 </h3>
                 <p className="text-sm text-red-700 mt-1">
-                  Falta completar información de notas de algunos estudiantes en el acta de cierre.
+                  {notasPendientes > 0
+                    ? `Tenés ${notasPendientes} estudiante/s inscripto/s sin nota final cargada.`
+                    : "Todas las calificaciones de tus estudiantes están al día."}
                 </p>
               </div>
             </li>
@@ -185,10 +201,12 @@ export default function DashboardDocentePage() {
               </span>
               <div>
                 <h3 className="text-sm font-bold text-slate-800">
-                  Recordatorio: Asistencias
+                  Asistencias: {seminariosSinClases} seminario/s sin clases registradas
                 </h3>
                 <p className="text-sm text-slate-600 mt-1">
-                  Hay asistencias pendientes de guardar de tu última clase.
+                  {seminariosSinClases > 0
+                    ? `Tenés ${seminariosSinClases} seminario/s con alumnos inscriptos donde aún no registraste ninguna clase.`
+                    : "Todos tus seminarios con alumnos tienen clases registradas."}
                 </p>
               </div>
             </li>

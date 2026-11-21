@@ -145,7 +145,7 @@ const handleSubmit = async (event: React.FormEvent) => {
         )
       );
     }
-    setMensaje("Las calificaciones se han guardado exitosamente.");
+        setMensaje("Las calificaciones se han guardado exitosamente.");
   } catch (err) {
     setError(
       err instanceof Error
@@ -154,6 +154,37 @@ const handleSubmit = async (event: React.FormEvent) => {
     );
   }
 };
+
+  const anularNota = async (alumno: AlumnoSeminario) => {
+    setMensaje(null);
+    setError(null);
+    if (!user?.token || !seminarioId) return;
+
+    try {
+      const actualizado = await api.delete<AlumnoSeminario>(
+        `/seminarios/${seminarioId}/estudiantes/${alumno.legajo_id}/calificacion`,
+        user.token
+      );
+      setAlumnos((prev) =>
+        prev.map((a) => (a.legajo_id === alumno.legajo_id ? actualizado : a))
+      );
+      setNotas((prev) => ({
+        ...prev,
+        [alumno.legajo_id]: "",
+      }));
+      setMensaje(
+        `Se anuló la calificación de ${alumno.apellido}, ${alumno.nombre} (vuelve a estado CURSANDO).`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo anular la calificación."
+      );
+    }
+  };
+
+  const seminarioActual = seminarios.find((s) => s.id === seminarioId);
 
   return (
     <section className="perfil-pagina animate-fade-in">
@@ -209,8 +240,12 @@ const handleSubmit = async (event: React.FormEvent) => {
 
       <article className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-6">
         <header className="bg-slate-50 border-b border-slate-200 p-5">
-          <h2 className="text-lg font-bold text-slate-800">Metodología de la Investigación</h2>
-          <p className="text-sm text-slate-500 mt-1">Cohorte 2026 - Acta de Cierre</p>
+          <h2 className="text-lg font-bold text-slate-800">
+            {seminarioActual?.nombre ?? "Seminario"}
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            {seminarioActual?.carrera_nombre ?? "Posgrado"} - Acta de Cierre
+          </p>
         </header>
 
         {/* Formulario que envuelve toda la tabla de carga de notas */}
@@ -286,9 +321,19 @@ const handleSubmit = async (event: React.FormEvent) => {
                             [alumno.legajo_id]: e.target.value,
                           })
                         }
-                        placeholder="Ej: 7.5"
+                                                placeholder="Ej: 7.5"
                         className="border border-slate-300 rounded-md p-2 text-center text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-24"
-                        />
+                      />
+                      {alumno.nota_final !== null && (
+                        <button
+                          type="button"
+                          onClick={() => anularNota(alumno)}
+                          className="ml-2 px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded text-xs transition-colors"
+                          title="Anular calificación cargada"
+                        >
+                          Anular
+                        </button>
+                      )}
                     </td>
 
                   </tr>

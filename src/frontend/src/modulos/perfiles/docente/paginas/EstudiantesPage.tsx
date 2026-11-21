@@ -17,8 +17,11 @@ interface AlumnoSeminario {
   nombre: string;
   correo_electronico: string;
   carrera_elegida: string;
+  asistencias: number;
+  total_clases: number;
+  porcentaje_asistencia: number;
   estado: string;
-    nota_final: number | null;
+  nota_final: number | null;
 }
 
 export default function EstudiantesPage() {
@@ -59,6 +62,8 @@ const [dniNuevo, setDniNuevo] = useState("");
 const [cargando, setCargando] = useState(true);
 const [mensaje, setMensaje] = useState<string | null>(null);
 const [error, setError] = useState<string | null>(null);
+const [estudianteDetalle, setEstudianteDetalle] =
+  useState<AlumnoSeminario | null>(null);
 
 useEffect(() => {
   async function cargarSeminarios() {
@@ -315,7 +320,14 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                     </a>
                   </td>
 
-               <td className="p-4 text-center">
+                              <td className="p-4 text-center space-x-2 whitespace-nowrap">
+                 <button
+                   type="button"
+                   onClick={() => setEstudianteDetalle(estudiante)}
+                   className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md text-xs transition-colors"
+                 >
+                   Ver detalle
+                 </button>
                  <button
                    type="button"
                    disabled={estudiante.nota_final !== null}
@@ -332,13 +344,71 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                </td>
 
              </tr>
-
-                
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {estudianteDetalle && (
+        <article
+          className="bg-white rounded-xl shadow-sm border border-blue-200 p-6 mt-6"
+          aria-label="Detalle académico del estudiante"
+        >
+          <header className="flex justify-between items-center border-b border-slate-200 pb-4 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">
+                Detalle del Estudiante: {estudianteDetalle.apellido},{" "}
+                {estudianteDetalle.nombre}
+              </h2>
+              <p className="text-sm text-slate-500">
+                DNI / Legajo: {estudianteDetalle.dni_pasaporte} · Seminario:{" "}
+                {seminarioActual?.nombre ?? "-"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEstudianteDetalle(null)}
+              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md text-xs"
+            >
+              Cerrar detalle ✕
+            </button>
+          </header>
+
+          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Carrera de Posgrado</dt>
+              <dd className="text-slate-800 font-bold mt-1">
+                {estudianteDetalle.carrera_elegida}
+              </dd>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Correo Institucional</dt>
+              <dd className="text-blue-700 font-bold mt-1 break-all">
+                {estudianteDetalle.correo_electronico}
+              </dd>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Asistencia Acumulada (BR-002)</dt>
+              <dd className="text-slate-800 font-bold mt-1">
+                {estudianteDetalle.porcentaje_asistencia}% (
+                {estudianteDetalle.asistencias} de {estudianteDetalle.total_clases}{" "}
+                clases)
+              </dd>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Calificación y Condición (BR-003)</dt>
+              <dd className="text-slate-800 font-bold mt-1">
+                Nota: {estudianteDetalle.nota_final ?? "Sin calificar"} ·{" "}
+                {estudianteDetalle.estado}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      )}
     </section>
   );
 }

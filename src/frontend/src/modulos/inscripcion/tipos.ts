@@ -35,6 +35,7 @@ export interface DatosInscripcion {
 export interface EstadoInscripcion {
   numero_seguimiento: string;
   estado: string;
-  observaciones?: string[];
+  observaciones?: string | string[];
   documentacion_pendiente?: string[];
+  documentacion_a_corregir?: string[];
 }
