@@ -1,25 +1,15 @@
-
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../useAuth";
-import type { Rol } from "../../../shared/tipos";
+import { obtenerRutaInicioPorRol } from "../rutasPorRol";
 
 import "./AccesoDenegadoPage.css";
-
-const destinoPorRol: Record<Rol, string> = {
-  ADMIN: "/dashboard/administrador",
-  ASPIRANTE: "/dashboard",
-  ALUMNO: "/dashboard/general",
-  COORDINADOR: "/dashboard/conduccion",
-  CPR: "/dashboard/general",
-  DOCENTE: "/dashboard/docente",
-};
 
 export default function AccesoDenegadoPage() {
   const { user } = useAuth();
 
   const destino = user
-    ? destinoPorRol[user.rol]
+    ? obtenerRutaInicioPorRol(user.rol)
     : "/login";
 
   return (
@@ -43,7 +33,7 @@ export default function AccesoDenegadoPage() {
         to={destino}
         className="acceso-denegado-enlace"
       >
-        Volver a mi panel
+        {user?.rol === "ASPIRANTE" ? "Volver al sitio público" : "Volver a mi panel"}
       </Link>
     </section>
   );

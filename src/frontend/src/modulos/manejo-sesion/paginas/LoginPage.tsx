@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../useAuth";
+import { obtenerRutaInicioPorRol } from "../rutasPorRol";
 import imagenFondo from "../../../imagenes/hero-inicio.jpg";
 
 import "./ManejoSesion.css";
@@ -17,18 +18,13 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
 
-  /*
-   * CAPTCHA temporalmente deshabilitado para pruebas.
-   *
-   * Se conserva su estado para cuando se reactive:
-   *
-   * const [captchaToken, setCaptchaToken] = useState("");
-   */
-
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+
+    if (enviando) return;
+
     setError("");
 
     if (!email.trim() || !password.trim()) {
@@ -38,22 +34,20 @@ export default function LoginPage() {
       return;
     }
 
-    /*
-     * CAPTCHA temporalmente deshabilitado.
-     *
-     * Cuando se reactive, validar el token antes
-     * de realizar el login y verificarlo en Backend.
-     */
+    // CAPTCHA pendiente de reactivación y validación en Backend.
 
     try {
       setEnviando(true);
 
       const sesion = await login(email, password);
 
-      /*
-       * Si es el primer ingreso, se solicita
-       * el cambio obligatorio de contraseña.
-       */
+      // El aspirante permanece en el sitio público.
+      if (sesion.rol === "ASPIRANTE") {
+        navigate("/", { replace: true });
+        return;
+      }
+
+      // Cambio obligatorio de contraseña en el primer ingreso.
       if (sesion.debeCambiarContrasena) {
         navigate("/cambiar-contrasena-inicial", {
           replace: true,
@@ -61,47 +55,8 @@ export default function LoginPage() {
         return;
       }
 
-      /*
-       * Cada rol accede directamente
-       * a su pantalla de inicio.
-       */
-      if (sesion.rol === "ADMIN") {
-        navigate("/dashboard/administrador", {
-          replace: true,
-        });
-        return;
-      }
-
-      if (sesion.rol === "DOCENTE") {
-        navigate("/dashboard/docente", {
-          replace: true,
-        });
-        return;
-      }
-
-      if (sesion.rol === "ASPIRANTE" || sesion.rol === "ALUMNO") {
-        navigate("/dashboard", {
-          replace: true,
-        });
-        return;
-      }
-
-      /*
-       * El Equipo de Conducción accede
-       * directamente a su panel de inicio.
-       */
-      if (sesion.rol === "COORDINADOR") {
-        navigate("/dashboard/conduccion", {
-          replace: true,
-        });
-        return;
-      }
-
-      /*
-       * CPR mantiene el dashboard general
-       * hasta contar con su panel específico.
-       */
-      navigate("/dashboard/general", {
+      // Redirección centralizada según el rol.
+      navigate(obtenerRutaInicioPorRol(sesion.rol), {
         replace: true,
       });
     } catch (error) {
@@ -115,6 +70,10 @@ export default function LoginPage() {
     }
   };
 
+  const textoMostrarPassword = mostrarPassword
+    ? "Ocultar contraseña"
+    : "Mostrar contraseña";
+
   return (
     <section
       className="sesion"
@@ -124,10 +83,16 @@ export default function LoginPage() {
       <form
         className="sesion-formulario"
         onSubmit={handleSubmit}
+        aria-busy={enviando}
       >
-        {motivoCierre && <p role="status">{motivoCierre}</p>}
+        {motivoCierre && (
+          <p className="sesion-error" role="status">
+            {motivoCierre}
+          </p>
+        )}
+
         <header className="sesion-encabezado">
-          <h1 id="titulo-login">Iniciar Sesión</h1>
+          <h1 id="titulo-login">Iniciar sesión</h1>
           <p>
             Ingresá tus credenciales para acceder al sistema
           </p>
@@ -140,7 +105,7 @@ export default function LoginPage() {
         )}
 
         <label htmlFor="email">
-          Correo Electrónico{" "}
+          Correo electrónico{" "}
           <span aria-hidden="true">*</span>
         </label>
 
@@ -151,6 +116,7 @@ export default function LoginPage() {
           placeholder="usuario@frlp.utn.edu.ar"
           autoComplete="email"
           required
+          disabled={enviando}
           value={email}
           onChange={(event) =>
             setEmail(event.target.value)
@@ -169,6 +135,7 @@ export default function LoginPage() {
             type={mostrarPassword ? "text" : "password"}
             autoComplete="current-password"
             required
+            disabled={enviando}
             value={password}
             onChange={(event) =>
               setPassword(event.target.value)
@@ -179,19 +146,11 @@ export default function LoginPage() {
             type="button"
             className="sesion-password-mostrar"
             onClick={() =>
-              setMostrarPassword(!mostrarPassword)
+              setMostrarPassword((actual) => !actual)
             }
-            aria-label={
-              mostrarPassword
-                ? "Ocultar contraseña"
-                : "Mostrar contraseña"
-            }
+            aria-label={textoMostrarPassword}
             aria-pressed={mostrarPassword}
-            title={
-              mostrarPassword
-                ? "Ocultar contraseña"
-                : "Mostrar contraseña"
-            }
+            title={textoMostrarPassword}
           >
             {mostrarPassword ? (
               <svg
@@ -234,34 +193,12 @@ export default function LoginPage() {
           ¿Olvidaste tu contraseña?
         </Link>
 
-        {/*
-          CAPTCHA temporalmente comentado
-          para las pruebas de inicio de sesión.
-
-          Conservar el componente y sus callbacks
-          para volver a habilitarlo posteriormente.
-
-          <Captcha
-            onVerify={(token: string) => {
-              setCaptchaToken(token);
-
-              if (token) {
-                setError("");
-              }
-            }}
-            onError={() => {
-              setCaptchaToken("");
-              setError("No se pudo cargar el CAPTCHA");
-            }}
-          />
-        */}
-
         <button
           className="sesion-boton"
           type="submit"
           disabled={enviando}
         >
-          {enviando ? "Ingresando..." : "Iniciar Sesión"}
+          {enviando ? "Ingresando..." : "Iniciar sesión"}
         </button>
       </form>
     </section>

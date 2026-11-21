@@ -41,6 +41,7 @@ interface GestionPrueba {
   fecha_matricula: string | null;
   fecha_baja: string | null;
   observaciones: string | null;
+  documentacion_a_corregir: string[];
 }
 
 let gestionActual: GestionPrueba;
@@ -56,6 +57,7 @@ beforeEach(() => {
     fecha_matricula: null,
     fecha_baja: null,
     observaciones: null,
+    documentacion_a_corregir: [],
   };
 
   vi.mocked(api.get).mockReset();
@@ -154,6 +156,7 @@ it("envía la acción y actualiza el estado", async () => {
         accion: "REVISAR",
         estado_esperado: "PENDIENTE",
         comentario: null,
+        documentacion_a_corregir: [],
       },
       "token-prueba",
     );
@@ -163,7 +166,7 @@ it("envía la acción y actualiza el estado", async () => {
     await screen.findByText("Operación registrada."),
   ).toBeInTheDocument();
 
-  expect(screen.getByText("EN_REVISION")).toBeInTheDocument();
+  expect(screen.getByText("EN REVISION")).toBeInTheDocument();
 
   expect(onEstadoActualizado).toHaveBeenCalledWith(
     "EN_REVISION",
@@ -201,13 +204,13 @@ it("guarda la verificación", async () => {
 
   fireEvent.click(
     screen.getByRole("checkbox", {
-      name: "Revisé los datos personales y académicos",
+      name: /Revisé los datos personales y académicos/,
     }),
   );
 
   fireEvent.change(
     screen.getByRole("combobox", {
-      name: "¿Tiene título de posgrado?",
+      name: /¿Tiene título de posgrado\?/,
     }),
     { target: { value: "no" } },
   );
@@ -234,7 +237,7 @@ it("guarda la verificación", async () => {
   ).toBeInTheDocument();
 });
 
-it("exige comentario para observar", async () => {
+it("exige observación o documentos para solicitar correcciones", async () => {
   gestionActual.estado = "EN_REVISION";
 
   render(<GestionInscripcion legajoId="legajo-1" />);
@@ -250,7 +253,7 @@ it("exige comentario para observar", async () => {
   fireEvent.click(boton);
 
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "Escribí qué debe corregir el aspirante.",
+    "Escribí una observación o seleccioná al menos un documento para corregir.",
   );
 
   expect(api.post).not.toHaveBeenCalled();
@@ -296,7 +299,7 @@ it("envía una observación con comentario", async () => {
 
   fireEvent.change(
     screen.getByRole("textbox", {
-      name: "Comentario u observaciones",
+      name: "Observaciones para el aspirante",
     }),
     { target: { value: "Falta el título" } },
   );
@@ -311,10 +314,42 @@ it("envía una observación con comentario", async () => {
         accion: "OBSERVAR",
         estado_esperado: "EN_REVISION",
         comentario: "Falta el título",
+        documentacion_a_corregir: [],
       },
       "token-prueba",
     );
   });
 
+  expect(await screen.findByText("OBSERVADO")).toBeInTheDocument();
+});
+
+it("permite solicitar correcciones documentales sin comentario", async () => {
+  gestionActual.estado = "EN_REVISION";
+  vi.mocked(api.post).mockImplementationOnce(async <T,>() => {
+    gestionActual.estado = "OBSERVADO";
+    gestionActual.documentacion_a_corregir = ["DNI_PASAPORTE"];
+    return { ...gestionActual } as T;
+  });
+
+  render(<GestionInscripcion legajoId="legajo-1" />);
+  const boton = await screen.findByRole("button", {
+    name: "Solicitar correcciones",
+  });
+  await waitFor(() => expect(boton).toBeEnabled());
+  fireEvent.click(screen.getByRole("checkbox", { name: "DNI o pasaporte" }));
+  fireEvent.click(boton);
+
+  await waitFor(() => {
+    expect(api.post).toHaveBeenCalledWith(
+      "/conduccion/legajos/legajo-1/acciones",
+      {
+        accion: "OBSERVAR",
+        estado_esperado: "EN_REVISION",
+        comentario: null,
+        documentacion_a_corregir: ["DNI_PASAPORTE"],
+      },
+      "token-prueba",
+    );
+  });
   expect(await screen.findByText("OBSERVADO")).toBeInTheDocument();
 });

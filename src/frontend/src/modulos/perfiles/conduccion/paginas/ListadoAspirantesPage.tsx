@@ -214,24 +214,23 @@ export default function ListadoAspirantesPage() {
       "Cohorte no disponible"
     );
   }
-  function alActualizarEstado(legajoId: string, estado: string) {
-    // Se invoca únicamente cuando GestionInscripcion confirma la operación.
-    setLegajos((anteriores) =>
-      anteriores.map((legajo) =>
-        legajo.id === legajoId ? { ...legajo, estado } : legajo,
-      ),
-    );
-    // No se realiza una nueva consulta después del cambio confirmado.
-  }
   const legajoGestionando =
     legajos.find((legajo) => legajo.id === legajoGestionandoId) ?? null;
+
   const actualizarEstadoGestion = useCallback(
     (estado: string) => {
-      if (legajoGestionando) {
-        alActualizarEstado(legajoGestionando.id, estado);
-      }
+      if (!legajoGestionandoId) return;
+
+      setLegajos((anteriores) => {
+        const legajo = anteriores.find((item) => item.id === legajoGestionandoId);
+        if (!legajo || legajo.estado === estado) return anteriores;
+
+        return anteriores.map((item) =>
+          item.id === legajoGestionandoId ? { ...item, estado } : item,
+        );
+      });
     },
-    [legajoGestionando?.id],
+    [legajoGestionandoId],
   );
   const hayFiltros = Object.values(filtros).some((valor) => valor.trim() !== "");
   const cantidadFiltrosAvanzados =
@@ -528,4 +527,3 @@ export default function ListadoAspirantesPage() {
     </section>
   );
 }
-

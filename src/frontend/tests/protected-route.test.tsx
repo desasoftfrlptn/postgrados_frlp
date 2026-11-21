@@ -1,4 +1,3 @@
-
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,6 +32,7 @@ function mostrarRuta(
   return render(
     <MemoryRouter initialEntries={["/dashboard/administrador"]}>
       <Routes>
+        <Route path="/" element={<h1>Sitio público</h1>} />
         <Route
           path="/login"
           element={<div>Inicio de sesión</div>}
@@ -73,8 +73,13 @@ describe("ProtectedRoute", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("redirige al aspirante al sitio público", () => {
+    mostrarRuta(usuarioConRol("ASPIRANTE"), ["ADMIN"]);
+    expect(screen.getByRole("heading", { name: "Sitio público" })).toBeInTheDocument();
+    expect(screen.queryByText("Contenido privado")).not.toBeInTheDocument();
+  });
+
   it.each<Rol>([
-    "ASPIRANTE",
     "ALUMNO",
     "DOCENTE",
     "COORDINADOR",

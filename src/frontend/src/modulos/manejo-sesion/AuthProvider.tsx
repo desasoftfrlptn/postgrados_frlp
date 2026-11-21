@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { api, } from "../../shared/api/client";
+import { api } from "../../shared/api/client";
 
 import {
   AuthContext,
@@ -100,6 +100,10 @@ export function AuthProvider({
     if (intento !== intentoLogin.current) {
       throw new Error("El inicio de sesión fue cancelado.");
     }
+    if (respuesta.tipo_usuario === "ASPIRANTE") {
+      throw new Error("Los aspirantes realizan su seguimiento desde el sitio público.");
+    }
+
     setMotivoCierre("");
     const usuario: AuthState = {
       id: respuesta.id,
@@ -121,23 +125,12 @@ export function AuthProvider({
   };
 
 
-  const confirmarCambioContrasena =
-    () => {
-      setUser(
-        (usuarioActual) => {
-          if (!usuarioActual) {
-            return null;
-          }
-
-          return {
-            ...usuarioActual,
-            debeCambiarContrasena:
-              false,
-          };
-        }
-      );
-    };
-
+  const confirmarCambioContrasena = () => {
+    setUser((usuarioActual) => {
+      if (!usuarioActual) return null;
+      return { ...usuarioActual, debeCambiarContrasena: false };
+    });
+  };
 
   const logout = () => {
     intentoLogin.current += 1;

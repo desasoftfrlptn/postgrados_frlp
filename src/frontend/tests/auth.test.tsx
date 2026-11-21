@@ -25,7 +25,7 @@ const respuestaLogin = {
   apellido: "Perez",
   dni: "12345678",
   correo_electronico: "ana@example.com",
-  tipo_usuario: "ASPIRANTE",
+  tipo_usuario: "ALUMNO",
   token: "token-actual",
   debe_cambiar_contrasena: true,
 };
@@ -85,6 +85,19 @@ describe("useAuth y AuthProvider", () => {
     );
   });
 
+  it("no habilita una sesión privada para un aspirante", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      ...respuestaLogin,
+      tipo_usuario: "ASPIRANTE",
+    });
+    const { result } = prepararHook();
+    await act(async () => {
+      await expect(result.current.login("ana@example.com", "Clave123!"))
+        .rejects.toThrow("Los aspirantes realizan su seguimiento desde el sitio público.");
+    });
+    expect(result.current.user).toBeNull();
+  });
+
   it("inicia sin usuario autenticado", () => {
     const { result } = prepararHook();
 
@@ -115,7 +128,7 @@ describe("useAuth y AuthProvider", () => {
       apellido: "Perez",
       dni: "12345678",
       email: "ana@example.com",
-      rol: "ASPIRANTE",
+      rol: "ALUMNO",
       token: "token-actual",
       debeCambiarContrasena: true,
     });

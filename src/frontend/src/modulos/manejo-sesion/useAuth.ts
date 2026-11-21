@@ -1,15 +1,9 @@
-// Define el contexto de autenticación y el acceso a la sesión actual.
 
-import {
-  createContext,
-  useContext,
-} from "react";
+import { createContext, useContext } from "react";
 
-import type {
-  Rol,
-} from "../../shared/tipos";
+import type { Rol } from "../../shared/tipos";
 
-
+// Datos del usuario autenticado.
 export interface AuthState {
   id: string;
   email: string;
@@ -21,7 +15,7 @@ export interface AuthState {
   debeCambiarContrasena: boolean;
 }
 
-
+// Operaciones disponibles para gestionar la sesión.
 export interface AuthContextValue {
   user: AuthState | null;
   motivoCierre?: string;
@@ -36,24 +30,18 @@ export interface AuthContextValue {
   confirmarCambioContrasena: () => void;
 }
 
-
 export const AuthContext =
-  createContext<AuthContextValue | null>(
-    null
-  );
+  createContext<AuthContextValue | null>(null);
 
+// Permite acceder al contexto de autenticación.
+export function useAuth(): AuthContextValue {
+  const contexto = useContext(AuthContext);
 
-export function useAuth() {
-  const ctx =
-    useContext(
-      AuthContext
-    );
-
-  if (!ctx) {
+  if (!contexto) {
     throw new Error(
       "useAuth debe usarse dentro de AuthProvider"
     );
   }
 
-  return ctx;
+  return contexto;
 }

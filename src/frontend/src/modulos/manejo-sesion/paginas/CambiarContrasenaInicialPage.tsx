@@ -16,6 +16,7 @@ import {
 import {
   useAuth,
 } from "../useAuth";
+import { obtenerRutaInicioPorRol } from "../rutasPorRol";
 
 import "./ManejoSesion.css";
 
@@ -49,31 +50,12 @@ export default function CambiarContrasenaInicialPage() {
 
   const continuarSegunRol = () => {
     if (!user) {
-      navigate("/login");
+      navigate("/login", { replace: true });
       return;
     }
 
-    if (user.rol === "DOCENTE") {
-      navigate(
-        "/dashboard/docente"
-      );
-
-      return;
-    }
-
-    if (user.rol === "ASPIRANTE") {
-      navigate(
-        "/dashboard"
-      );
-
-      return;
-    }
-
-    navigate(
-      "/dashboard/general"
-    );
+    navigate(obtenerRutaInicioPorRol(user.rol), { replace: true });
   };
-
 
   const guardar = async (
     event: FormEvent<HTMLFormElement>
@@ -81,7 +63,7 @@ export default function CambiarContrasenaInicialPage() {
     event.preventDefault();
 
     if (!user) {
-      navigate("/login");
+      navigate("/login", { replace: true });
       return;
     }
 
@@ -165,6 +147,7 @@ export default function CambiarContrasenaInicialPage() {
 
         <input
           id="contrasena-nueva"
+          autoComplete="new-password"
           type="password"
           required
           minLength={6}
@@ -183,6 +166,7 @@ export default function CambiarContrasenaInicialPage() {
 
         <input
           id="repetir-contrasena"
+          autoComplete="new-password"
           type="password"
           required
           minLength={6}
