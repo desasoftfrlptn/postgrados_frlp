@@ -69,7 +69,7 @@ export default function MiPerfilPage() {
     user?.rol === "DOCENTE";
 
   const esEstudiante =
-    user?.rol === "ASPIRANTE";
+    user?.rol === "ASPIRANTE" || user?.rol === "ALUMNO";
 
 
   const rol =
@@ -77,13 +77,15 @@ export default function MiPerfilPage() {
       ? "Administrador"
       : user?.rol === "DOCENTE"
         ? "Docente"
-        : user?.rol === "ASPIRANTE"
-          ? "Estudiante"
-          : user?.rol === "COORDINADOR"
-            ? "Coordinador"
-            : user?.rol === "CPR"
-              ? "CPR"
-              : "Usuario";
+        : user?.rol === "ALUMNO"
+          ? "Alumno"
+          : user?.rol === "ASPIRANTE"
+            ? "Aspirante"
+            : user?.rol === "COORDINADOR"
+              ? "Coordinador"
+              : user?.rol === "CPR"
+                ? "CPR"
+                : "Usuario";
 
 
   const datosIniciales: DatosPerfil = {

@@ -17,7 +17,11 @@ interface AlumnoSeminario {
   nombre: string;
   correo_electronico: string;
   carrera_elegida: string;
+  asistencias: number;
+  total_clases: number;
+  porcentaje_asistencia: number;
   estado: string;
+  nota_final: number | null;
 }
 
 export default function EstudiantesPage() {
@@ -58,6 +62,8 @@ const [dniNuevo, setDniNuevo] = useState("");
 const [cargando, setCargando] = useState(true);
 const [mensaje, setMensaje] = useState<string | null>(null);
 const [error, setError] = useState<string | null>(null);
+const [estudianteDetalle, setEstudianteDetalle] =
+  useState<AlumnoSeminario | null>(null);
 
 useEffect(() => {
   async function cargarSeminarios() {
@@ -107,32 +113,67 @@ useEffect(() => {
   cargarEstudiantes();
 }, [seminarioId, user?.token]);
 
-const asociarEstudiante = async (event: React.FormEvent) => {
-  event.preventDefault();
-  setMensaje(null);
-  setError(null);
+  const asociarEstudiante = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setMensaje(null);
+    setError(null);
 
-  if (!user?.token || !seminarioId || !dniNuevo.trim()) return;
+    if (!user?.token) return;
+    if (!seminarioId) {
+      setError("Seleccioná un seminario asignado antes de inscribir.");
+      return;
+    }
+    if (!dniNuevo.trim()) {
+      setError("Ingresá el DNI del estudiante a inscribir.");
+      return;
+    }
 
-  try {
-    const nuevo = await api.post<AlumnoSeminario>(
-      `/seminarios/${seminarioId}/estudiantes`,
-      { dni_pasaporte: dniNuevo.trim() },
-      user.token
-    );
-    setEstudiantes((prev) => [...prev, nuevo]);
-    setDniNuevo("");
-    setMensaje(
-      `Estudiante ${nuevo.apellido}, ${nuevo.nombre} asociado al seminario.`
-    );
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : "No se pudo asociar al estudiante."
-    );
-  }
-};
+    try {
+      const nuevo = await api.post<AlumnoSeminario>(
+        `/seminarios/${seminarioId}/estudiantes`,
+        { dni_pasaporte: dniNuevo.trim() },
+        user.token
+      );
+      setEstudiantes((prev) => [...prev, nuevo]);
+      setDniNuevo("");
+      setMensaje(
+        `Estudiante ${nuevo.apellido}, ${nuevo.nombre} asociado al seminario.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo asociar al estudiante."
+      );
+    }
+  };
+
+  const desvincularEstudiante = async (estudiante: AlumnoSeminario) => {
+    setMensaje(null);
+    setError(null);
+
+    if (!user?.token || !seminarioId) return;
+
+    try {
+      await api.delete(
+        `/seminarios/${seminarioId}/estudiantes/${estudiante.legajo_id}`,
+        user.token
+      );
+      setEstudiantes((prev) =>
+        prev.filter((e) => e.legajo_id !== estudiante.legajo_id)
+      );
+      setMensaje(
+        `Estudiante ${estudiante.apellido}, ${estudiante.nombre} desvinculado del seminario.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo desvincular al estudiante."
+      );
+    }
+  };
+
 
 const seminarioActual = seminarios.find((s) => s.id === seminarioId);
 const estudiantesFiltrados = estudiantes.filter((e) =>
@@ -237,12 +278,13 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                 <th scope="col" className="p-4 font-bold">Seminario</th>
                 <th scope="col" className="p-4 font-bold">Carrera de Posgrado</th>
                 <th scope="col" className="p-4 font-bold text-center">Contacto</th>
+                <th scope="col" className="p-4 font-bold text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {cargando && (
                 <tr>
-                  <td colSpan={5} className="p-4 text-center text-slate-500">
+                  <td colSpan={6} className="p-4 text-center text-slate-500">
                     Cargando estudiantes...
                   </td>
                 </tr>
@@ -266,6 +308,7 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                     {estudiante.carrera_elegida}
                   </td>
                   
+  
                   <td className="p-4 text-center">
                     {/* Enlace de correo semántico y accesible */}
                     <a 
@@ -277,12 +320,95 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                     </a>
                   </td>
 
-                </tr>
+                              <td className="p-4 text-center space-x-2 whitespace-nowrap">
+                 <button
+                   type="button"
+                   onClick={() => setEstudianteDetalle(estudiante)}
+                   className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md text-xs transition-colors"
+                 >
+                   Ver detalle
+                 </button>
+                 <button
+                   type="button"
+                   disabled={estudiante.nota_final !== null}
+                   onClick={() => desvincularEstudiante(estudiante)}
+                   className="px-3 py-1 bg-red-100 hover:bg-red-200 disabled:bg-slate-100 disabled:text-slate-400 text-red-700 font-semibold rounded-md text-xs transition-colors"
+                   title={
+                     estudiante.nota_final !== null
+                       ? "No se puede desvincular porque ya tiene nota final"
+                       : "Desvincular estudiante del seminario"
+                   }
+                 >
+                   Desvincular
+                 </button>
+               </td>
+
+             </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+
+      {estudianteDetalle && (
+        <article
+          className="bg-white rounded-xl shadow-sm border border-blue-200 p-6 mt-6"
+          aria-label="Detalle académico del estudiante"
+        >
+          <header className="flex justify-between items-center border-b border-slate-200 pb-4 mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">
+                Detalle del Estudiante: {estudianteDetalle.apellido},{" "}
+                {estudianteDetalle.nombre}
+              </h2>
+              <p className="text-sm text-slate-500">
+                DNI / Legajo: {estudianteDetalle.dni_pasaporte} · Seminario:{" "}
+                {seminarioActual?.nombre ?? "-"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setEstudianteDetalle(null)}
+              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-md text-xs"
+            >
+              Cerrar detalle ✕
+            </button>
+          </header>
+
+          <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Carrera de Posgrado</dt>
+              <dd className="text-slate-800 font-bold mt-1">
+                {estudianteDetalle.carrera_elegida}
+              </dd>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Correo Institucional</dt>
+              <dd className="text-blue-700 font-bold mt-1 break-all">
+                {estudianteDetalle.correo_electronico}
+              </dd>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Asistencia Acumulada (BR-002)</dt>
+              <dd className="text-slate-800 font-bold mt-1">
+                {estudianteDetalle.porcentaje_asistencia}% (
+                {estudianteDetalle.asistencias} de {estudianteDetalle.total_clases}{" "}
+                clases)
+              </dd>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <dt className="text-slate-500 font-semibold">Calificación y Condición (BR-003)</dt>
+              <dd className="text-slate-800 font-bold mt-1">
+                Nota: {estudianteDetalle.nota_final ?? "Sin calificar"} ·{" "}
+                {estudianteDetalle.estado}
+              </dd>
+            </div>
+          </dl>
+        </article>
+      )}
     </section>
   );
 }

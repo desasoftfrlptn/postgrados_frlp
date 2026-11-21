@@ -12,6 +12,7 @@ from src.inscripcion.infraestructura.orm_modelos import(
 )
 
 from src.usuarios.modelos import (
+    RolORM,
     UsuarioORM,
 )
 from src.carreras.modelos import (
@@ -20,6 +21,7 @@ from src.carreras.modelos import (
 from src.seminarios.infraestructura.orm_modelos import (
     SeminarioORM,
     InscripcionSeminarioORM,
+    AsistenciaClaseORM,
 )
 from src.seminarios.presentacion.esquema import (
     SeminarioCrear,
@@ -27,6 +29,8 @@ from src.seminarios.presentacion.esquema import (
     SeminarioRespuesta,
     AlumnoSeminarioRespuesta,
     CursadaEstudianteRespuesta,
+    AsistenciaFechaRespuesta,
+    ColegaDocenteRespuesta,
 )
 
 
@@ -446,32 +450,38 @@ async def listar_alumnos_seminario(
         for inscripcion, legajo in filas
     ]
 
-
 async def inscribir_alumno_seminario(
     seminario_id: UUID,
     legajo_id: UUID | None,
     dni_pasaporte: str | None,
+    docente_id: UUID,
     db: AsyncSession,
 ) -> AlumnoSeminarioRespuesta:
-    seminario = await db.get(SeminarioORM, seminario_id)
-    if seminario is None:
-        raise HTTPException(status_code=404, detail="Seminario no encontrado")
+    await verificar_seminario_docente(seminario_id, docente_id, db)
 
     legajo = None
     if legajo_id is not None:
         legajo = await db.get(LegajoORM, legajo_id)
     elif dni_pasaporte and dni_pasaporte.strip():
+        dni_limpio = dni_pasaporte.strip().replace(".", "")
         legajo = await db.scalar(
             select(LegajoORM).where(
-                LegajoORM.dni_pasaporte == dni_pasaporte.strip()
+                LegajoORM.dni_pasaporte == dni_limpio
             )
         )
 
     if legajo is None:
         raise HTTPException(
             status_code=404,
-            detail="No se encontró un estudiante con ese DNI o legajo",
+            detail="No se encontró un legajo registrado con ese DNI.",
         )
+
+    if legajo.estado in ("RECHAZADO", "BAJA"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede inscribir al estudiante porque su legajo está en estado {legajo.estado}.",
+        )
+
     existente = await db.scalar(
         select(InscripcionSeminarioORM).where(
             InscripcionSeminarioORM.seminario_id == seminario_id,
@@ -481,7 +491,7 @@ async def inscribir_alumno_seminario(
     if existente is not None:
         raise HTTPException(
             status_code=409,
-            detail="El estudiante ya está inscripto en este seminario",
+            detail="El estudiante ya está inscripto en este seminario.",
         )
 
     nueva = InscripcionSeminarioORM(
@@ -496,6 +506,36 @@ async def inscribir_alumno_seminario(
     await db.refresh(nueva)
 
     return construir_alumno_seminario_respuesta(nueva, legajo)
+
+
+async def desvincular_alumno_seminario(
+    seminario_id: UUID,
+    legajo_id: UUID,
+    docente_id: UUID,
+    db: AsyncSession,
+) -> None:
+    await verificar_seminario_docente(seminario_id, docente_id, db)
+
+    inscripcion = await db.scalar(
+        select(InscripcionSeminarioORM).where(
+            InscripcionSeminarioORM.seminario_id == seminario_id,
+            InscripcionSeminarioORM.legajo_id == legajo_id,
+        )
+    )
+    if inscripcion is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El estudiante no está inscripto en este seminario.",
+        )
+
+    if inscripcion.nota_final is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="No se puede desvincular a un estudiante que ya tiene nota final registrada.",
+        )
+
+    await db.delete(inscripcion)
+    await db.commit()
 
 
 async def registrar_calificacion_seminario(
@@ -560,12 +600,40 @@ async def registrar_asistencia_clase(
     )
     inscripciones = list(resultado.scalars().all())
 
+    resultado_clases = await db.execute(
+        select(AsistenciaClaseORM).where(
+            AsistenciaClaseORM.seminario_id == seminario_id,
+            AsistenciaClaseORM.fecha == fecha_clase,
+        )
+    )
+    existentes_por_legajo = {
+        reg.legajo_id: reg for reg in resultado_clases.scalars().all()
+    }
+
     presentes_set = set(presentes_legajo_ids)
 
     for inscripcion in inscripciones:
-        inscripcion.total_clases += 1
-        if inscripcion.legajo_id in presentes_set:
-            inscripcion.asistencias += 1
+        esta_presente = inscripcion.legajo_id in presentes_set
+        registro_previo = existentes_por_legajo.get(inscripcion.legajo_id)
+
+        if registro_previo is None:
+            nuevo_registro = AsistenciaClaseORM(
+                seminario_id=seminario_id,
+                legajo_id=inscripcion.legajo_id,
+                fecha=fecha_clase,
+                presente=esta_presente,
+            )
+            db.add(nuevo_registro)
+            inscripcion.total_clases += 1
+            if esta_presente:
+                inscripcion.asistencias += 1
+        else:
+            if registro_previo.presente != esta_presente:
+                if esta_presente:
+                    inscripcion.asistencias += 1
+                else:
+                    inscripcion.asistencias = max(0, inscripcion.asistencias - 1)
+                registro_previo.presente = esta_presente
 
         if inscripcion.nota_final is not None:
             porcentaje = calcular_porcentaje_asistencia(
@@ -580,6 +648,67 @@ async def registrar_asistencia_clase(
 
     await db.commit()
     return await listar_alumnos_seminario(seminario_id, docente_id, db)
+
+
+async def listar_historial_asistencias_docente(
+    docente_id: UUID,
+    db: AsyncSession,
+) -> list[AsistenciaFechaRespuesta]:
+    consulta = (
+        select(
+            AsistenciaClaseORM,
+            SeminarioORM,
+            LegajoORM,
+            InscripcionSeminarioORM,
+        )
+        .join(
+            SeminarioORM,
+            AsistenciaClaseORM.seminario_id == SeminarioORM.id,
+        )
+        .join(
+            LegajoORM,
+            AsistenciaClaseORM.legajo_id == LegajoORM.id,
+        )
+        .join(
+            InscripcionSeminarioORM,
+            (InscripcionSeminarioORM.seminario_id == SeminarioORM.id)
+            & (InscripcionSeminarioORM.legajo_id == LegajoORM.id),
+        )
+        .where(
+            SeminarioORM.docente_id == docente_id,
+            SeminarioORM.activo == True,
+        )
+        .order_by(
+            AsistenciaClaseORM.fecha.desc(),
+            LegajoORM.apellido,
+            LegajoORM.nombre,
+        )
+    )
+
+    resultado = await db.execute(consulta)
+    filas = resultado.all()
+
+    respuestas: list[AsistenciaFechaRespuesta] = []
+    for asistencia_clase, seminario, legajo, inscripcion in filas:
+        porcentaje = calcular_porcentaje_asistencia(
+            inscripcion.asistencias,
+            inscripcion.total_clases,
+        )
+        respuestas.append(
+            AsistenciaFechaRespuesta(
+                id=asistencia_clase.id,
+                seminario_id=seminario.id,
+                seminario_nombre=seminario.nombre,
+                legajo_id=legajo.id,
+                dni_pasaporte=legajo.dni_pasaporte,
+                alumno=f"{legajo.apellido}, {legajo.nombre}",
+                carrera_elegida=legajo.carrera_elegida,
+                fecha=asistencia_clase.fecha,
+                presente=asistencia_clase.presente,
+                porcentaje_asistencia=porcentaje,
+            )
+        )
+    return respuestas
 
 async def listar_cursada_estudiante(
     email: str,
@@ -632,3 +761,204 @@ async def listar_cursada_estudiante(
             )
         )
     return respuestas
+
+async def listar_colegas_docentes(
+    db: AsyncSession,
+) -> list[ColegaDocenteRespuesta]:
+    consulta_docentes = (
+        select(UsuarioORM)
+        .join(RolORM, UsuarioORM.rol_id == RolORM.id)
+        .where(
+            RolORM.nombre == "DOCENTE",
+            UsuarioORM.activo == True,
+        )
+        .order_by(UsuarioORM.apellido, UsuarioORM.nombre)
+    )
+    resultado_docentes = await db.execute(consulta_docentes)
+    docentes = list(resultado_docentes.scalars().all())
+
+    respuestas: list[ColegaDocenteRespuesta] = []
+    for doc in docentes:
+        resultado_sem = await db.execute(
+            select(SeminarioORM.nombre)
+            .where(
+                SeminarioORM.docente_id == doc.id,
+                SeminarioORM.activo == True,
+            )
+            .order_by(SeminarioORM.nombre)
+        )
+        nombres_seminarios = list(resultado_sem.scalars().all())
+        respuestas.append(
+            ColegaDocenteRespuesta(
+                id=doc.id,
+                nombre=doc.nombre,
+                apellido=doc.apellido,
+                correo_electronico=doc.correo_electronico,
+                seminarios=nombres_seminarios,
+            )
+        )
+    return respuestas
+
+async def anular_calificacion_seminario(
+    seminario_id: UUID,
+    legajo_id: UUID,
+    docente_id: UUID,
+    db: AsyncSession,
+) -> AlumnoSeminarioRespuesta:
+    await verificar_seminario_docente(seminario_id, docente_id, db)
+
+    inscripcion = await db.scalar(
+        select(InscripcionSeminarioORM).where(
+            InscripcionSeminarioORM.seminario_id == seminario_id,
+            InscripcionSeminarioORM.legajo_id == legajo_id,
+        )
+    )
+    if inscripcion is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El estudiante no está inscripto en este seminario.",
+        )
+
+    legajo = await db.get(LegajoORM, legajo_id)
+    inscripcion.nota_final = None
+    inscripcion.estado = "CURSANDO"
+
+    await db.commit()
+    await db.refresh(inscripcion)
+
+    return construir_alumno_seminario_respuesta(inscripcion, legajo)
+
+async def listar_seminarios_disponibles_estudiante(
+    email: str,
+    dni: str,
+    db: AsyncSession,
+) -> list[SeminarioRespuesta]:
+    legajo = await db.scalar(
+        select(LegajoORM).where(
+            LegajoORM.correo_electronico == email,
+            LegajoORM.dni_pasaporte == dni,
+        )
+    )
+    consulta = select(SeminarioORM).where(SeminarioORM.activo == True)
+    if legajo is not None and legajo.carrera_elegida:
+        carrera = await db.scalar(
+            select(CarreraORM).where(
+                CarreraORM.nombre == legajo.carrera_elegida.strip()
+            )
+        )
+        if carrera is not None:
+            consulta = consulta.where(SeminarioORM.carrera_id == carrera.id)
+
+    resultado = await db.execute(consulta.order_by(SeminarioORM.fecha_inicio))
+    seminarios = list(resultado.scalars().all())
+
+    respuestas: list[SeminarioRespuesta] = []
+    for sem in seminarios:
+        respuestas.append(await convertir_respuesta(sem, db))
+    return respuestas
+
+
+async def autoinscribir_estudiante_seminario(
+    seminario_id: UUID,
+    email: str,
+    dni: str,
+    db: AsyncSession,
+) -> CursadaEstudianteRespuesta:
+    legajo = await db.scalar(
+        select(LegajoORM).where(
+            LegajoORM.correo_electronico == email,
+            LegajoORM.dni_pasaporte == dni,
+        )
+    )
+    if legajo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No tenés un legajo registrado para inscribirte.",
+        )
+    if legajo.estado in ("RECHAZADO", "BAJA"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tu legajo está en estado {legajo.estado} y no permite inscripciones.",
+        )
+
+    seminario = await db.get(SeminarioORM, seminario_id)
+    if seminario is None or not seminario.activo:
+        raise HTTPException(
+            status_code=404,
+            detail="El seminario seleccionado no está disponible.",
+        )
+
+    existente = await db.scalar(
+        select(InscripcionSeminarioORM).where(
+            InscripcionSeminarioORM.seminario_id == seminario_id,
+            InscripcionSeminarioORM.legajo_id == legajo.id,
+        )
+    )
+    if existente is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="Ya estás inscripto en este seminario.",
+        )
+
+    nueva = InscripcionSeminarioORM(
+        seminario_id=seminario_id,
+        legajo_id=legajo.id,
+        asistencias=0,
+        total_clases=0,
+        estado="CURSANDO",
+    )
+    db.add(nueva)
+    await db.commit()
+    await db.refresh(nueva)
+
+    carrera = await obtener_carrera(seminario.carrera_id, db)
+    return CursadaEstudianteRespuesta(
+        inscripcion_id=nueva.id,
+        seminario_id=seminario.id,
+        seminario_nombre=seminario.nombre,
+        carrera_nombre=carrera.nombre,
+        fecha_inicio=seminario.fecha_inicio,
+        fecha_fin=seminario.fecha_fin,
+        asistencias=0,
+        total_clases=0,
+        porcentaje_asistencia=100.0,
+        nota_final=None,
+        estado="CURSANDO",
+    )
+
+
+async def autodesinscribir_estudiante_seminario(
+    seminario_id: UUID,
+    email: str,
+    dni: str,
+    db: AsyncSession,
+) -> None:
+    legajo = await db.scalar(
+        select(LegajoORM).where(
+            LegajoORM.correo_electronico == email,
+            LegajoORM.dni_pasaporte == dni,
+        )
+    )
+    if legajo is None:
+        raise HTTPException(status_code=404, detail="Legajo no encontrado.")
+
+    inscripcion = await db.scalar(
+        select(InscripcionSeminarioORM).where(
+            InscripcionSeminarioORM.seminario_id == seminario_id,
+            InscripcionSeminarioORM.legajo_id == legajo.id,
+        )
+    )
+    if inscripcion is None:
+        raise HTTPException(
+            status_code=404,
+            detail="No estás inscripto en este seminario.",
+        )
+
+    if inscripcion.nota_final is not None or inscripcion.total_clases > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No podés desinscribirte de un seminario que ya registra clases o nota final.",
+        )
+
+    await db.delete(inscripcion)
+    await db.commit()

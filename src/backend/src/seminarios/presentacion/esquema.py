@@ -79,3 +79,21 @@ class CursadaEstudianteRespuesta(BaseModel):
     nota_final: Optional[float] = None
     estado: str
 
+class AsistenciaFechaRespuesta(BaseModel):
+    id: UUID
+    seminario_id: UUID
+    seminario_nombre: str
+    legajo_id: UUID
+    dni_pasaporte: str
+    alumno: str
+    carrera_elegida: str
+    fecha: date
+    presente: bool
+    porcentaje_asistencia: float
+
+class ColegaDocenteRespuesta(BaseModel):
+    id: UUID
+    nombre: str
+    apellido: str
+    correo_electronico: str
+    seminarios: list[str]

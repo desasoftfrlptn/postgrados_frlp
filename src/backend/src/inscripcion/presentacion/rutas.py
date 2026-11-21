@@ -1,6 +1,10 @@
 import hashlib
 import os
 
+from src.inscripcion.aplicacion.validar_duplicados import (
+    validar_inscripcion_no_duplicada,
+)
+
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -274,31 +278,12 @@ async def inscribir_aspirante(
         )
 
     # Comprobar correo duplicado.
-    correo_existente = await db.scalar(
-        select(LegajoORM.id).where(
-            LegajoORM.correo_electronico == datos.correo_electronico
-        )
+    await validar_inscripcion_no_duplicada(
+        db=db,
+        correo_electronico=datos.correo_electronico,
+        dni_pasaporte=datos.dni_pasaporte,
+        cohorte_id=datos.cohorte_id,
     )
-
-    if correo_existente is not None:
-        raise HTTPException(
-            status_code=409,
-            detail="Ya existe una inscripción con ese correo electrónico.",
-        )
-
-    # Comprobar DNI duplicado en la cohorte.
-    dni_existente = await db.scalar(
-        select(LegajoORM.id).where(
-            LegajoORM.dni_pasaporte == datos.dni_pasaporte,
-            LegajoORM.cohorte_id == datos.cohorte_id,
-        )
-    )
-
-    if dni_existente is not None:
-        raise HTTPException(
-            status_code=409,
-            detail="El documento ya está registrado en esta cohorte.",
-        )
 
     # Comprobar cupo.
     cantidad = await db.scalar(
@@ -556,9 +541,15 @@ async def consultar_estado_inscripcion(
             detail="No se encontró una inscripción con esos datos.",
         )
 
+    gestion = await db.get(GestionLegajoORM, legajo.id)
+
     return EstadoInscripcionRespuesta(
         numero_seguimiento=legajo.numero_seguimiento,
         estado=legajo.estado,
+        observaciones=gestion.observaciones if gestion else None,
+        documentacion_a_corregir=(
+            gestion.documentacion_a_corregir if gestion else []
+        ),
     )
 
 @enrutador.get(

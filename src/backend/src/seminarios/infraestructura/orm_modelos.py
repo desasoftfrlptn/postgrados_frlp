@@ -108,3 +108,43 @@ class InscripcionSeminarioORM(Base):
         nullable=False, 
         default="CURSANDO"
     )   
+
+class AsistenciaClaseORM(Base):
+    __tablename__ = "asistencias_clase"
+    __table_args__ = (
+        UniqueConstraint(
+            "seminario_id",
+            "legajo_id",
+            "fecha",
+            name="uq_asistencia_seminario_legajo_fecha",
+        ),
+    )
+
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    seminario_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("seminarios.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    legajo_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("legajos.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    fecha = Column(
+        Date,
+        nullable=False,
+    )
+
+    presente = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )

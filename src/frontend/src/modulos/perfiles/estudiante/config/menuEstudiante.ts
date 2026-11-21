@@ -23,11 +23,11 @@ export const menuEstudiante: OpcionMenuPerfil[] = [
     icono: "💬",
     ruta: "/dashboard/tutorias",
   },
-  {
-    texto: "Certificados",
-    icono: "📜",
-    ruta: "/dashboard/certificados",
-  },
+  // {
+  //   texto: "Certificados",
+  //   icono: "📜",
+  //   ruta: "/dashboard/certificados",
+  // },
   {
     texto: "Asistencias",
     icono: "📋",

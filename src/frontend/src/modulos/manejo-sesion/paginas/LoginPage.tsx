@@ -79,7 +79,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (sesion.rol === "ASPIRANTE") {
+      if (sesion.rol === "ASPIRANTE" || sesion.rol === "ALUMNO") {
         navigate("/dashboard", {
           replace: true,
         });

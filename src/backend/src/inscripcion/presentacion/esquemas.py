@@ -1,8 +1,16 @@
+import re
+
 from datetime import datetime
 from uuid import UUID
 from typing import Optional, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    field_validator,
+    model_validator,
+)
 
 
 class LegajoCrear(BaseModel):
@@ -21,10 +29,43 @@ class LegajoCrear(BaseModel):
     ciudad: str
     titulo_anterior: str
     universidad_anterior: str
-
     forma_conocio_ofertas: str
     motivos_cursar: str
     solicitud_beca: Optional[Literal[30, 100]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validar_campos_obligatorios(cls, valores):
+        if not isinstance(valores, dict):
+            return valores
+
+        valores = valores.copy()
+
+        for campo, valor in valores.items():
+            if isinstance(valor, str):
+                valor = valor.strip()
+
+                if campo == "correo_alternativo" and not valor:
+                    valores[campo] = None
+                    continue
+
+                if not valor and campo != "solicitud_beca":
+                    raise ValueError(
+                        f"El campo {campo} es obligatorio"
+                    )
+
+                valores[campo] = valor
+
+        return valores
+
+    @field_validator("dni_pasaporte")
+    @classmethod
+    def validar_dni_pasaporte(cls, valor):
+        if not re.fullmatch(r"\d{7,8}", valor):
+            raise ValueError(
+                "El DNI o pasaporte debe contener 7 u 8 dígitos"
+            )
+        return valor
 
 
 class LegajoRespuesta(BaseModel):
@@ -116,3 +157,5 @@ class LegajoActualizarPerfil(BaseModel):
 class EstadoInscripcionRespuesta(BaseModel):
     numero_seguimiento: str
     estado: str
+    observaciones: Optional[str] = None
+    documentacion_a_corregir: list[str] = []
