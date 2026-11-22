@@ -207,6 +207,7 @@ async def enviar_consulta_contacto(
             destinatario,
             "Nueva consulta - Posgrado UTN FRLP",
             contenido,
+            responder_a=str(consulta.email)
         )
 
     except Exception as exc:
