@@ -134,6 +134,7 @@ def encolar_correo(
     asunto,
     contenido,
     documento_id=None,
+    responder_a=None,
 ):
     db.add(
         NotificacionConduccionORM(
@@ -141,6 +142,7 @@ def encolar_correo(
             asunto=asunto,
             contenido=contenido,
             documento_id=documento_id,
+            responder_a=responder_a
         )
     )
 
