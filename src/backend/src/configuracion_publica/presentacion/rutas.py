@@ -1,7 +1,17 @@
 from src.usuarios.seguridad import TokenBearer
 # Define las rutas de consulta y administración del contenido público.
 
-from fastapi import APIRouter, Depends
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+)
+
+from src.compartido.limite_consultas import (
+    validar_limite_consultas,
+)
+
 from fastapi.security import (
     HTTPAuthorizationCredentials,
 )
@@ -23,6 +33,15 @@ from src.configuracion_publica.presentacion.esquema import (
     ConfiguracionSeccionRespuesta,
 )
 
+import asyncio
+import logging
+
+from src.compartido.correo import enviar_correo
+
+from src.configuracion_publica.presentacion.esquema import (
+    ConsultaContactoCrear,
+    ConsultaContactoRespuesta,
+)
 
 enrutador = APIRouter(
     prefix="/api/v1/configuracion-publica",
@@ -102,4 +121,98 @@ async def restablecer_inicio(
     return ConfiguracionSeccionRespuesta(
         seccion="home",
         valores=valores,
+    )
+
+
+@enrutador.post(
+    "/contacto/restablecer",
+    response_model=ConfiguracionSeccionRespuesta,
+)
+async def restablecer_contacto(
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    valores = await restablecer_configuracion(
+        "contacto",
+        db,
+    )
+
+    return ConfiguracionSeccionRespuesta(
+        seccion="contacto",
+        valores=valores,
+    )
+
+logger = logging.getLogger(__name__)
+
+
+@enrutador.post(
+    "/contacto/consultas",
+    response_model=ConsultaContactoRespuesta,
+)
+
+@enrutador.post(
+    "/contacto/consultas",
+    response_model=ConsultaContactoRespuesta,
+)
+async def enviar_consulta_contacto(
+    consulta: ConsultaContactoCrear,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    ip = (
+        request.client.host
+        if request.client
+        else "desconocida"
+    )
+
+    validar_limite_consultas(ip)
+
+    configuracion = await obtener_configuracion(
+        "contacto",
+        db,
+    )
+
+    destinatario = configuracion.get("email", "").strip()
+
+    if not destinatario:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "El servicio de consultas no está "
+                "disponible temporalmente."
+            ),
+        )
+
+    contenido = (
+        "Nueva consulta desde el sitio de Posgrado\n\n"
+        f"Nombre: {consulta.nombre}\n"
+        f"Correo electrónico: {consulta.email}\n"
+        f"Asunto: {consulta.asunto}\n\n"
+        f"Mensaje:\n{consulta.mensaje}"
+    )
+
+    try:
+        await asyncio.to_thread(
+            enviar_correo,
+            destinatario,
+            "Nueva consulta - Posgrado UTN FRLP",
+            contenido,
+        )
+
+    except Exception as exc:
+        logger.error(
+            "Error enviando consulta de contacto: %s",
+            type(exc).__name__,
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "No se pudo enviar la consulta. "
+                "Intentá nuevamente más tarde."
+            ),
+        ) from exc
+
+    return ConsultaContactoRespuesta(
+        mensaje="Tu consulta fue enviada correctamente."
     )

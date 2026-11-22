@@ -1,5 +1,7 @@
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { mostrarEstadoLegajo } from "../../../shared/utils/estadosLegajo";
+import MensajeSistema from "../../../shared/componentes/MensajeSistema/MensajeSistema";
 import { inscripcionApi } from "../api";
 import type { EstadoInscripcion } from "../tipos";
 import "./EstadoInscripcionPage.css";
@@ -22,11 +24,14 @@ export default function EstadoInscripcionPage() {
   const [resultado, setResultado] =
     useState<EstadoInscripcion | null>(null);
   const [cargando, setCargando] = useState(false);
+  const consultaEnCurso = useRef(false);
 
   const consultarEstado = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
+
+    if (consultaEnCurso.current) return;
 
     setMensaje("");
     setResultado(null);
@@ -37,6 +42,7 @@ export default function EstadoInscripcionPage() {
     }
 
     try {
+      consultaEnCurso.current = true;
       setCargando(true);
 
       const respuesta = await inscripcionApi.consultarEstado(
@@ -52,6 +58,7 @@ export default function EstadoInscripcionPage() {
           : "No se pudo consultar el estado de la inscripción."
       );
     } finally {
+      consultaEnCurso.current = false;
       setCargando(false);
     }
   };
@@ -71,7 +78,7 @@ export default function EstadoInscripcionPage() {
     Boolean(resultado) && !completada;
 
   return (
-    <main className="estado-inscripcion">
+    <div className="estado-inscripcion">
       <section
         className="estado-inscripcion-contenido"
         aria-labelledby="estado-titulo"
@@ -94,6 +101,7 @@ export default function EstadoInscripcionPage() {
             id="numero-seguimiento"
             type="text"
             value={numeroSeguimiento}
+            disabled={cargando}
             onChange={(e) => {
               setNumeroSeguimiento(e.target.value);
               setMensaje("");
@@ -111,6 +119,7 @@ export default function EstadoInscripcionPage() {
             id="dni-pasaporte"
             type="text"
             value={dniPasaporte}
+            disabled={cargando}
             onChange={(e) => {
               setDniPasaporte(e.target.value);
               setMensaje("");
@@ -125,9 +134,11 @@ export default function EstadoInscripcionPage() {
         </form>
 
         {mensaje && (
-          <p className="estado-inscripcion-mensaje" role="alert">
-            {mensaje}
-          </p>
+          <MensajeSistema
+            tipo="error"
+            texto={mensaje}
+            alCerrar={() => setMensaje("")}
+          />
         )}
       </section>
 
@@ -145,7 +156,7 @@ export default function EstadoInscripcionPage() {
             </p>
 
             <p>
-              Estado actual: <strong>{resultado.estado}</strong>
+              Estado actual: <strong>{mostrarEstadoLegajo(resultado.estado)}</strong>
             </p>
           </article>
 
@@ -181,6 +192,6 @@ export default function EstadoInscripcionPage() {
           )}
         </section>
       )}
-    </main>
+    </div>
   );
 }

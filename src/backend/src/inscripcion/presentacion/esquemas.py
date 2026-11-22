@@ -61,6 +61,7 @@ class LegajoCrear(BaseModel):
     @field_validator("dni_pasaporte")
     @classmethod
     def validar_dni_pasaporte(cls, valor):
+        valor = re.sub(r"[.\s]", "", valor)
         if not re.fullmatch(r"\d{7,8}", valor):
             raise ValueError(
                 "El DNI o pasaporte debe contener 7 u 8 dígitos"

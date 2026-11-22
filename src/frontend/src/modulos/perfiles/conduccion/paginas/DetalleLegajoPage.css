@@ -1,0 +1,72 @@
+/* Navegación interna del detalle del aspirante */
+
+.legajo-navegacion {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  margin: 20px 0;
+  border: 1px solid var(--color-border);
+  background: #f5f6fa;
+  border-radius: 10px;
+}
+
+.legajo-navegacion button {
+  flex: 1 1 180px;
+  min-height: 44px;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #475569;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.legajo-navegacion button:hover {
+  background: #eae7f2;
+  color: var(--color-secondary);
+}
+
+.legajo-navegacion button.legajo-navegacion-activa {
+  background: var(--color-secondary);
+  color: var(--color-text-light);
+}
+
+.legajo-navegacion button:focus-visible {
+  outline: 2px solid var(--color-secondary);
+  outline-offset: 3px;
+}
+
+/* Contenido de cada sección */
+
+.legajo-panel {
+  min-width: 0;
+}
+
+.legajo-panel[hidden] {
+  display: none;
+}
+
+.legajo-panel .conduccion-tarjeta {
+  margin-bottom: 16px;
+}
+
+.legajo-panel .conduccion-campo dd {
+  overflow-wrap: anywhere;
+}
+
+/* Adaptación a pantallas pequeñas */
+
+@media (max-width: 640px) {
+  .legajo-navegacion {
+    flex-direction: column;
+  }
+
+  .legajo-navegacion button {
+    flex: 1 1 auto;
+    width: 100%;
+    text-align: left;
+  }
+}

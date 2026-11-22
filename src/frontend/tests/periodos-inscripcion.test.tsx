@@ -40,7 +40,6 @@ const cohortes = [
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.spyOn(window, "confirm").mockReturnValue(true);
 
   vi.mocked(api.get).mockImplementation(async <T,>(ruta: string): Promise<T> => {
     if (ruta === "/cohortes") return cohortes.map((c) => ({ ...c })) as T;
@@ -96,6 +95,14 @@ describe("Equipo de Conducción - Períodos de inscripción", () => {
       name: "Abrir inscripciones de Cohorte Datos 2026",
     }));
 
+    expect(api.patch).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog"))
+        .getByRole("button", { name: "Confirmar" }),
+    );
+
+
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith(
         "/cohortes/cohorte-1/inscripcion",
@@ -117,6 +124,14 @@ describe("Equipo de Conducción - Períodos de inscripción", () => {
       name: "Cerrar inscripciones de Cohorte Historia 2025",
     }));
 
+    expect(api.patch).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog"))
+        .getByRole("button", { name: "Confirmar" }),
+    );
+
+
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith(
         "/cohortes/cohorte-2/inscripcion",
@@ -128,13 +143,20 @@ describe("Equipo de Conducción - Períodos de inscripción", () => {
   });
 
   it("no modifica el estado si la persona cancela la confirmación", async () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
     render(<PeriodosInscripcionPage />);
     await screen.findByText("Cohorte Datos 2026");
 
     fireEvent.click(screen.getByRole("button", {
       name: "Abrir inscripciones de Cohorte Datos 2026",
     }));
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog"))
+        .getByRole("button", { name: "Cancelar" }),
+    );
+
+    expect(screen.queryByRole("alertdialog"))
+      .not.toBeInTheDocument();
 
     expect(api.patch).not.toHaveBeenCalled();
   });
@@ -148,8 +170,39 @@ describe("Equipo de Conducción - Períodos de inscripción", () => {
       name: "Abrir inscripciones de Cohorte Datos 2026",
     }));
 
+    expect(api.patch).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog"))
+        .getByRole("button", { name: "Confirmar" }),
+    );
+
+
     expect(await screen.findByRole("alert")).toHaveTextContent("No tenés permisos");
     expect(screen.getByText("Cohorte Datos 2026")).toBeInTheDocument();
   });
 });
 
+
+it("no repite la modificación al confirmar dos veces", async () => {
+  render(<PeriodosInscripcionPage />);
+
+  await screen.findByText("Cohorte Datos 2026");
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Abrir inscripciones de Cohorte Datos 2026",
+    }),
+  );
+
+  const confirmar = within(
+    await screen.findByRole("alertdialog"),
+  ).getByRole("button", { name: "Confirmar" });
+
+  fireEvent.click(confirmar);
+  fireEvent.click(confirmar);
+
+  await screen.findByText(/se abrieron correctamente/);
+
+  expect(api.patch).toHaveBeenCalledTimes(1);
+});

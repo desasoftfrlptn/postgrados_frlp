@@ -237,3 +237,23 @@ describe("Respuestas y cuerpos HTTP", () => {
     await expect(api.get("/ejemplo")).rejects.toBe(error);
   });
 });
+
+it.each([400, 403, 404, 409, 422, 429, 500, 503])(
+  "conserva el código HTTP %s en la excepción",
+  async (status) => {
+    fetchSimulado.mockResolvedValueOnce(
+      respuestaJSON(
+        { detail: "Error de prueba" },
+        status,
+      ),
+    );
+
+    await expect(
+      api.get("/ejemplo", "token-prueba"),
+    ).rejects.toMatchObject({
+      name: "ApiError",
+      message: "Error de prueba",
+      status,
+    });
+  },
+);

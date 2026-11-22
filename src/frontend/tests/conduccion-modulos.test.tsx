@@ -69,7 +69,7 @@ describe("Navegación completa de Conducción", () => {
     montar(<EstadisticasConduccionPage />);
     await screen.findByRole("option", {name:/Cohorte 2026/});
     fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
-    expect(await screen.findByText("PENDIENTE")).toBeInTheDocument();
+    expect(await screen.findByText("Pendiente de revisión")).toBeInTheDocument();
     expect(screen.getByText("100 %")).toBeInTheDocument();
   });
   it.each([

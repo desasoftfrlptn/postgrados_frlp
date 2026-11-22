@@ -1,6 +1,8 @@
-# Contiene la lógica para consultar y modificar el contenido público.
+import re
+from urllib.parse import urlsplit
 
 from fastapi import HTTPException
+from pydantic import EmailStr, TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,21 +27,18 @@ CONFIGURACION_INICIAL = {
             "maestrías y doctorados."
         ),
         "tarjeta_carreras_enlace": "Ver carreras",
-
         "tarjeta_calendario_titulo": "Calendario Académico",
         "tarjeta_calendario_descripcion": (
             "Consultá el calendario de clases, exámenes, "
             "inscripciones y fechas importantes."
         ),
         "tarjeta_calendario_enlace": "Ver calendario",
-
         "tarjeta_noticias_titulo": "Novedades",
         "tarjeta_noticias_descripcion": (
             "Enterate de las últimas noticias y comunicados "
             "de la facultad."
         ),
         "tarjeta_noticias_enlace": "Ver novedades",
-
         "tarjeta_faq_titulo": "¿Tenés dudas?",
         "tarjeta_faq_descripcion": (
             "Respondemos las preguntas más frecuentes sobre el posgrado."
@@ -76,6 +75,10 @@ CONFIGURACION_INICIAL = {
         "email": "posgrado@frlp.utn.edu.ar",
         "telefono": "+54 9 4277270",
         "horario": "Lunes a viernes de 9 a 18 hs",
+        "facebook": "",
+        "instagram": "",
+        "linkedin": "",
+        "youtube": "",
     },
 
     "calendario": {
@@ -87,12 +90,90 @@ CONFIGURACION_INICIAL = {
 }
 
 
+REDES_SOCIALES = {
+    "facebook",
+    "instagram",
+    "linkedin",
+    "youtube",
+}
+
+VALIDADOR_EMAIL = TypeAdapter(EmailStr)
+
+
+def validar_valor_contacto(clave: str, valor: str) -> None:
+    """Valida los datos de la configuración de contacto."""
+
+    if clave in REDES_SOCIALES:
+        # Las redes sociales son opcionales.
+        if not valor:
+            return
+
+        try:
+            url = urlsplit(valor)
+
+            enlace_valido = (
+                url.scheme in {"http", "https"}
+                and bool(url.hostname)
+                and url.username is None
+                and url.password is None
+                and "\\" not in valor
+                and not any(
+                    caracter.isspace() or ord(caracter) < 32
+                    for caracter in valor
+                )
+            )
+
+            # Comprueba que el puerto sea válido, si fue indicado.
+            _ = url.port
+
+        except ValueError:
+            enlace_valido = False
+
+        if not enlace_valido or len(valor) > 500:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El enlace de '{clave}' no es válido.",
+            )
+
+        return
+
+    if clave == "email":
+        try:
+            VALIDADOR_EMAIL.validate_python(valor)
+
+        except ValidationError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="El correo electrónico no es válido.",
+            ) from exc
+
+        return
+
+    if clave == "telefono":
+        digitos = re.sub(r"\D", "", valor)
+
+        if (
+            not re.fullmatch(r"\+?[0-9 ()-]+", valor)
+            or not 7 <= len(digitos) <= 15
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="El teléfono no es válido.",
+            )
+
+        return
+
+    if len(valor) > 1000:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El campo '{clave}' es demasiado largo.",
+        )
+
+
 def validar_seccion(
     seccion: str,
 ) -> dict[str, str]:
-    configuracion = CONFIGURACION_INICIAL.get(
-        seccion
-    )
+    configuracion = CONFIGURACION_INICIAL.get(seccion)
 
     if configuracion is None:
         raise HTTPException(
@@ -107,20 +188,15 @@ async def asegurar_configuracion(
     seccion: str,
     db: AsyncSession,
 ) -> None:
-    valores_iniciales = validar_seccion(
-        seccion
-    )
+    valores_iniciales = validar_seccion(seccion)
 
     consulta = select(
         ConfiguracionPublicaORM
     ).where(
-        ConfiguracionPublicaORM.seccion
-        == seccion
+        ConfiguracionPublicaORM.seccion == seccion
     )
 
-    resultado = await db.execute(
-        consulta
-    )
+    resultado = await db.execute(consulta)
 
     registros = list(
         resultado.scalars().all()
@@ -146,28 +222,27 @@ async def asegurar_configuracion(
             hubo_cambios = True
 
     if hubo_cambios:
-        await db.commit()
+        try:
+            await db.commit()
+
+        except Exception:
+            await db.rollback()
+            raise
 
 
 async def obtener_configuracion(
     seccion: str,
     db: AsyncSession,
 ) -> dict[str, str]:
-    await asegurar_configuracion(
-        seccion,
-        db,
-    )
+    await asegurar_configuracion(seccion, db)
 
     consulta = select(
         ConfiguracionPublicaORM
     ).where(
-        ConfiguracionPublicaORM.seccion
-        == seccion
+        ConfiguracionPublicaORM.seccion == seccion
     )
 
-    resultado = await db.execute(
-        consulta
-    )
+    resultado = await db.execute(consulta)
 
     registros = resultado.scalars().all()
 
@@ -182,9 +257,7 @@ async def modificar_configuracion(
     valores: dict[str, str],
     db: AsyncSession,
 ) -> dict[str, str]:
-    valores_permitidos = validar_seccion(
-        seccion
-    )
+    valores_permitidos = validar_seccion(seccion)
 
     claves_invalidas = [
         clave
@@ -201,51 +274,61 @@ async def modificar_configuracion(
             ),
         )
 
-    await asegurar_configuracion(
-        seccion,
-        db,
-    )
+    valores_limpios: dict[str, str] = {}
+
+    # Valida todos los campos antes de modificar la base de datos.
+    for clave, valor in valores.items():
+        valor_limpio = valor.strip()
+
+        es_opcional = (
+            seccion == "contacto"
+            and clave in REDES_SOCIALES
+        )
+
+        if not valor_limpio and not es_opcional:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El valor de '{clave}' no puede estar vacío",
+            )
+
+        if seccion == "contacto":
+            validar_valor_contacto(clave, valor_limpio)
+
+        valores_limpios[clave] = valor_limpio
+
+    await asegurar_configuracion(seccion, db)
 
     consulta = select(
         ConfiguracionPublicaORM
     ).where(
-        ConfiguracionPublicaORM.seccion
-        == seccion
+        ConfiguracionPublicaORM.seccion == seccion
     )
 
-    resultado = await db.execute(
-        consulta
-    )
-
-    registros = resultado.scalars().all()
+    resultado = await db.execute(consulta)
 
     registros_por_clave = {
         registro.clave: registro
-        for registro in registros
+        for registro in resultado.scalars().all()
     }
 
-    for clave, valor in valores.items():
-        valor_limpio = valor.strip()
+    try:
+        hubo_cambios = False
 
-        if not valor_limpio:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"El valor de '{clave}' "
-                    "no puede estar vacío"
-                ),
-            )
+        for clave, valor in valores_limpios.items():
+            registro = registros_por_clave[clave]
 
-        registros_por_clave[
-            clave
-        ].valor = valor_limpio
+            if registro.valor != valor:
+                registro.valor = valor
+                hubo_cambios = True
 
-    await db.commit()
+        if hubo_cambios:
+            await db.commit()
 
-    return await obtener_configuracion(
-        seccion,
-        db,
-    )
+    except Exception:
+        await db.rollback()
+        raise
+
+    return await obtener_configuracion(seccion, db)
 
 
 async def restablecer_configuracion(

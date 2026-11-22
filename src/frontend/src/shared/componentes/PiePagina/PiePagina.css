@@ -1,4 +1,4 @@
-/* Estilos del pie de página de las páginas públicas. */
+/* Estilos del pie de página público. */
 
 .pie-pagina {
   width: 100%;
@@ -9,20 +9,23 @@
 .pie-pagina-contenido {
   width: 100%;
   padding: 18px 28px;
-
   display: grid;
-  grid-template-columns: 1.25fr 0.9fr 1.3fr 1fr 1.25fr;
+  grid-template-columns:
+    minmax(0, 1.25fr)
+    minmax(0, 0.9fr)
+    minmax(0, 1.3fr)
+    minmax(0, 1fr)
+    minmax(0, 1.25fr);
   align-items: center;
 }
 
 .pie-pagina-bloque,
 .pie-pagina-redes {
-  padding: 0 30px;
-
+  min-width: 0;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
-
+  gap: 12px;
   border-right: 1px solid rgba(255, 255, 255, 0.6);
 }
 
@@ -31,20 +34,21 @@
 }
 
 .pie-pagina-redes {
-  padding: 0 0 0 34px;
-
+  padding-right: 0;
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
   gap: 10px;
-
   border-right: 0;
 }
 
 .pie-pagina p {
   margin: 0;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .pie-pagina strong {
@@ -61,20 +65,23 @@
 }
 
 .pie-pagina-bloque a {
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pie-pagina-bloque a:hover {
+  text-decoration: underline;
 }
 
 .pie-pagina-icono {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-
   display: grid;
   place-items: center;
-
   background: #0754a5;
   border-radius: 50%;
-
   font-size: 18px;
 }
 
@@ -91,23 +98,19 @@
 .pie-pagina-redes ul {
   margin: 0;
   padding: 0;
-
   display: flex;
-  gap: 16px;
-
+  flex-wrap: wrap;
+  gap: 10px;
   list-style: none;
 }
 
 .pie-pagina-redes a {
   width: 42px;
   height: 42px;
-
   display: grid;
   place-items: center;
-
   border: 1.5px solid rgba(255, 255, 255, 0.8);
   border-radius: 50%;
-
   font-size: 17px;
   font-weight: 600;
 }
@@ -122,24 +125,46 @@
   outline-offset: 4px;
 }
 
-@media (max-width: 1000px) {
+.pie-pagina .pie-pagina-aviso {
+  padding: 20px;
+  text-align: center;
+}
+
+.pie-pagina .pie-pagina-red-aviso {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+@media (max-width: 1200px) {
   .pie-pagina-contenido {
     padding: 20px;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pie-pagina-bloque,
-  .pie-pagina-redes {
+  .pie-pagina-redes,
+  .pie-pagina-bloque:first-child {
     min-height: 90px;
-    padding: 20px;
-
+    padding: 16px;
     border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
   }
 }
 
 @media (max-width: 600px) {
   .pie-pagina-contenido {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+
+  .pie-pagina-bloque,
+  .pie-pagina-redes,
+  .pie-pagina-bloque:first-child {
+    min-height: auto;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
+  .pie-pagina-redes {
+    border-bottom: 0;
   }
 }

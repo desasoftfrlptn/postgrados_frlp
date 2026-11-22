@@ -1,3 +1,4 @@
+import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -87,7 +88,7 @@ export function TablaLegajos({ legajos }: { legajos: LegajoConduccion[] }) {
   if (legajos.length === 0) return <p className="cc-vacio">No hay legajos para los filtros seleccionados.</p>;
   return <div className="cc-tabla-scroll"><table className="cc-tabla"><thead><tr><th>Apellido y nombre</th><th>DNI/Pasaporte</th><th>Carrera</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>
     {legajos.map((legajo) => <tr key={legajo.id}>
-      <td>{legajo.apellido}, {legajo.nombre}</td><td>{legajo.dni_pasaporte}</td><td>{legajo.carrera_elegida}</td><td>{legajo.estado.replaceAll("_", " ")}</td>
+      <td>{legajo.apellido}, {legajo.nombre}</td><td>{legajo.dni_pasaporte}</td><td>{legajo.carrera_elegida}</td><td>{mostrarEstadoLegajo(legajo.estado)}</td>
       <td><Link to={`/dashboard/conduccion/legajos/${encodeURIComponent(legajo.id)}`}>Ver legajo</Link></td>
     </tr>)}
   </tbody></table></div>;

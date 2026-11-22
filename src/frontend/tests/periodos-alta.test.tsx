@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PeriodosInscripcionPage from "../src/modulos/perfiles/conduccion/paginas/PeriodosInscripcionPage";
 import { api } from "../src/shared/api/client";
@@ -25,6 +25,14 @@ describe("Conducción - Alta de cohortes", () => {
     fireEvent.change(screen.getByLabelText("Año"), {target:{value:"2027"}});
     fireEvent.change(document.getElementById("nueva-cohorte-carrera") as HTMLSelectElement, {target:{value:"carrera-1"}});
     fireEvent.click(screen.getByRole("button", {name:"Crear cohorte"}));
+
+    expect(api.post).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog"))
+        .getByRole("button", { name: "Confirmar" }),
+    );
+
     await waitFor(() => expect(api.post).toHaveBeenCalledWith("/cohortes", {
       nombre:"Cohorte 2027", anio:2027, carrera_id:"carrera-1", fecha_inicio:null,
     }, "prueba"));
@@ -32,3 +40,68 @@ describe("Conducción - Alta de cohortes", () => {
   });
 });
 
+
+async function prepararAlta() {
+  render(<PeriodosInscripcionPage />);
+
+  await screen.findByText("No hay cohortes registradas.");
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "+ Nueva cohorte" }),
+  );
+
+  fireEvent.change(screen.getByLabelText("Nombre"), {
+    target: { value: "Cohorte 2027" },
+  });
+
+  fireEvent.change(screen.getByLabelText("Año"), {
+    target: { value: "2027" },
+  });
+
+  fireEvent.change(
+    document.getElementById("nueva-cohorte-carrera")!,
+    { target: { value: "carrera-1" } },
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Crear cohorte" }),
+  );
+
+  return await screen.findByRole("alertdialog");
+}
+
+it("cancela el alta sin enviar datos y conserva el formulario", async () => {
+  const modal = await prepararAlta();
+
+  fireEvent.click(
+    within(modal).getByRole("button", { name: "Cancelar" }),
+  );
+
+  expect(api.post).not.toHaveBeenCalled();
+
+  expect(screen.getByLabelText("Nombre"))
+    .toHaveValue("Cohorte 2027");
+
+  expect(screen.queryByRole("alertdialog"))
+    .not.toBeInTheDocument();
+});
+
+it("conserva el formulario cuando falla la creación", async () => {
+  vi.mocked(api.post).mockRejectedValueOnce(
+    new Error("Ya existe una cohorte con ese nombre."),
+  );
+
+  const modal = await prepararAlta();
+
+  fireEvent.click(
+    within(modal).getByRole("button", { name: "Confirmar" }),
+  );
+
+  expect(await screen.findByRole("alert"))
+    .toHaveTextContent("Ya existe una cohorte");
+
+  expect(screen.getByLabelText("Nombre"))
+    .toHaveValue("Cohorte 2027");
+
+  expect(api.post).toHaveBeenCalledTimes(1);
+});

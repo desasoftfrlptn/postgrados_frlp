@@ -1,7 +1,14 @@
 .env
+.env.*
+!.env.example
 __pycache__/
 *.pyc
 node_modules/
 storage_privado/
 uploads/*
 !uploads/.gitkeep
+
+# Variables de entorno y credenciales
+.env
+.env.*
+!.env.example

@@ -1,3 +1,4 @@
+import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CabeceraConduccion, SelectorCohorteConduccion, useLegajosConduccion } from "./SeleccionLegajosConduccion";
@@ -28,7 +29,7 @@ export default function ConsultaAcademicaConduccion({ titulo, descripcion, campo
       <h2>{legajo.apellido}, {legajo.nombre}</h2>
       <div className="cc-grilla">
         <div className="cc-panel-dato"><small>Carrera</small><strong>{legajo.carrera_elegida}</strong></div>
-        <div className="cc-panel-dato"><small>Estado del legajo</small><strong>{legajo.estado.replaceAll("_", " ")}</strong></div>
+        <div className="cc-panel-dato"><small>Estado del legajo</small><strong>{mostrarEstadoLegajo(legajo.estado)}</strong></div>
       </div>
       <div className="cc-acciones" style={{marginTop: 16}}>
         <Link className="cc-btn cc-btn-secundario" to={`/dashboard/conduccion/legajos/${encodeURIComponent(legajo.id)}`}>Consultar legajo</Link>

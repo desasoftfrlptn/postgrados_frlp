@@ -1,3 +1,4 @@
+import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../../../../shared/api/client";
@@ -38,16 +39,16 @@ const filtrosIniciales: FiltrosLegajos = {
   beca: "",
 };
 const estadosDisponibles = [
-  { valor: "PENDIENTE", texto: "Pendiente" },
-  { valor: "EN_REVISION", texto: "En revisión" },
-  { valor: "OBSERVADO", texto: "Observado" },
-  { valor: "COMPLETADO", texto: "Completado" },
-  { valor: "RECHAZADO", texto: "Rechazado" },
-  { valor: "ACTIVO", texto: "Activo" },
-  { valor: "EN_RIESGO", texto: "En riesgo" },
-  { valor: "VENCIDO", texto: "Vencido" },
-  { valor: "GRADUADO", texto: "Graduado" },
-  { valor: "BAJA", texto: "Baja" },
+  { valor: "PENDIENTE", texto: mostrarEstadoLegajo("PENDIENTE") },
+  { valor: "EN_REVISION", texto: mostrarEstadoLegajo("EN_REVISION") },
+  { valor: "OBSERVADO", texto: mostrarEstadoLegajo("OBSERVADO") },
+  { valor: "COMPLETADO", texto: mostrarEstadoLegajo("COMPLETADO") },
+  { valor: "RECHAZADO", texto: mostrarEstadoLegajo("RECHAZADO") },
+  { valor: "ACTIVO", texto: mostrarEstadoLegajo("ACTIVO") },
+  { valor: "EN_RIESGO", texto: mostrarEstadoLegajo("EN_RIESGO") },
+  { valor: "VENCIDO", texto: mostrarEstadoLegajo("VENCIDO") },
+  { valor: "GRADUADO", texto: mostrarEstadoLegajo("GRADUADO") },
+  { valor: "BAJA", texto: mostrarEstadoLegajo("BAJA") },
 ];
 function construirConsulta(filtros: FiltrosLegajos): string {
   const parametros = new URLSearchParams();
@@ -80,12 +81,7 @@ function obtenerClaseEstado(estado: string): string {
       return "conduccion-listado-estado--otro";
   }
 }
-function mostrarEstado(estado: string): string {
-  return (
-    estadosDisponibles.find((item) => item.valor === estado)?.texto ??
-    estado.replaceAll("_", " ")
-  );
-}
+
 export default function ListadoAspirantesPage() {
   const { user } = useAuth();
   const [legajos, setLegajos] = useState<LegajoConduccion[]>([]);
@@ -453,7 +449,7 @@ export default function ListadoAspirantesPage() {
                       </td>
                       <td>
                         <span className={`conduccion-listado-estado ${obtenerClaseEstado(legajo.estado)}`}>
-                          {mostrarEstado(legajo.estado)}
+                          {mostrarEstadoLegajo(legajo.estado)}
                         </span>
                       </td>
                       <td>
@@ -503,7 +499,7 @@ export default function ListadoAspirantesPage() {
               <h2 id="titulo-gestion-aspirante">Estado y seguimiento de admisión</h2>
               <p>
                 {legajoGestionando.apellido}, {legajoGestionando.nombre} —{" "}
-                {mostrarEstado(legajoGestionando.estado)}
+                {mostrarEstadoLegajo(legajoGestionando.estado)}
               </p>
             </div>
             <button

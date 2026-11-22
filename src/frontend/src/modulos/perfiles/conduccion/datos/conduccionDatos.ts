@@ -1,3 +1,4 @@
+import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
 /** Tipos y cálculos sin dependencias externas para el Equipo de Conducción. */
 export interface CohorteConduccion {
   id: string;
@@ -72,5 +73,5 @@ export function descargarCSV(nombre: string, contenido: string): void {
 }
 
 export function formatearEstado(estado: string): string {
-  return estado.replaceAll("_", " ");
+  return mostrarEstadoLegajo(estado);
 }

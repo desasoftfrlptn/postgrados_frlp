@@ -43,8 +43,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
       SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-dev-secret-change-in-production}}
       STORAGE_PATH: /var/postgrado-storage
-      SMTP_HOST: ${SMTP_HOST:-mailhog}
-      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USER: ${SMTP_USER:-}
       ENVIRONMENT: development
     ports:
       - "8000:8000"
@@ -84,16 +87,7 @@ services:
     command: npm run dev -- --host 0.0.0.0 --port 3000 --strictPort
 
   # ──────────────────────────────────────────
-  # MAILHOG — Servidor de email falso para desarrollo
-  # Ver emails en: http://localhost:8025
   # ──────────────────────────────────────────
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: postgrado-mailhog
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # UI web para ver emails
-
 volumes:
   pgdata:
     name: postgrado-pgdata
@@ -109,7 +103,6 @@ volumes:
 #   Las tablas se crean al iniciar FastAPI.
 #
 # Ver emails enviados por el sistema:
-#   Abrir http://localhost:8025
 #
 # Acceder a la base de datos:
 #   docker exec -it postgrado-db psql -U postgrado_user -d postgrado_dev

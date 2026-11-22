@@ -144,6 +144,7 @@ def validar_cambio_estado(
     documentacion_completa: bool = False,
     datos_verificados: bool = False,
     reserva_vencida: bool = False,
+    documentacion_a_corregir: Iterable[str] = (),
 ) -> CambioEstado:
     """
     Valida un cambio de estado.
@@ -176,9 +177,26 @@ def validar_cambio_estado(
     if (
         accion == AccionLegajo.OBSERVAR
         and comentario_limpio is None
+        and not any(documentacion_a_corregir)
     ):
         raise ReglaNegocioError(
             "La observación debe indicar qué debe corregirse."
+        )
+
+    if (
+        accion == AccionLegajo.RECHAZAR
+        and comentario_limpio is None
+    ):
+        raise ReglaNegocioError(
+            "Debe indicar el motivo del rechazo."
+        )
+
+    if (
+        accion == AccionLegajo.DAR_BAJA
+        and comentario_limpio is None
+    ):
+        raise ReglaNegocioError(
+            "Debe indicar el motivo de la baja."
         )
 
     if accion == AccionLegajo.APROBAR:

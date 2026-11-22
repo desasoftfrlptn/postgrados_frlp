@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.conduccion.notificaciones import generar_correo_observacion
 from src.conduccion.esquemas import (
     AccionLegajoPeticion,
     VerificacionLegajoPeticion,
@@ -427,6 +428,7 @@ async def aplicar_accion(
             documentacion_completa=documentacion_completa,
             datos_verificados=gestion.datos_verificados,
             reserva_vencida=reserva_vencida,
+            documentacion_a_corregir=datos.documentacion_a_corregir,
         )
     except ReglaNegocioError as exc:
         raise HTTPException(
@@ -479,10 +481,13 @@ async def aplicar_accion(
             db,
             destinatario=legajo.correo_electronico,
             asunto="Observaciones sobre tu inscripción",
-            contenido=(
-                f"Tu inscripción {legajo.numero_seguimiento} "
-                "requiere correcciones.\n\n"
-                f"{cambio.comentario}"
+            contenido=generar_correo_observacion(
+                nombre=legajo.nombre,
+                apellido=legajo.apellido,
+                carrera=legajo.carrera_elegida,
+                numero_seguimiento=legajo.numero_seguimiento,
+                comentario=cambio.comentario,
+                documentos=datos.documentacion_a_corregir,
             ),
         )
 

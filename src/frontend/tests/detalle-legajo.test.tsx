@@ -1,6 +1,7 @@
 
 import {
   render,
+  fireEvent,
   screen,
   waitFor,
   within,
@@ -121,6 +122,13 @@ beforeEach(() => {
   );
 });
 
+
+async function abrirSeccion(nombre: string) {
+  fireEvent.click(
+    await screen.findByRole("button", { name: nombre })
+  );
+}
+
 describe("Equipo de Conducción - Detalle del legajo", () => {
   it("muestra los datos principales de la inscripción", async () => {
     mostrarDetalle();
@@ -147,6 +155,8 @@ describe("Equipo de Conducción - Detalle del legajo", () => {
       screen.getByText("30%")
     ).toBeInTheDocument();
 
+    await abrirSeccion("Datos del aspirante");
+
     expect(
       screen.getByText("Ingeniera")
     ).toBeInTheDocument();
@@ -163,6 +173,8 @@ describe("Equipo de Conducción - Detalle del legajo", () => {
 
   it("informa porcentaje documental, cantidad y documentos faltantes", async () => {
     mostrarDetalle();
+    await abrirSeccion("Documentación");
+
 
     const seccion = await screen.findByRole("region", {
       name: "Estado de la documentación",
@@ -187,6 +199,8 @@ describe("Equipo de Conducción - Detalle del legajo", () => {
 
   it("ofrece visualizar y descargar los PDFs del legajo", async () => {
     mostrarDetalle();
+    await abrirSeccion("Documentación");
+
 
     expect(
       await screen.findByRole("button", {
@@ -229,6 +243,8 @@ describe("Equipo de Conducción - Detalle del legajo", () => {
     );
 
     mostrarDetalle();
+    await abrirSeccion("Documentación");
+
 
     expect(
       await screen.findByText(

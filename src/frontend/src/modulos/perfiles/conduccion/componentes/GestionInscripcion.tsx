@@ -1,3 +1,7 @@
+import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
+import "./GestionInscripcion.css";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "../../../../shared/api/client";
@@ -14,6 +18,20 @@ interface Gestion {
   fecha_baja: string | null;
   observaciones: string | null;
   documentacion_a_corregir: string[];
+}
+
+interface CompletitudGestion {
+  porcentaje: number;
+  documentos_requeridos: number;
+  documentos_presentados: number;
+  documentos_faltantes: string[];
+  completo: boolean;
+}
+
+interface RespuestaCompletitud {
+  legajo_id: string;
+  completitud: CompletitudGestion | null;
+  pendiente: string | null;
 }
 
 interface Evento {
@@ -70,6 +88,7 @@ const documentosDisponibles = [
 interface Props {
   legajoId: string;
   onEstadoActualizado?: (estado: string) => void;
+  onDocumentacionActualizada?: () => void;
 }
 
 function mensajeError(error: unknown, alternativa: string) {
@@ -79,12 +98,15 @@ function mensajeError(error: unknown, alternativa: string) {
 export default function GestionInscripcion({
   legajoId,
   onEstadoActualizado,
+  onDocumentacionActualizada,
 }: Props) {
   const { user } = useAuth();
   const token = user?.token;
 
   const [gestion, setGestion] = useState<Gestion | null>(null);
   const [eventos, setEventos] = useState<Evento[]>([]);
+  const [documentacion, setDocumentacion] =
+    useState<RespuestaCompletitud | null>(null);
   const [datosVerificados, setDatosVerificados] = useState(false);
   const [tituloPosgrado, setTituloPosgrado] = useState("");
   const [comentario, setComentario] = useState("");
@@ -95,6 +117,9 @@ export default function GestionInscripcion({
   const [guardando, setGuardando] = useState(false);
   const [consultaValida, setConsultaValida] = useState(false);
 
+  const [accionPendiente, setAccionPendiente] =
+    useState<Accion | "VERIFICAR" | null>(null);
+
   const solicitudActual = useRef(0);
   const operacionEnCurso = useRef(false);
 
@@ -104,6 +129,7 @@ export default function GestionInscripcion({
     const solicitud = ++solicitudActual.current;
 
     setConsultaValida(false);
+    setDocumentacion(null);
 
     if (!token) {
       setGestion(null);
@@ -116,9 +142,10 @@ export default function GestionInscripcion({
     setError("");
 
     try {
-      const [datos, historial] = await Promise.all([
+      const [datos, historial, requisitos] = await Promise.all([
         api.get<Gestion>(`${base}/gestion`, token),
         api.get<Evento[]>(`${base}/auditoria`, token),
+        api.get<RespuestaCompletitud>(`${base}/completitud`, token),
       ]);
 
       if (solicitud !== solicitudActual.current) {
@@ -127,6 +154,7 @@ export default function GestionInscripcion({
 
       setGestion(datos);
       setEventos(historial);
+      setDocumentacion(requisitos);
       setDatosVerificados(datos.datos_verificados);
       setTituloPosgrado(
         datos.tiene_titulo_posgrado === null
@@ -164,6 +192,33 @@ export default function GestionInscripcion({
     };
   }, [cargar]);
 
+  async function manejarErrorOperacion(
+    err: unknown,
+    alternativa: string,
+  ) {
+    if (
+      err instanceof Error &&
+      "status" in err &&
+      err.status === 409
+    ) {
+      setConsultaValida(false);
+
+      const actualizado = await cargar();
+
+      onDocumentacionActualizada?.();
+
+      setError(
+        actualizado
+          ? `${err.message} Revisá los datos actualizados antes de continuar.`
+          : `${err.message} No se pudo actualizar el legajo. Utilizá Actualizar gestión.`,
+      );
+
+      return;
+    }
+
+    setError(mensajeError(err, alternativa));
+  }
+
   async function guardarVerificacion() {
     if (
       !token ||
@@ -191,6 +246,7 @@ export default function GestionInscripcion({
 
       setGestion(resultado);
       onEstadoActualizado?.(resultado.estado);
+      onDocumentacionActualizada?.();
 
       const actualizado = await cargar();
 
@@ -200,7 +256,10 @@ export default function GestionInscripcion({
           : "Verificación guardada. Actualizá la gestión para consultar los datos.",
       );
     } catch (err) {
-      setError(mensajeError(err, "No se pudo guardar la verificación."));
+      await manejarErrorOperacion(
+        err,
+        "No se pudo guardar la verificación.",
+      );
     } finally {
       operacionEnCurso.current = false;
       setGuardando(false);
@@ -228,13 +287,6 @@ export default function GestionInscripcion({
       return;
     }
 
-    if (
-      !window.confirm(
-        `¿Confirmás la operación ${accion.toLowerCase().replaceAll("_", " ")}?`,
-      )
-    ) {
-      return;
-    }
 
     operacionEnCurso.current = true;
     setGuardando(true);
@@ -256,6 +308,7 @@ export default function GestionInscripcion({
 
       setGestion(resultado);
       onEstadoActualizado?.(resultado.estado);
+      onDocumentacionActualizada?.();
       setComentario("");
       setDocumentacionACorregir([]);
 
@@ -267,10 +320,92 @@ export default function GestionInscripcion({
           : "Operación registrada. Actualizá la gestión para consultar los datos.",
       );
     } catch (err) {
-      setError(mensajeError(err, "No se pudo realizar la operación."));
+      await manejarErrorOperacion(
+        err,
+        "No se pudo realizar la operación.",
+      );
     } finally {
       operacionEnCurso.current = false;
       setGuardando(false);
+    }
+  }
+
+  function requisitosAprobacionCumplidos() {
+    return (
+      consultaValida &&
+      gestion?.datos_verificados === true &&
+      gestion.tiene_titulo_posgrado != null &&
+      documentacion?.completitud?.completo === true &&
+      datosVerificados === gestion.datos_verificados &&
+      tituloPosgrado === (
+        gestion.tiene_titulo_posgrado ? "si" : "no"
+      )
+    );
+  }
+
+  function solicitarAccion(accion: Accion) {
+    if (
+      (accion === "RECHAZAR" || accion === "DAR_BAJA") &&
+      !comentario.trim()
+    ) {
+      setMensaje("");
+      setError(
+        accion === "RECHAZAR"
+          ? "Indicá el motivo del rechazo."
+          : "Indicá el motivo de la baja.",
+      );
+      return;
+    }
+
+    if (comentario.trim().length > 4000) {
+      setMensaje("");
+      setError(
+        "El comentario no puede superar los 4000 caracteres.",
+      );
+      return;
+    }
+
+    if (
+      accion === "APROBAR" &&
+      !requisitosAprobacionCumplidos()
+    ) {
+      setMensaje("");
+      setError(
+        "Completá y guardá los requisitos antes de aprobar."
+      );
+      return;
+    }
+
+    if (operacionEnCurso.current || !consultaValida) return;
+
+    setError("");
+    setMensaje("");
+
+    if (
+      accion === "OBSERVAR" &&
+      !comentario.trim() &&
+      documentacionACorregir.length === 0
+    ) {
+      setError(
+        "Escribí una observación o seleccioná un documento para corregir."
+      );
+      return;
+    }
+
+    setAccionPendiente(accion);
+  }
+
+  async function confirmarOperacion() {
+    if (!accionPendiente || operacionEnCurso.current) return;
+
+    try {
+      if (accionPendiente === "VERIFICAR") {
+        await guardarVerificacion();
+      } else {
+        await ejecutarAccion(accionPendiente);
+      }
+    } finally {
+      setAccionPendiente(null);
     }
   }
 
@@ -284,13 +419,34 @@ export default function GestionInscripcion({
 
   const bloqueado = guardando || cargando || !consultaValida;
 
+  const titulosConfirmacion = {
+    VERIFICAR: "¿Guardar verificación?",
+    REVISAR: "¿Iniciar revisión?",
+    OBSERVAR: "¿Solicitar correcciones?",
+    APROBAR: "¿Aprobar inscripción?",
+    RECHAZAR: "¿Rechazar inscripción?",
+    MATRICULAR: "¿Autorizar matrícula?",
+    DAR_BAJA: "¿Dar de baja el legajo?",
+  };
+
+  const descripcionesConfirmacion = {
+    VERIFICAR: "Se guardarán los datos de verificación del legajo.",
+    REVISAR: "La inscripción pasará a estar en revisión.",
+    OBSERVAR: "Se registrarán las correcciones solicitadas al aspirante.",
+    APROBAR: "Se aprobará la solicitud de inscripción.",
+    RECHAZAR: "La inscripción será rechazada.",
+    MATRICULAR: "Se autorizará la matrícula del aspirante.",
+    DAR_BAJA: "Se registrará la baja del legajo.",
+  };
+
+
   const puedeVerificar = gestion
     ? ["PENDIENTE", "EN_REVISION", "OBSERVADO"].includes(gestion.estado)
     : false;
 
   return (
     <section
-      className="conduccion-tarjeta"
+      className="conduccion-tarjeta gestion-inscripcion"
       aria-label="Gestión de la inscripción"
     >
       <header className="conduccion-tarjeta-encabezado">
@@ -298,14 +454,27 @@ export default function GestionInscripcion({
       </header>
 
       <div className="conduccion-tarjeta-cuerpo">
-        {error && <p role="alert">{error}</p>}
-        {mensaje && <p role="status">{mensaje}</p>}
+        {error && (
+          <MensajeSistema
+            tipo="error"
+            texto={error}
+            alCerrar={() => setError("")}
+          />
+        )}
+        {mensaje && (
+          <MensajeSistema
+            tipo="exito"
+            texto={mensaje}
+            alCerrar={() => setMensaje("")}
+          />
+        )}
 
         <button
           type="button"
           disabled={cargando || guardando}
           onClick={() => {
             setMensaje("");
+            onDocumentacionActualizada?.();
             void cargar();
           }}
         >
@@ -318,7 +487,7 @@ export default function GestionInscripcion({
               <div className="gestion-resumen-item">
                 <span>Estado de la inscripción</span>
                 <strong className="gestion-estado">
-                  {gestion.estado.replaceAll("_", " ")}
+                  {mostrarEstadoLegajo(gestion.estado)}
                 </strong>
               </div>
 
@@ -331,7 +500,32 @@ export default function GestionInscripcion({
             </div>
 
             {gestion.observaciones && (
-              <p>Últimas observaciones: {gestion.observaciones}</p>
+              <aside className="gestion-observacion-previa">
+                <h3>Últimas observaciones</h3>
+                <p>{gestion.observaciones}</p>
+              </aside>
+            )}
+
+            {gestion.documentacion_a_corregir?.length > 0 && (
+              <section
+                className="gestion-documentos-observados"
+                aria-label="Documentos observados"
+              >
+                <h3>Documentos pendientes de corrección</h3>
+                <p>
+                  Documentación que se solicitó corregir al aspirante.
+                </p>
+
+                <ul>
+                  {gestion.documentacion_a_corregir.map((tipo) => (
+                    <li key={tipo}>
+                      {documentosDisponibles.find(
+                        (documento) => documento.valor === tipo
+                      )?.texto ?? tipo.replaceAll("_", " ")}
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
 
             {puedeVerificar && (
@@ -397,7 +591,7 @@ export default function GestionInscripcion({
                     type="button"
                     className="gestion-boton-guardar"
                     disabled={tituloPosgrado === ""}
-                    onClick={() => void guardarVerificacion()}
+                    onClick={() => setAccionPendiente("VERIFICAR")}
                   >
                     Guardar verificación
                   </button>
@@ -405,6 +599,9 @@ export default function GestionInscripcion({
               </fieldset>
             )}
 
+            {["EN_REVISION", "ACTIVO", "EN_RIESGO"].includes(
+              gestion.estado
+            ) && (
             <div className="gestion-observaciones">
               <label htmlFor="observaciones-inscripcion">
                 Observaciones para el aspirante
@@ -417,8 +614,10 @@ export default function GestionInscripcion({
 
               <textarea
                 id="observaciones-inscripcion"
-                value={comentario}
+
                 maxLength={4000}
+                value={comentario}
+
                 disabled={bloqueado}
                 placeholder="Escribí aquí las observaciones..."
                 onChange={(event) => setComentario(event.target.value)}
@@ -428,6 +627,8 @@ export default function GestionInscripcion({
                 Estas observaciones serán visibles para el aspirante.
               </small>
             </div>
+
+            )}
 
             {gestion.estado === "EN_REVISION" && (
               <fieldset
@@ -462,15 +663,119 @@ export default function GestionInscripcion({
               </fieldset>
             )}
 
-            <div className="gestion-acciones">
+            <section
+              className="gestion-resolucion"
+              aria-label="Resolución de la inscripción"
+            >
+              <h3>Resolución de la inscripción</h3>
+              <p className="gestion-ayuda">
+                Seleccioná una operación disponible según el estado actual.
+              </p>
+
+              {(accionesPorEstado[gestion.estado] ?? []).length === 0 && (
+                <p className="gestion-ayuda">
+                  No hay cambios de estado disponibles.
+                </p>
+              )}
+
+              {gestion.estado === "EN_REVISION" && (
+                <section
+                  className="gestion-requisitos"
+                  aria-label="Requisitos de aprobación"
+                >
+                  <h4>Requisitos para aprobar</h4>
+
+                  <ul className="gestion-requisitos-lista">
+                    <li data-completo={gestion.datos_verificados}>
+                      Datos personales y académicos:
+                      {" "}
+                      {gestion.datos_verificados
+                        ? "Verificados"
+                        : "Pendientes"}
+                    </li>
+
+                    <li data-completo={gestion.tiene_titulo_posgrado != null}>
+                      Información del título previo:
+                      {" "}
+                      {gestion.tiene_titulo_posgrado != null
+                        ? "Registrada"
+                        : "Pendiente"}
+                    </li>
+
+                    <li data-completo={
+                      documentacion?.completitud?.completo === true
+                    }>
+                      Documentación:
+                      {" "}
+                      {documentacion?.completitud?.completo
+                        ? "Completa"
+                        : "Pendiente"}
+                    </li>
+                  </ul>
+
+                  {documentacion?.completitud ? (
+                    <>
+                      <p>
+                        {documentacion.completitud.documentos_presentados}
+                        {" de "}
+                        {documentacion.completitud.documentos_requeridos}
+                        {" documentos requeridos"}
+                      </p>
+
+                      <progress
+                        max={100}
+                        value={documentacion.completitud.porcentaje}
+                        aria-label="Completitud documental"
+                      />
+
+                      <p>
+                        {documentacion.completitud.porcentaje}%
+                      </p>
+
+                      {documentacion.completitud.documentos_faltantes.length > 0 && (
+                        <>
+                          <h5>Documentos faltantes</h5>
+                          <ul>
+                            {documentacion.completitud.documentos_faltantes.map(
+                              (documento) => (
+                                <li key={documento}>{documento}</li>
+                              )
+                            )}
+                          </ul>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <p className="gestion-ayuda">
+                      {documentacion?.pendiente ??
+                        "No se pudo determinar la completitud documental."}
+                    </p>
+                  )}
+
+                  {!requisitosAprobacionCumplidos() && (
+                    <p className="gestion-ayuda">
+                      Completá y guardá los requisitos pendientes
+                      para habilitar la aprobación.
+                    </p>
+                  )}
+                </section>
+              )}
+
+              <div className="gestion-acciones">
               {(accionesPorEstado[gestion.estado] ?? []).map(
                 ({ accion, texto }) => (
                   <button
                     key={accion}
                     type="button"
-                    className="conduccion-listado-boton-secundario"
-                    disabled={bloqueado}
-                    onClick={() => void ejecutarAccion(accion)}
+                    className={
+                      `gestion-accion gestion-accion--${accion.toLowerCase()}`
+                    }
+                    disabled={
+                      bloqueado ||
+                      (accion === "APROBAR" &&
+                        !requisitosAprobacionCumplidos())
+                    }
+                    onClick={() => solicitarAccion(accion)}
                   >
                     {texto}
                   </button>
@@ -478,15 +783,29 @@ export default function GestionInscripcion({
               )}
             </div>
 
-            <h3>Historial de operaciones</h3>
+            </section>
+
+            <details className="gestion-historial">
+              <summary>Historial de operaciones ({eventos.length})</summary>
 
             {eventos.length === 0 ? (
               <p>No hay operaciones registradas.</p>
             ) : (
-              <ol>
+              <ol className="gestion-historial-lista">
                 {eventos.map((evento) => (
                   <li key={evento.id}>
-                    <strong>{evento.accion}</strong>
+                    <strong>
+                      {({
+                        REVISAR: "Inicio de revisión",
+                        VERIFICAR_DATOS: "Verificación de datos",
+                        OBSERVAR: "Correcciones solicitadas",
+                        APROBAR: "Inscripción aprobada",
+                        RECHAZAR: "Inscripción rechazada",
+                        MATRICULAR: "Matrícula autorizada",
+                        DAR_BAJA: "Baja registrada",
+                      } as Record<string, string>)[evento.accion]
+                        ?? evento.accion.replaceAll("_", " ")}
+                    </strong>
                     {" — "}
                     {new Date(evento.fecha).toLocaleString("es-AR")}
                     {" — "}
@@ -496,9 +815,26 @@ export default function GestionInscripcion({
                 ))}
               </ol>
             )}
+            </details>
           </>
         )}
       </div>
+      {accionPendiente && (
+        <ConfirmacionModal
+          abierto
+          titulo={titulosConfirmacion[accionPendiente]}
+          descripcion={descripcionesConfirmacion[accionPendiente]}
+          textoConfirmar="Confirmar"
+          textoCancelar="Cancelar"
+          confirmando={guardando}
+          peligroso={
+            accionPendiente === "RECHAZAR" ||
+            accionPendiente === "DAR_BAJA"
+          }
+          alConfirmar={confirmarOperacion}
+          alCancelar={() => setAccionPendiente(null)}
+        />
+      )}
     </section>
   );
 }

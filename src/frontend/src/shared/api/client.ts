@@ -1,3 +1,13 @@
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(mensaje: string, status: number) {
+    super(mensaje);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 
 const API_URL =
   import.meta.env.VITE_API_URL ??
@@ -166,7 +176,10 @@ async function request<T>(
       // El servidor puede responder con HTML o texto.
     }
 
-    throw new Error(obtenerMensajeError(data));
+    throw new ApiError(
+      obtenerMensajeError(data),
+      respuesta.status,
+    );
   }
 
   if (respuesta.status === 204 || respuesta.status === 205) {

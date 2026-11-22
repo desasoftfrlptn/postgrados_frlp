@@ -246,3 +246,98 @@
     grid-template-columns: 1fr;
   }
 }
+
+.contacto-campos {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.contacto-formulario,
+.contacto-informacion,
+.contacto-dato > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.contacto-datos {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contacto-dato a {
+  font-size: 13px;
+  color: var(--color-secondary);
+  overflow-wrap: anywhere;
+}
+
+.contacto-dato a:hover {
+  text-decoration: underline;
+}
+
+.contacto-dato p,
+.contacto-hero p {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.contacto-aviso {
+  width: min(
+    calc(100% - var(--espaciado-lateral) * 2),
+    var(--ancho-maximo)
+  );
+  margin: 20px auto;
+}
+
+.contacto-formulario button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.contacto-formulario .contacto-formulario-aviso {
+  margin: 16px 0 0;
+  line-height: 1.5;
+}
+
+.contacto-mapa iframe {
+  display: block;
+  min-height: 220px;
+}
+
+@media (max-width: 600px) {
+  .contacto-datos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.contacto-error-campo {
+  display: block;
+  color: #b91c1c;
+  font-size: 13px;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.contacto-campo input[aria-invalid="true"],
+.contacto-campo textarea[aria-invalid="true"] {
+  border-color: #b91c1c;
+}
+
+.contacto-campo input:focus-visible,
+.contacto-campo textarea:focus-visible,
+.contacto-formulario button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.contacto-campos:disabled {
+  opacity: 0.75;
+}
+
+.contacto-campo textarea {
+  resize: vertical;
+  min-height: 100px;
+}

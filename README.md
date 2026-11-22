@@ -95,7 +95,7 @@ Después del primer build, alcanza con `docker compose up`. Para dejarlo en segu
 - Frontend React: http://localhost:3000
 - Backend FastAPI: http://localhost:8000
 - Documentación de la API: http://localhost:8000/docs
-- Correos de desarrollo (MailHog): http://localhost:8025
+- Correos: Gmail SMTP autenticado mediante STARTTLS. Configurar las variables de `.env.example`.
 
 Compose inicia PostgreSQL, espera que esté disponible, inicia el backend y espera que `/health` responda antes de iniciar el frontend. FastAPI crea las tablas al arrancar; no hay un paso manual de migraciones para este inicio. Las dependencias se instalan dentro de las imágenes y los cambios del código se recargan durante el desarrollo.
 

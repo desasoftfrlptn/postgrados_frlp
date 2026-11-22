@@ -169,7 +169,7 @@ describe("Listado de aspirantes - acceso a la gestión", () => {
 
     await waitFor(() => {
       expect(
-        within(fila!).getByText("Completado")
+        within(fila!).getByText("Aprobada")
       ).toBeInTheDocument();
     });
   });

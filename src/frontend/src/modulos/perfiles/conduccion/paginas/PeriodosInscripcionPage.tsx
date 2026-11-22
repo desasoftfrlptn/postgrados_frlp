@@ -1,4 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
 
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -22,6 +24,18 @@ interface Cohorte {
 }
 
 type FiltroEstado = "TODAS" | "ABIERTAS" | "CERRADAS";
+
+type OperacionPendiente =
+  | { tipo: "CAMBIAR"; cohorte: Cohorte }
+  | {
+      tipo: "CREAR";
+      datos: {
+        nombre: string;
+        anio: number;
+        carrera_id: string;
+        fecha_inicio: string | null;
+      };
+    };
 
 function mostrarFecha(fecha: string | null): string {
   if (!fecha) return "Sin fecha";
@@ -47,6 +61,9 @@ export default function PeriodosInscripcionPage() {
   const [versionConsulta, setVersionConsulta] = useState(0);
   const [mostrarAlta, setMostrarAlta] = useState(false);
   const [creando, setCreando] = useState(false);
+  const [operacionPendiente, setOperacionPendiente] =
+    useState<OperacionPendiente | null>(null);
+  const operacionEnCurso = useRef(false);
   const [nueva, setNueva] = useState({
     nombre: "",
     anio: String(new Date().getFullYear()),
@@ -117,14 +134,10 @@ export default function PeriodosInscripcionPage() {
   const cantidadAbiertas = cohortes.filter((cohorte) => cohorte.abierta).length;
 
   async function cambiarInscripcion(cohorte: Cohorte) {
-    if (!token || procesandoId !== null) return;
+    if (!token || operacionEnCurso.current) return;
 
+    operacionEnCurso.current = true;
     const abrir = !cohorte.abierta;
-    const accion = abrir ? "abrir" : "cerrar";
-    const confirmado = window.confirm(
-      `¿Querés ${accion} las inscripciones de la cohorte "${cohorte.nombre}"?`,
-    );
-    if (!confirmado) return;
 
     setProcesandoId(cohorte.id);
     setError("");
@@ -152,29 +165,45 @@ export default function PeriodosInscripcionPage() {
           : "No se pudo modificar la inscripción de la cohorte.",
       );
     } finally {
+      operacionEnCurso.current = false;
       setProcesandoId(null);
     }
   }
 
-  async function crearCohorte(evento: FormEvent<HTMLFormElement>) {
+  function solicitarAlta(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
-    if (!token || creando) return;
+    if (!token || operacionEnCurso.current || operacionPendiente) return;
     const nombre = nueva.nombre.trim();
     const anio = Number(nueva.anio);
     if (!nombre || !nueva.carrera_id || !Number.isInteger(anio) || anio < 1) {
       setError("Completá el nombre, año y carrera de la cohorte.");
       return;
     }
-    setCreando(true);
     setError("");
     setMensaje("");
-    try {
-      const creada = await api.post<Cohorte>("/cohortes", {
+    setOperacionPendiente({
+      tipo: "CREAR",
+      datos: {
         nombre,
         anio,
         carrera_id: nueva.carrera_id,
         fecha_inicio: nueva.fecha_inicio || null,
-      }, token);
+      },
+    });
+  }
+
+  async function crearCohorte(
+    datos: Extract<OperacionPendiente, { tipo: "CREAR" }>["datos"],
+  ) {
+    if (!token || operacionEnCurso.current) return;
+
+    operacionEnCurso.current = true;
+    setCreando(true);
+    setError("");
+    setMensaje("");
+
+    try {
+      const creada = await api.post<Cohorte>("/cohortes", datos, token);
       setCohortes((actuales) => [...actuales, creada]);
       setMostrarAlta(false);
       setNueva({ nombre: "", anio: String(new Date().getFullYear()), carrera_id: "", fecha_inicio: "" });
@@ -182,7 +211,22 @@ export default function PeriodosInscripcionPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear la cohorte.");
     } finally {
+      operacionEnCurso.current = false;
       setCreando(false);
+    }
+  }
+
+  async function confirmarOperacion() {
+    if (!operacionPendiente || operacionEnCurso.current) return;
+
+    try {
+      if (operacionPendiente.tipo === "CREAR") {
+        await crearCohorte(operacionPendiente.datos);
+      } else {
+        await cambiarInscripcion(operacionPendiente.cohorte);
+      }
+    } finally {
+      setOperacionPendiente(null);
     }
   }
 
@@ -208,7 +252,7 @@ export default function PeriodosInscripcionPage() {
               {mostrarAlta ? "Cerrar formulario" : "+ Nueva cohorte"}
             </button>
           </div>
-          {mostrarAlta && <form className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={(evento) => void crearCohorte(evento)}>
+          {mostrarAlta && <form className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={solicitarAlta}>
             <h3 className="mb-4 text-lg font-bold">Crear cohorte</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div><label htmlFor="nueva-cohorte-nombre" className="mb-1 block font-semibold">Nombre</label>
@@ -233,7 +277,7 @@ export default function PeriodosInscripcionPage() {
                   className="w-full rounded-md border border-slate-300 bg-white p-2" /></div>
             </div>
             <div className="mt-4 flex gap-3">
-              <button type="submit" disabled={creando} className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
+              <button type="submit" disabled={creando || procesandoId !== null || Boolean(operacionPendiente)} className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
                 {creando ? "Creando…" : "Crear cohorte"}
               </button>
               <button type="button" disabled={creando} onClick={() => setMostrarAlta(false)}
@@ -298,14 +342,18 @@ export default function PeriodosInscripcionPage() {
           </div>
 
           {error && (
-            <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-red-800">
-              {error}
-            </p>
+            <MensajeSistema
+              tipo="error"
+              texto={error}
+              alCerrar={() => setError("")}
+            />
           )}
           {mensaje && (
-            <p role="status" className="mb-4 rounded-md bg-green-50 p-3 text-green-800">
-              {mensaje}
-            </p>
+            <MensajeSistema
+              tipo="exito"
+              texto={mensaje}
+              alCerrar={() => setMensaje("")}
+            />
           )}
           {cargando && <p role="status">Cargando cohortes y carreras…</p>}
 
@@ -354,8 +402,15 @@ export default function PeriodosInscripcionPage() {
                       <td className="px-3 py-3">
                         <button
                           type="button"
-                          disabled={procesandoId !== null}
-                          onClick={() => void cambiarInscripcion(cohorte)}
+                          disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}
+                          onClick={() => {
+                            setError("");
+                            setMensaje("");
+                            setOperacionPendiente({
+                              tipo: "CAMBIAR",
+                              cohorte,
+                            });
+                          }}
                           aria-label={`${cohorte.abierta ? "Cerrar" : "Abrir"} inscripciones de ${cohorte.nombre}`}
                           className={`rounded-md px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 ${
                             cohorte.abierta
@@ -391,6 +446,39 @@ export default function PeriodosInscripcionPage() {
           )}
         </div>
       </section>
+
+      <ConfirmacionModal
+        abierto={operacionPendiente !== null}
+        titulo={
+          operacionPendiente?.tipo === "CREAR"
+            ? "Confirmar alta de cohorte"
+            : operacionPendiente?.tipo === "CAMBIAR" &&
+                operacionPendiente.cohorte.abierta
+              ? "Cerrar inscripciones"
+              : "Abrir inscripciones"
+        }
+        descripcion={
+          operacionPendiente?.tipo === "CREAR"
+            ? `¿Confirmás la creación de "${operacionPendiente.datos.nombre}"?`
+            : operacionPendiente?.tipo === "CAMBIAR"
+              ? operacionPendiente.cohorte.abierta
+                ? `La cohorte "${operacionPendiente.cohorte.nombre}" dejará de recibir nuevas inscripciones.`
+                : `Se habilitarán las inscripciones de "${operacionPendiente.cohorte.nombre}".`
+              : ""
+        }
+        textoConfirmar="Confirmar"
+        confirmando={creando || procesandoId !== null}
+        peligroso={
+          operacionPendiente?.tipo === "CAMBIAR" &&
+          operacionPendiente.cohorte.abierta
+        }
+        alConfirmar={() => void confirmarOperacion()}
+        alCancelar={() => {
+          if (!operacionEnCurso.current) {
+            setOperacionPendiente(null);
+          }
+        }}
+      />
     </section>
   );
 }

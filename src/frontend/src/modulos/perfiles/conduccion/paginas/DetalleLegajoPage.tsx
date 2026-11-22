@@ -1,3 +1,4 @@
+import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -5,6 +6,7 @@ import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 import GestionInscripcion from "../componentes/GestionInscripcion";
 import "../estilos/Conduccion.css";
+import "./DetalleLegajoPage.css";
 
 interface LegajoDetalle {
   id: string;
@@ -50,6 +52,7 @@ interface DocumentacionLegajo {
 type AccionDocumento = "ver" | "descargar";
 
 const nombresDocumentos: Record<string, string> = {
+  FORMULARIO_INSCRIPCION: "Formulario de inscripción firmado",
   FORMULARIO_PREINSCRIPCION: "Formulario de preinscripción firmado",
   DNI_PASAPORTE: "Copia de DNI o pasaporte",
   TITULO_GRADO: "Copia del título de grado",
@@ -63,11 +66,7 @@ function mostrarDato(valor: string | null | undefined) {
   return valor?.trim() || "";
 }
 
-function mostrarEstado(estado: string) {
-  if (estado === "COMPLETADO") return "Listo";
-  if (estado === "EN_REVISION") return "En revisión";
-  return estado.replaceAll("_", " ").toLowerCase().replace(/^./, (letra) => letra.toUpperCase());
-}
+
 
 function mostrarFecha(fecha: string) {
   const valor = new Date(fecha);
@@ -106,12 +105,23 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: string | null | u
 }
 
 function ContenidoDetalle({ id, token }: { id: string; token: string }) {
+  const [seccionActiva, setSeccionActiva] =
+    useState<"gestion" | "datos" | "documentos">("gestion");
+
   const [legajo, setLegajo] = useState<LegajoDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [documentacion, setDocumentacion] = useState<DocumentacionLegajo | null>(null);
   const [cargandoDocumentacion, setCargandoDocumentacion] = useState(true);
+  const [revisionDocumental, setRevisionDocumental] = useState(0);
+
   const [errorDocumentacion, setErrorDocumentacion] = useState("");
+
+  const actualizarDocumentacion = useCallback(() => {
+    setCargandoDocumentacion(true);
+    setErrorDocumentacion("");
+    setRevisionDocumental((actual) => actual + 1);
+  }, []);
   const [errorArchivo, setErrorArchivo] = useState("");
   const [operacionDocumento, setOperacionDocumento] = useState<{
     id: string;
@@ -137,17 +147,34 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
       }
     }
 
+    void cargarLegajo();
+
+    return () => {
+      activo = false;
+    };
+  }, [id, token]);
+
+  useEffect(() => {
+    let activo = true;
+
     async function cargarDocumentacion() {
       try {
         const resultado = await api.get<DocumentacionLegajo>(
           `/inscripcion/${encodeURIComponent(id)}/documentos`,
           token,
         );
-        if (activo) setDocumentacion(resultado);
+
+        if (activo) {
+          setDocumentacion(resultado);
+          setErrorDocumentacion("");
+        }
       } catch (err) {
         if (activo) {
+          setDocumentacion(null);
           setErrorDocumentacion(
-            err instanceof Error ? err.message : "No se pudo consultar la documentación.",
+            err instanceof Error
+              ? err.message
+              : "No se pudo consultar la documentación.",
           );
         }
       } finally {
@@ -155,10 +182,12 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
       }
     }
 
-    void cargarLegajo();
     void cargarDocumentacion();
-    return () => { activo = false; };
-  }, [id, token]);
+
+    return () => {
+      activo = false;
+    };
+  }, [id, token, revisionDocumental]);
 
   const actualizarEstado = useCallback((estado: string) => {
     setLegajo((actual) => actual ? { ...actual, estado } : actual);
@@ -230,8 +259,8 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
 
       <header className="conduccion-detalle-encabezado">
         <p className="conduccion-etiqueta">EQUIPO DE CONDUCCIÓN / INSCRIPCIONES</p>
-        <h1 id="titulo-detalle-legajo">Detalle del legajo</h1>
-        <p>Consultá los datos de la inscripción y su documentación.</p>
+        <h1 id="titulo-detalle-legajo">Gestión del aspirante</h1>
+        <p>Revisá la inscripción y resolvé la solicitud de admisión.</p>
       </header>
 
       {cargando && <p role="status">Cargando información del legajo…</p>}
@@ -247,15 +276,53 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
                 <p className="conduccion-subtitulo">{legajo.carrera_elegida}</p>
               </div>
               <span className={`conduccion-estado ${claseEstado(legajo.estado)}`}>
-                {mostrarEstado(legajo.estado)}
+                {mostrarEstadoLegajo(legajo.estado)}
               </span>
             </div>
             <dl className="conduccion-resumen-datos">
               <Campo etiqueta="N.º de seguimiento" valor={legajo.numero_seguimiento} />
               <Campo etiqueta="DNI / Pasaporte" valor={legajo.dni_pasaporte} />
+              <Campo
+                etiqueta="Beca solicitada"
+                valor={legajo.solicitud_beca == null
+                  ? "Sin solicitud"
+                  : `${legajo.solicitud_beca}%`}
+              />
             </dl>
           </section>
 
+
+          <nav className="legajo-navegacion" aria-label="Secciones del legajo">
+            {([
+              ["gestion", "Gestión de inscripción"],
+              ["datos", "Datos del aspirante"],
+              ["documentos", "Documentación"],
+            ] as const).map(([seccion, texto]) => (
+              <button
+                key={seccion}
+                type="button"
+                aria-pressed={seccionActiva === seccion}
+                className={
+                  seccionActiva === seccion
+                    ? "legajo-navegacion-activa"
+                    : ""
+                }
+                onClick={() => setSeccionActiva(seccion)}
+              >
+                {texto}
+              </button>
+            ))}
+          </nav>
+
+          <div hidden={seccionActiva !== "gestion"} className="legajo-panel">
+            <GestionInscripcion
+              legajoId={legajo.id}
+              onEstadoActualizado={actualizarEstado}
+              onDocumentacionActualizada={actualizarDocumentacion}
+            />
+          </div>
+
+          <div hidden={seccionActiva !== "datos"} className="legajo-panel">
           <div className="conduccion-grid">
             {legajo.nacionalidad?.trim() && (
               <section className="conduccion-tarjeta">
@@ -289,16 +356,13 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
               </section>
             )}
 
-            {legajo.solicitud_beca != null && (
-              <section className="conduccion-tarjeta">
-                <header className="conduccion-tarjeta-encabezado"><h2>Beca solicitada</h2></header>
-                <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
-                  <Campo etiqueta="Porcentaje solicitado" valor={`${legajo.solicitud_beca}%`} />
-                </dl>
-              </section>
-            )}
+
           </div>
 
+
+          </div>
+
+          <div hidden={seccionActiva !== "documentos"} className="legajo-panel">
           <section className="conduccion-tarjeta conduccion-seccion-documental" aria-labelledby="titulo-documentacion">
             <header className="conduccion-tarjeta-encabezado">
               <h2 id="titulo-documentacion">Estado de la documentación</h2>
@@ -364,19 +428,8 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
             </div>
           </section>
 
-          <section className="conduccion-gestion" aria-labelledby="titulo-gestion-legajo">
-            <header className="conduccion-gestion-encabezado">
-              <div>
-                <p className="conduccion-resumen-etiqueta">ADMISIÓN</p>
-                <h2 id="titulo-gestion-legajo">Revisión y decisión del legajo</h2>
-                <p>El estado se actualiza únicamente cuando el backend confirma una operación de admisión.</p>
-              </div>
-              <span className={`conduccion-estado ${claseEstado(legajo.estado)}`}>
-                {mostrarEstado(legajo.estado)}
-              </span>
-            </header>
-            <GestionInscripcion legajoId={legajo.id} onEstadoActualizado={actualizarEstado} />
-          </section>
+
+          </div>
         </>
       )}
     </section>

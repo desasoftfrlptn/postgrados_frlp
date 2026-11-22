@@ -56,20 +56,35 @@ from src.inscripcion.presentacion.cohortes_rutas import (
     enrutador as cohortes_rutas,
 )
 from src.conduccion.rutas import enrutador as conduccion_rutas
+from src.conduccion.procesador_correos import (
+    procesar_correos_periodicamente,
+)
 from src.inscripcion.presentacion.documentos_rutas import enrutador as documentos_rutas
 from src.eventos.rutas import enrutador as eventos_rutas
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    detener = asyncio.Event()
+    tarea_correos = None
+
     try:
         async with engine.begin() as conexion:
             await conexion.run_sync(Base.metadata.create_all)
 
+        tarea_correos = asyncio.create_task(
+            procesar_correos_periodicamente(detener)
+        )
+
         yield
 
     finally:
-        await engine.dispose()
+        detener.set()
 
+        try:
+            if tarea_correos is not None:
+                await tarea_correos
+        finally:
+            await engine.dispose()
 
 app = FastAPI(
     title="Sistema de Posgrado API",

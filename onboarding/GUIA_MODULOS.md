@@ -370,10 +370,10 @@ export function TendenciaInscripciones() {
 
 ### "¿Cómo pruebo el envío de emails en desarrollo?"
 
-Usá **MailHog** (ya incluido en el docker-compose):
-1. El sistema envía emails normalmente a `smtp://mailhog:1025`
+Usá **Gmail SMTP**, configurado mediante las variables de entorno del Backend:
+1. El sistema envía correos mediante `smtp.gmail.com:587` con STARTTLS.
 2. Los emails NO llegan a ninguna bandeja real
-3. Los podés ver en `http://localhost:8025`
+3. Podés verificar los correos en la cuenta de destino y en Gmail.
 
 ---
 

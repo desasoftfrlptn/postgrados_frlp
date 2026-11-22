@@ -1,3 +1,8 @@
+from pydantic import ValidationError
+from src.inscripcion.aplicacion.notificaciones import (
+    encolar_confirmacion_inscripcion,
+)
+
 import hashlib
 import os
 
@@ -183,26 +188,36 @@ async def inscribir_aspirante(
 
     db: AsyncSession = Depends(get_db),
 ):
-    datos = LegajoCrear(
-        cohorte_id=cohorte_id,
-        carrera_elegida=carrera_elegida,
-        apellido=apellido,
-        nombre=nombre,
-        nacionalidad=nacionalidad,
-        dni_pasaporte=dni_pasaporte,
-        correo_electronico=correo_electronico,
-        telefono_movil=telefono_movil,
-        correo_alternativo=correo_alternativo,
-        domicilio=domicilio,
-        pais=pais,
-        provincia=provincia,
-        ciudad=ciudad,
-        titulo_anterior=titulo_anterior,
-        universidad_anterior=universidad_anterior,
-        forma_conocio_ofertas=forma_conocio_ofertas,
-        motivos_cursar=motivos_cursar,
-        solicitud_beca=solicitud_beca,
-    )
+    try:
+        datos = LegajoCrear(
+            cohorte_id=cohorte_id,
+            carrera_elegida=carrera_elegida,
+            apellido=apellido,
+            nombre=nombre,
+            nacionalidad=nacionalidad,
+            dni_pasaporte=dni_pasaporte,
+            correo_electronico=correo_electronico,
+            telefono_movil=telefono_movil,
+            correo_alternativo=correo_alternativo,
+            domicilio=domicilio,
+            pais=pais,
+            provincia=provincia,
+            ciudad=ciudad,
+            titulo_anterior=titulo_anterior,
+            universidad_anterior=universidad_anterior,
+            forma_conocio_ofertas=forma_conocio_ofertas,
+            motivos_cursar=motivos_cursar,
+            solicitud_beca=(
+                int(solicitud_beca)
+                if solicitud_beca is not None
+                else None
+            ),
+        )
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=exc.errors(include_context=False, include_input=False),
+        ) from exc
 
     # Validar los ocho documentos antes de iniciar el registro.
     archivos = {
@@ -359,7 +374,10 @@ async def inscribir_aspirante(
 
             db.add(documento)
 
-        # Confirmar legajo y documentos juntos.
+        # Registrar la notificacion en la misma transaccion.
+        encolar_confirmacion_inscripcion(db, nuevo_legajo)
+
+        # Confirmar legajo, documentos y notificacion juntos.
         await db.commit()
 
     except IntegrityError as exc:
