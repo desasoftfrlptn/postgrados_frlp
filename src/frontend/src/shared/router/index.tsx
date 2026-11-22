@@ -73,8 +73,15 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           {
-            path: "dashboard/general",
-            lazy: cargarPagina(() => import("../../modulos/perfiles/shared/paginas/DashboardRolGeneralPage")),
+            element: <ProtectedRoute rolesPermitidos={["CPR"]} />,
+            children: [
+              { path: "dashboard/general", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/DashboardCPRPage")) },
+              { path: "dashboard/cpr/tesis", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/GestionTesisPage")) },
+            ],
+          },
+          {
+            path: "dashboard/alertas",
+            lazy: cargarPagina(() => import("../../modulos/perfiles/shared/paginas/AlertasPage")),
           },
           {
             path: "dashboard/acceso-denegado",
@@ -102,10 +109,6 @@ export const router = createBrowserRouter([
               {
                 path: "dashboard/tutorias",
                 lazy: cargarPagina(() => import("../../modulos/perfiles/estudiante/paginas/TutoriasPage")),
-              },
-              {
-                path: "dashboard/certificados",
-                lazy: cargarPagina(() => import("../../modulos/perfiles/estudiante/paginas/CertificadosPage")),
               },
               {
                 path: "dashboard/asistencias",

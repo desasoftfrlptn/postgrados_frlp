@@ -1,3 +1,4 @@
+import os
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -5,7 +6,8 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.conduccion.notificaciones import generar_correo_observacion
+from src.alertas.servicio import alertar_rol, alertar_alumno
+from src.conduccion.notificaciones import generar_correo_observacion, generar_correo_estado
 from src.conduccion.esquemas import (
     AccionLegajoPeticion,
     VerificacionLegajoPeticion,
@@ -493,6 +495,34 @@ async def aplicar_accion(
             ),
         )
 
+    elif cambio.estado_anterior != cambio.estado_nuevo:
+        asunto, contenido = generar_correo_estado(legajo, cambio.estado_nuevo, cambio.comentario)
+        encolar_correo(db, destinatario=legajo.correo_electronico, asunto=asunto, contenido=contenido)
+
+    if datos.accion in (AccionLegajo.APROBAR, AccionLegajo.MATRICULAR):
+        destinatario = os.getenv("ADMIN_EMAIL", "").strip()
+        if not destinatario:
+            raise HTTPException(status_code=503, detail="Falta configurar el correo de Administración.")
+        matriculado = datos.accion == AccionLegajo.MATRICULAR
+        encolar_correo(
+            db, destinatario=destinatario,
+            asunto="Acceso académico pendiente" if matriculado else "Inscripción aprobada",
+            contenido=(f"Estudiante: {legajo.nombre} {legajo.apellido}\n"
+                       f"Carrera: {legajo.carrera_elegida}\n"
+                       f"Seguimiento: {legajo.numero_seguimiento}\n"
+                       + ("Verificá si ya existe una cuenta ALUMNO y gestioná su acceso." if matriculado
+                          else "La inscripción está aprobada. Esperá la matriculación antes de habilitar el acceso.")),
+        )
+
+    if datos.accion in (AccionLegajo.APROBAR, AccionLegajo.MATRICULAR):
+        matriculado = datos.accion == AccionLegajo.MATRICULAR
+        await alertar_rol(db, "ADMIN", "Acceso académico pendiente" if matriculado else "Inscripción aprobada",
+            f"{legajo.nombre} {legajo.apellido} · {legajo.numero_seguimiento}. " +
+            ("Verificá o habilitá su cuenta." if matriculado else "Pendiente de matriculación."),
+            "/dashboard/administrador/usuarios")
+    if cambio.estado_anterior != cambio.estado_nuevo:
+        await alertar_alumno(db, legajo, "Actualización académica",
+            f"{legajo.carrera_elegida}: nuevo estado {cambio.estado_nuevo}.", "/dashboard")
     return resumen_gestion(legajo, gestion)
 
 
@@ -565,6 +595,9 @@ async def vencer_reservas(db, ahora=None):
             anterior={"estado": "COMPLETADO"},
             nuevo={"estado": "VENCIDO"},
         )
+
+        asunto, contenido = generar_correo_estado(legajo, "VENCIDO")
+        encolar_correo(db, destinatario=legajo.correo_electronico, asunto=asunto, contenido=contenido)
 
         vencidos.append(
             {

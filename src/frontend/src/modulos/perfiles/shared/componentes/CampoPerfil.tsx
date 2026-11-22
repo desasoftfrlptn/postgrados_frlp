@@ -19,7 +19,7 @@ export default function CampoPerfil({
 
   return (
     <div className="mi-perfil-campo">
-      <label htmlFor={id}>
+      <label htmlFor={editando ? id : undefined}>
         {etiqueta}
       </label>
 
@@ -33,7 +33,7 @@ export default function CampoPerfil({
           }
         />
       ) : (
-        <p>{valor}</p>
+        <p>{valor || "Sin información registrada"}</p>
       )}
     </div>
   );

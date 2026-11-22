@@ -26,6 +26,7 @@ function montar(elemento: ReactNode) { render(<MemoryRouter>{elemento}</MemoryRo
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api.get).mockImplementation(async <T,>(ruta: string): Promise<T> => {
+    if (ruta === "/inscripcion/tesis/registros") return [] as T;
     if (ruta === "/cohortes") return cohortes as T;
     if (ruta === "/carreras") return carreras as T;
     if (ruta === "/inscripcion/?cohorte_id=cohorte-1") return legajos as T;
@@ -42,6 +43,14 @@ describe("Navegación completa de Conducción", () => {
     montar(<PanelConduccionPage />);
     expect(screen.getByRole("heading", { name: /Panel del Equipo de Conducción/i })).toBeInTheDocument();
     expect(screen.getAllByRole("link", {name:"Ingresar al módulo"})).toHaveLength(9);
+  });
+  it("muestra indicadores de la cohorte seleccionada sin inventar datos", async () => {
+    montar(<PanelConduccionPage />);
+    await screen.findByRole("option", {name: /Cohorte 2026/});
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/inscripcion/?"), expect.anything());
+    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
+    expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
+    expect(screen.getByRole("heading", {name:"Pendientes de revisión"}).parentElement).toHaveTextContent("1");
   });
   it("exportaciones no consulta legajos hasta elegir cohorte", async () => {
     montar(<ExportacionesConduccionPage />);
@@ -72,9 +81,14 @@ describe("Navegación completa de Conducción", () => {
     expect(await screen.findByText("Pendiente de revisión")).toBeInTheDocument();
     expect(screen.getByText("100 %")).toBeInTheDocument();
   });
+  it("consulta tesis reales sin acciones de escritura", async () => {
+    montar(<TrabajosFinalesConduccionPage />);
+    expect(await screen.findByText("No hay tesis que coincidan con la consulta.")).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/inscripcion/tesis/registros", "prueba");
+    expect(screen.queryByRole("button", {name: "Registrar tesis"})).not.toBeInTheDocument();
+  });
   it.each([
     ["Tutorías y seguimiento", <TutoriasConduccionPage />],
-    ["Trabajo final y tesis", <TrabajosFinalesConduccionPage />],
     ["Seminarios y calificaciones", <SeminariosConduccionPage />],
   ])("muestra %s sin simular datos académicos", async (titulo, componente) => {
     montar(componente);

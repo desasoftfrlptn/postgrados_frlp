@@ -78,8 +78,9 @@
 
 .mi-perfil-tarjeta-personal {
   overflow: hidden;
-  color: #ffffff;
-  background: #0f172a;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 14px;
   box-shadow:
     0 4px 12px
@@ -87,8 +88,9 @@
 }
 
 .mi-perfil-tarjeta-personal > header {
-  padding: 10px;
-  background: #2563eb;
+  padding: 14px;
+  color: #1d4ed8;
+  background: #eff6ff;
   text-align: center;
   font-size: 12px;
   font-weight: 700;
@@ -100,7 +102,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .mi-perfil-avatar {
@@ -114,7 +116,7 @@
 .mi-perfil-avatar-vacio {
   display: grid;
   place-items: center;
-  background: #334155;
+  background: #dbeafe;
   font-size: 38px;
 }
 
@@ -126,7 +128,7 @@
 
 .mi-perfil-avatar-contenedor p {
   margin: 5px 0 0;
-  color: #94a3b8;
+  color: #475569;
   font-size: 14px;
 }
 
@@ -165,7 +167,7 @@
 
 .mi-perfil-eliminar-foto {
   padding: 5px;
-  color: #fca5a5;
+  color: #b91c1c;
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -187,7 +189,7 @@
 .mi-perfil-resumen-personal dl div {
   margin-bottom: 12px;
   padding: 12px;
-  background: #1e293b;
+  background: #f8fafc;
   border-radius: 8px;
 }
 
@@ -203,7 +205,7 @@
 
 .mi-perfil-resumen-personal dd {
   margin: 0;
-  color: #cbd5e1;
+  color: #334155;
   overflow-wrap: anywhere;
 }
 
@@ -229,7 +231,7 @@
 /* ============================= */
 
 .mi-perfil-datos {
-  min-height: 100%;
+  min-width: 0;
   padding: 28px 30px;
   background: #ffffff;
   border: 1px solid #e5e7eb;

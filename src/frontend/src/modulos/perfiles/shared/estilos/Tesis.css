@@ -1,0 +1,38 @@
+/* Tesis: complementos de las tarjetas y paneles compartidos. */
+.tesis-pagina { display: grid; gap: 20px; min-width: 0; max-width: none; }
+.tesis-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+.tesis-indicadores { margin-bottom: 0; gap: 16px; }
+.tesis-icono { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; font-size: 20px; }
+.tesis-panel { min-width: 0; }
+.tesis-panel-cuerpo { padding: 24px; }
+.tesis-panel-cuerpo h3 { margin: 0 0 8px; font-size: 16px; }
+.tesis-panel-cuerpo p { margin: 0 0 16px; color: #475569; line-height: 1.5; }
+.tesis-secundario { display: block; color: #64748b; font-size: 14px; margin: 6px 0 0; overflow-wrap: anywhere; }
+.tesis-aviso { padding: 18px 20px; border: 1px solid #bfdbfe; border-radius: 10px; background: #eff6ff; color: #1e40af; }
+.tesis-aviso p { margin: 6px 0 12px; line-height: 1.5; }
+.tesis-filtros { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; align-items: end; margin-bottom: 22px; }
+.tesis-filtros label, .tesis-formulario label { display: grid; gap: 6px; font-weight: 600; font-size: 14px; min-width: 0; color: #1f2937; }
+.tesis-filtros input, .tesis-filtros select, .tesis-formulario input, .tesis-formulario select { width: 100%; min-width: 0; box-sizing: border-box; min-height: 42px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #0f172a; font: inherit; font-weight: 400; }
+.tesis-btn { display: inline-flex; justify-content: center; align-items: center; min-height: 42px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 16px; background: white; color: #1e40af; font: inherit; font-weight: 600; font-size: 14px; text-decoration: none; cursor: pointer; }
+.tesis-btn:hover:not(:disabled) { background: #eff6ff; }
+.tesis-btn-primario { background: #2563eb; color: white; border-color: #2563eb; }
+.tesis-btn-primario:hover:not(:disabled) { background: #1d4ed8; }
+.tesis-btn:disabled { opacity: .55; cursor: not-allowed; }
+.tesis-btn:focus-visible, .tesis-filtros :focus-visible, .tesis-formulario :focus-visible, .tesis-tabla:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.tesis-tabla { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+.tesis-tabla table { width: 100%; min-width: 680px; border-collapse: collapse; text-align: left; }
+.tesis-tabla caption { text-align: left; font-weight: 600; padding: 14px; }
+.tesis-tabla th, .tesis-tabla td { padding: 14px 12px; vertical-align: top; border-bottom: 1px solid #e2e8f0; overflow-wrap: anywhere; }
+.tesis-tabla th { background: #f8fafc; color: #475569; font-size: 13px; }
+.tesis-tabla small { display: block; color: #475569; margin-top: 4px; }
+.tesis-estado { display: inline-block; padding: 5px 9px; border-radius: 6px; background: #fef3c7; color: #92400e; font-size: 12px; font-weight: 600; }
+.tesis-estado-aprobada { background: #dcfce7; color: #166534; }
+.tesis-vacio { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 36px 16px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; }
+.tesis-vacio > span { font-size: 30px; }
+.tesis-vacio p { margin: 0; }
+.tesis-formulario fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; border: 0; padding: 20px 24px; margin: 0; }
+.tesis-formulario legend { padding: 16px 24px 0; font-weight: 600; }
+.tesis-formulario fieldset > :first-child, .tesis-formulario fieldset > :nth-child(2), .tesis-formulario fieldset > p, .tesis-acciones { grid-column: 1 / -1; }
+.tesis-acciones { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+@media (max-width: 1100px) { .tesis-filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .tesis-filtros, .tesis-formulario fieldset { grid-template-columns: 1fr; } .tesis-panel-cuerpo, .tesis-formulario fieldset { padding: 16px; } .tesis-cabecera .tesis-btn { width: 100%; } }

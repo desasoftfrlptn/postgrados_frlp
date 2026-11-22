@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
   type ChangeEvent,
 } from "react";
@@ -9,6 +10,8 @@ import {
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import CampoPerfil from "../componentes/CampoPerfil";
 import CambiarContrasena from "../componentes/CambiarContrasena";
 
@@ -69,7 +72,7 @@ export default function MiPerfilPage() {
     user?.rol === "DOCENTE";
 
   const esEstudiante =
-    user?.rol === "ASPIRANTE" || user?.rol === "ALUMNO";
+    user?.rol === "ALUMNO";
 
 
   const rol =
@@ -155,6 +158,11 @@ export default function MiPerfilPage() {
   const [editando, setEditando] =
     useState(false);
 
+  const [error, setError] = useState("");
+  const [perfilDisponible, setPerfilDisponible] = useState(false);
+  const [confirmar, setConfirmar] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const bloqueo = useRef(false);
   const [mensaje, setMensaje] =
     useState("");
 
@@ -169,6 +177,7 @@ export default function MiPerfilPage() {
   );
 
   useEffect(() => {
+    let vigente = true;
     async function cargarLegajo() {
       if (!esEstudiante || !user?.token) return;
       try {
@@ -189,15 +198,19 @@ export default function MiPerfilPage() {
           provincia: legajo.provincia ?? "",
           ciudad: legajo.ciudad ?? "",
           carrera: legajo.carrera_elegida ?? "",
-          cohorte: "2026",
+          cohorte: "",
         };
+        if (!vigente) return;
+        setPerfilDisponible(true);
+        setError("");
         setDatos(cargados);
         setDatosEditados(cargados);
       } catch {
-        // Si aún no tiene legajo asociado, conserva los datos de sesión
+        if (vigente) setError("No se pudo recuperar el legajo académico. No se habilitará la edición hasta que esté disponible.");
       }
     }
-    cargarLegajo();
+    void cargarLegajo();
+    return () => { vigente = false; };
   }, [esEstudiante, user?.token]);
 
   const cambiarPestana = (
@@ -240,7 +253,12 @@ export default function MiPerfilPage() {
 
 
     const guardarCambios = async () => {
-    if (esEstudiante && user?.token) {
+    if (!esEstudiante || !user?.token || !perfilDisponible || bloqueo.current) return;
+    bloqueo.current = true;
+    setGuardando(true);
+    setError("");
+    setMensaje("");
+    {
       try {
         await api.patch(
           "/inscripcion/mi-legajo",
@@ -256,12 +274,16 @@ export default function MiPerfilPage() {
           user.token
         );
       } catch (err) {
-        setMensaje(
+        setError(
           err instanceof Error
             ? err.message
             : "No se pudieron guardar los cambios en el legajo."
         );
         return;
+      } finally {
+        bloqueo.current = false;
+        setGuardando(false);
+        setConfirmar(false);
       }
     }
 
@@ -293,12 +315,10 @@ export default function MiPerfilPage() {
     }
 
     if (
-      !archivo.type.startsWith(
-        "image/"
-      )
+      !["image/jpeg", "image/png", "image/webp"].includes(archivo.type) || archivo.size > 2 * 1024 * 1024
     ) {
-      setMensaje(
-        "Seleccioná un archivo de imagen válido."
+      setError(
+        "Seleccioná una imagen JPG, PNG o WebP de hasta 2 MB."
       );
 
       return;
@@ -315,20 +335,18 @@ export default function MiPerfilPage() {
         return;
       }
 
-      setFotoPerfil(
-        lector.result
-      );
-
-      localStorage.setItem(
-        claveFoto,
-        lector.result
-      );
+      try {
+        localStorage.setItem(claveFoto, lector.result);
+        setFotoPerfil(lector.result);
+        setError("");
+      } catch { setError("No hay espacio disponible para guardar la foto en este navegador."); return; }
 
       setMensaje(
-        "La foto de perfil fue actualizada."
+        "La foto fue actualizada en este navegador."
       );
     };
 
+    lector.onerror = () => setError("No se pudo leer la imagen.");
     lector.readAsDataURL(
       archivo
     );
@@ -378,6 +396,8 @@ export default function MiPerfilPage() {
                   pestaña
                 )
               }
+              aria-pressed={tabActiva === pestaña}
+              disabled={guardando}
               className={
                 tabActiva === pestaña
                   ? "mi-perfil-pestana activa"
@@ -391,6 +411,8 @@ export default function MiPerfilPage() {
       </nav>
 
 
+      {error && <MensajeSistema tipo="error" texto={error} />}
+      {!esEstudiante && <p className="perfil-panel-interior">Los datos de identificación de tu cuenta son administrados por Administración.</p>}
       {mensaje && (
         <p
           className="mi-perfil-mensaje"
@@ -427,19 +449,19 @@ export default function MiPerfilPage() {
             )}
 
 
-            {editando && (
+            {!guardando && (
               <div className="mi-perfil-foto-acciones">
                 <label
                   htmlFor="foto-perfil"
                   className="mi-perfil-boton-foto"
                 >
-                  Cambiar foto
+                  Cambiar foto (local)
                 </label>
 
                 <input
                   id="foto-perfil"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={
                     cambiarFoto
                   }
@@ -498,8 +520,8 @@ export default function MiPerfilPage() {
             </dl>
 
 
-            {!editando &&
-              tabActiva !== "Seguridad" && (
+            {!editando && esEstudiante && perfilDisponible &&
+              tabActiva !== "Seguridad" && tabActiva !== "Información" && (
                 <button
                   type="button"
                   className="mi-perfil-modificar"
@@ -528,9 +550,7 @@ export default function MiPerfilPage() {
                   valor={
                     datosEditados.nombre
                   }
-                  editando={
-                    editando
-                  }
+                  editando={false}
                   onChange={(valor) =>
                     actualizarCampo(
                       "nombre",
@@ -544,9 +564,7 @@ export default function MiPerfilPage() {
                   valor={
                     datosEditados.apellido
                   }
-                  editando={
-                    editando
-                  }
+                  editando={false}
                   onChange={(valor) =>
                     actualizarCampo(
                       "apellido",
@@ -786,9 +804,15 @@ export default function MiPerfilPage() {
                 <button
                   type="button"
                   className="mi-perfil-guardar"
-                  onClick={
-                    guardarCambios
-                  }
+                  disabled={guardando}
+                  onClick={() => {
+                    setError("");
+                    const email = datosEditados.emailAlternativo.trim();
+                    const telefono = datosEditados.telefono.replace(/[\s()-]/g, "");
+                    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Ingresá un correo alternativo válido."); return; }
+                    if (telefono && !/^\+?\d{7,15}$/.test(telefono)) { setError("Ingresá un teléfono válido."); return; }
+                    setConfirmar(true);
+                  }}
                 >
                   Guardar cambios
                 </button>
@@ -796,6 +820,7 @@ export default function MiPerfilPage() {
             )}
         </article>
       </div>
+      <ConfirmacionModal abierto={confirmar} titulo="Guardar datos del perfil" descripcion="¿Confirmás actualizar los datos de contacto y domicilio registrados?" alConfirmar={guardarCambios} alCancelar={() => setConfirmar(false)} confirmando={guardando} />
     </section>
   );
 }

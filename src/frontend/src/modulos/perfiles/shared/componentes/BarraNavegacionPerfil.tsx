@@ -24,6 +24,7 @@ export default function BarraNavegacionPerfil({
     ruta: string
   ) =>
     ruta === "/dashboard" ||
+    ruta === "/dashboard/general" ||
     ruta === "/dashboard/docente" ||
     ruta === "/dashboard/administrador" ||
     ruta === "/dashboard/conduccion";

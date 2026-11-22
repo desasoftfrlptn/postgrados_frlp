@@ -14,7 +14,7 @@ export function useLegajosConduccion() {
   const token = user?.token;
   const [cohortes, setCohortes] = useState<CohorteConduccion[]>([]);
   const [carreras, setCarreras] = useState<CarreraConduccion[]>([]);
-  const [cohorteId, setCohorteId] = useState("");
+  const [cohorteId, cambiarCohorte] = useState("");
   const [legajos, setLegajos] = useState<LegajoConduccion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [cargandoLegajos, setCargandoLegajos] = useState(false);
@@ -55,6 +55,12 @@ export function useLegajosConduccion() {
     return () => { activo = false; window.clearTimeout(inicio); };
   }, [cohorteId, token]);
 
+  function setCohorteId(id: string) {
+    setLegajos([]);
+    setCargandoLegajos(!!id);
+    setError("");
+    cambiarCohorte(id);
+  }
   const cohorte = cohortes.find((item) => item.id === cohorteId);
   const carrera = carreras.find((item) => item.id === cohorte?.carrera_id);
   return { cohortes, carreras, cohorte, carrera, cohorteId, setCohorteId, legajos, cargando, cargandoLegajos, error };

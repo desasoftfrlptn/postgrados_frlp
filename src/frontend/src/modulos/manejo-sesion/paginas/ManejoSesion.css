@@ -23,10 +23,11 @@
   position: absolute;
   inset: 0;
 
-  background: rgba(20, 25, 30, 0.32);
+  background: rgba(20, 25, 30, 0.14);
 }
 
 .sesion-formulario {
+  backdrop-filter: blur(5px);
   position: relative;
   z-index: 1;
 
@@ -38,7 +39,8 @@
   padding: 22px 30px;
 
   background: rgba(205, 205, 205, 0.5);
-  border-radius: 6px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 /* Encabezado */
@@ -51,7 +53,7 @@
 .sesion-encabezado h1 {
   margin: 0 0 5px;
 
-  color: var(--color-text-light);
+  color: #102238;
   font-size: 27px;
   font-weight: 500;
 }
@@ -59,7 +61,7 @@
 .sesion-encabezado p {
   margin: 0;
 
-  color: #eeeeee;
+  color: #172b42;
   font-size: 12px;
 }
 
@@ -68,12 +70,12 @@
 .sesion-formulario label {
   margin-bottom: 5px;
 
-  color: var(--color-text-light);
+  color: #102238;
   font-size: 16px;
 }
 
 .sesion-formulario label span {
-  color: red;
+  color: #991b1b;
 }
 
 .sesion-formulario > input,
@@ -83,7 +85,7 @@
   padding: 8px 12px;
 
   color: #555555;
-  background: #d8d8d8;
+  background: #ffffff;
 
   border: 1px solid #999999;
   border-radius: 2px;
@@ -95,7 +97,6 @@
 .sesion-formulario input::placeholder {
   color: #666666;
   opacity: 1;
-  text-decoration: underline;
 }
 
 .sesion-formulario > input {
@@ -168,8 +169,8 @@
   margin-top: 16px;
   margin-bottom: 12px;
 
-  color: var(--color-text-light);
-  font-size: 11px;
+  color: #102238;
+  font-size: 13px;
   text-align: right;
   text-decoration: none;
 }
@@ -196,7 +197,7 @@
 
   margin-top: 12px;
 
-  color: var(--color-text-light);
+  color: #102238;
   font-size: 12px;
   text-decoration: none;
 }

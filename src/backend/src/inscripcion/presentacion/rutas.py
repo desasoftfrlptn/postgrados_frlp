@@ -64,6 +64,9 @@ from src.inscripcion.presentacion.esquemas import (
 )
 from src.usuarios.modelos import UsuarioORM
 from src.usuarios.rutas import administrador_actual, usuario_actual
+from src.alertas.rutas import router as router_alertas
+from src.alertas.servicio import alertar_rol
+from src.tesis.rutas import router as router_tesis
 
 
 enrutador = APIRouter(
@@ -401,6 +404,9 @@ async def inscribir_aspirante(
 
         # Registrar la notificacion en la misma transaccion.
         encolar_confirmacion_inscripcion(db, nuevo_legajo)
+        await alertar_rol(db, "COORDINADOR", "Nueva inscripción",
+            f"Inscripción {nuevo_legajo.numero_seguimiento} pendiente de revisión.",
+            f"/dashboard/conduccion/legajos/{nuevo_legajo.id}")
 
         # Confirmar legajo, documentos y notificacion juntos.
         await db.commit()
@@ -607,6 +613,10 @@ async def consultar_estado_inscripcion(
             gestion.documentacion_a_corregir if gestion else []
         ),
     )
+
+# Las rutas estáticas deben preceder a la ruta dinámica de legajos.
+enrutador.include_router(router_tesis)
+enrutador.include_router(router_alertas)
 
 @enrutador.get(
     "/{legajo_id}",

@@ -38,6 +38,8 @@ from src.inscripcion.infraestructura import (
     cohortes_modelos as _cohortes,
 )
 from src.conduccion import modelos as _conduccion
+from src.tesis import modelos as _tesis
+from src.alertas import modelos as _alertas
 
 
 config = context.config

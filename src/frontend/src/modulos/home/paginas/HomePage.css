@@ -31,7 +31,7 @@
 .home-hero-contenido,
 .home-accesos {
   width: min(calc(100% - var(--espaciado-lateral) * 2), var(--ancho-maximo));
-  margin: auto;
+  margin: 0 auto;
 }
 
 .home-hero-contenido {
@@ -99,17 +99,19 @@
 }
 
 .home-accesos {
-  padding: 32px 0 30px;
+  padding: 20px 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 26px;
+  gap: 16px;
 }
 
 .home-tarjeta {
-  min-height: 160px;
-  padding: 20px;
+  min-height: 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: #fff;
   display: flex;
-  gap: 18px;
+  gap: 12px;
   border: 1px solid var(--color-border);
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.12);
 }
@@ -149,6 +151,9 @@
 }
 
 .home-tarjeta-contenido {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   flex: 1;
 }
 
@@ -158,12 +163,12 @@
 }
 
 .home-tarjeta p {
-  min-height: 46px;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   font-size: 13px;
 }
 
 .home-tarjeta a {
+  margin-top: auto;
   display: flex;
   gap: 8px;
   color: #2563eb;
@@ -171,8 +176,8 @@
   text-decoration: none;
 }
 
-.home-tarjeta:nth-of-type(2) a { color: #12a96c; }
-.home-tarjeta:nth-of-type(3) a { color: #f59e0b; }
+.home-tarjeta:nth-of-type(2) a { color: #047857; }
+.home-tarjeta:nth-of-type(3) a { color: #92400e; }
 .home-tarjeta:nth-of-type(4) a { color: #7c3aed; }
 
 .home-tarjeta a:hover {

@@ -1,5 +1,5 @@
 
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
 import { useAuth } from "../../../manejo-sesion/useAuth";
 import type { Rol } from "../../../../shared/tipos";
@@ -7,8 +7,11 @@ import type { Rol } from "../../../../shared/tipos";
 import { menuEstudiante } from "../../estudiante/config/menuEstudiante";
 import { menuDocente } from "../../docente/config/menuDocente";
 import { menuAdministrador } from "../../administrador/config/menuAdministrador";
+import { menuCPR } from "../../cpr/config/menuCPR";
 import { menuConduccion } from "../../conduccion/config/menuConduccion";
 
+import ProveedorAlertas from "../componentes/ProveedorAlertas";
+import CampanaAlertas from "../componentes/CampanaAlertas";
 import BarraNavegacionPerfil from "../componentes/BarraNavegacionPerfil";
 import type { OpcionMenuPerfil } from "../componentes/BarraNavegacionPerfil";
 
@@ -30,13 +33,14 @@ const menusPorRol: Record<Rol, OpcionMenuPerfil[]> = {
   ASPIRANTE: menuEstudiante,
   ALUMNO: menuEstudiante,
   COORDINADOR: menuConduccion,
-  CPR: [],
+  CPR: menuCPR,
   DOCENTE: menuDocente,
 };
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const rolUsuario = user
     ? etiquetasRol[user.rol]
@@ -50,9 +54,9 @@ export default function DashboardLayout() {
     ? `${user.nombre.charAt(0)}${user.apellido.charAt(0)}`.toUpperCase()
     : "";
 
-  const opcionesMenu = user
-    ? menusPorRol[user.rol]
-    : [];
+  const baseMenu = (user ? menusPorRol[user.rol] ?? [] : []).filter(o => o.ruta !== "/dashboard/alertas" && o.texto !== "Notificaciones");
+  const opcionesMenu = [...baseMenu.filter(o => o.texto !== "Mi perfil"),
+    ...baseMenu.filter(o => o.texto === "Mi perfil")];
 
   function cerrarSesion() {
     logout();
@@ -60,6 +64,7 @@ export default function DashboardLayout() {
   }
 
   return (
+    <ProveedorAlertas key={user?.token ?? "sin-sesion"} token={user?.token ?? ""}>
     <div className="perfil-layout animate-fade-in">
       {/* Navegación compartida de los perfiles */}
       <aside className="perfil-sidebar">
@@ -88,23 +93,7 @@ export default function DashboardLayout() {
       <div className="perfil-contenedor">
         <header className="perfil-header">
           <div className="perfil-header-contenido">
-            {/* Pendiente: conectar mensajería real */}
-            <button
-              type="button"
-              className="perfil-header-icono"
-              aria-label="Mensajes"
-            >
-              <span aria-hidden="true">✉️</span>
-            </button>
-
-            {/* Pendiente: conectar notificaciones reales */}
-            <button
-              type="button"
-              className="perfil-header-icono"
-              aria-label="Notificaciones"
-            >
-              <span aria-hidden="true">🔔</span>
-            </button>
+            <CampanaAlertas key={location.pathname} />
 
             <section
               className="perfil-usuario"
@@ -135,5 +124,6 @@ export default function DashboardLayout() {
         </main>
       </div>
     </div>
+    </ProveedorAlertas>
   );
 }
