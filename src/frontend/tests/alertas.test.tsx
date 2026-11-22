@@ -47,3 +47,13 @@ describe("Bandeja compartida de notificaciones", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("formato inválido");
   });
 });
+
+it("ofrece seguimiento académico en la campana solo para Conducción", async () => {
+  vi.mocked(api.get).mockResolvedValue({ sin_leer: 0, alertas: [] });
+  const vista = render(<MemoryRouter><ProveedorAlertas token="prueba"><CampanaAlertas seguimientoAcademico /></ProveedorAlertas></MemoryRouter>);
+  fireEvent.click(screen.getByRole("button", { name: /Notificaciones/i }));
+  await screen.findByText(/No tenés notificaciones/);
+  expect(screen.getByRole("link", { name: "Seguimiento académico" })).toHaveAttribute("href", "/dashboard/conduccion/alertas");
+  vista.rerender(<MemoryRouter><ProveedorAlertas token="prueba"><CampanaAlertas /></ProveedorAlertas></MemoryRouter>);
+  expect(screen.queryByRole("link", { name: "Seguimiento académico" })).not.toBeInTheDocument();
+});

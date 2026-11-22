@@ -112,3 +112,54 @@ it("explica el estado vacío de CPR y permite actualizar", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Actualizar listado" }));
   await waitFor(() => expect(tesisApi.candidatos).toHaveBeenCalledTimes(2));
 });
+
+
+it("abre una vista de registro exclusiva y vuelve al listado", async () => {
+  await montarCPR();
+  fireEvent.click(screen.getByRole("button", { name: "Registrar tesis" }));
+  expect(screen.getByRole("heading", { name: "Registrar tesis" })).toBeInTheDocument();
+  expect(screen.queryByText(registro.titulo)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Estado")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Volver al listado" }));
+  expect(screen.getByText(registro.titulo)).toBeInTheDocument();
+  expect(tesisApi.crear).not.toHaveBeenCalled();
+});
+
+it("indica el conflicto entre directores en el campo y conserva los datos", async () => {
+  await montarCPR();
+  fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+  const campo = screen.getByLabelText("Codirector (opcional)");
+  fireEvent.change(campo, { target: { value: registro.director } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+  expect(screen.getByText("El director y el codirector deben ser diferentes.")).toBeInTheDocument();
+  expect(screen.queryByText(/deben completarse juntas/)).not.toBeInTheDocument();
+  expect(campo).toHaveAttribute("aria-invalid", "true");
+  expect(campo).toHaveFocus();
+  expect(campo).toHaveValue(registro.director);
+  expect(tesisApi.modificar).not.toHaveBeenCalled();
+});
+
+it("filtra candidatos por nombre o carrera", async () => {
+  await montarCPR();
+  fireEvent.click(screen.getByRole("button", { name: "Registrar tesis" }));
+  fireEvent.change(screen.getByLabelText("Buscar estudiante"), { target: { value: "inexistente" } });
+  expect(screen.getByText("No se encontraron estudiantes.")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Buscar estudiante"), { target: { value: "Datos" } });
+  expect(screen.getByRole("option", { name: /Pérez, Ana/ })).toBeInTheDocument();
+});
+
+ it("combina filtros académicos y permite restablecer la selección", async () => {
+  const otro = { ...candidato, legajo_id: "legajo-3", estudiante: "García, Luis", tipo: "Doctorado", carrera: "Doctorado en Ingeniería", cohorte: "2027" };
+  vi.mocked(tesisApi.candidatos).mockResolvedValue([candidato, otro]);
+  await montarCPR();
+  fireEvent.click(screen.getByRole("button", { name: "Registrar tesis" }));
+  fireEvent.change(screen.getByLabelText("Tipo de carrera"), { target: { value: "Doctorado" } });
+  expect(screen.queryByRole("option", { name: /Pérez, Ana/ })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Carrera"), { target: { value: otro.carrera } });
+  fireEvent.change(screen.getByLabelText("Cohorte"), { target: { value: otro.cohorte } });
+  fireEvent.change(screen.getByLabelText("Estudiante y cohorte"), { target: { value: otro.legajo_id } });
+  expect(screen.getByText("García, Luis", { exact: true })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }));
+  expect(screen.getByLabelText("Estudiante y cohorte")).toHaveValue("");
+  expect(screen.getByRole("option", { name: /Pérez, Ana/ })).toBeInTheDocument();
+});

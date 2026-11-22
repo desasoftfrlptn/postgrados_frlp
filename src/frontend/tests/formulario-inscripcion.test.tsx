@@ -337,6 +337,8 @@ describe("Formulario público de inscripción", () => {
     confirmarEnvio();
 
     await screen.findByText("INS-2026-99");
+    expect(screen.getByRole("link", { name: "Consultar estado de inscripción" })).toHaveAttribute("href", "/estado-inscripcion");
+    expect(screen.getByRole("button", { name: "Copiar número" })).toBeInTheDocument();
 
     const formulario =
       vi.mocked(api.postForm).mock.calls[0][1];

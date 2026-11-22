@@ -14,9 +14,11 @@ from src.conduccion.reglas import AccionLegajo
 
 
 @pytest.fixture
-def sesion():
+def sesion(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAIL", "admin@example.com")
     db = MagicMock()
     db.scalar = AsyncMock()
+    db.scalars = AsyncMock(return_value=[])
     db.get = AsyncMock()
     db.execute = AsyncMock()
     db.flush = AsyncMock()
@@ -43,6 +45,10 @@ def legajo():
         solicitud_beca=None,
         correo_electronico="aspirante@example.com",
         numero_seguimiento="INS-2026-1",
+        nombre="Ana",
+        apellido="Pérez",
+        carrera_elegida="Ingeniería",
+        dni_pasaporte="12345678",
     )
 
 
@@ -57,6 +63,7 @@ def gestion(legajo):
         fecha_matricula=None,
         fecha_baja=None,
         observaciones=None,
+        documentacion_a_corregir=[],
     )
 
 
@@ -449,7 +456,12 @@ async def test_vencimiento_modifica_y_audita(sesion):
     legajo = SimpleNamespace(
         id=uuid4(),
         estado="COMPLETADO",
+        correo_electronico="aspirante@example.com",
         numero_seguimiento="INS-2026-1",
+        nombre="Ana",
+        apellido="Pérez",
+        carrera_elegida="Ingeniería",
+        dni_pasaporte="12345678",
     )
 
     gestion = SimpleNamespace(
@@ -495,4 +507,7 @@ async def test_vencimiento_modifica_y_audita(sesion):
         NotificacionConduccionORM,
     )
 
-    assert len(notificaciones) == 1
+    assert len(notificaciones) == 2
+    assert {n.destinatario for n in notificaciones} == {
+        "aspirante@example.com", "coordinador@example.com"
+    }

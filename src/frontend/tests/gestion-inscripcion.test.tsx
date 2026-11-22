@@ -1006,3 +1006,14 @@ it("bloquea operaciones si falla la actualización tras un conflicto", async () 
 
   expect(api.post).toHaveBeenCalledTimes(1);
 });
+
+
+it("reúne verificación y resolución en un único formulario sin ejecutar operaciones", async () => {
+  gestionActual.estado = "EN_REVISION";
+  render(<GestionInscripcion legajoId="legajo-1" />);
+  const formulario = await screen.findByRole("form", { name: "Revisión y resolución del legajo" });
+  expect(formulario).toContainElement(screen.getByRole("button", { name: "Guardar verificación" }));
+  expect(formulario).toContainElement(screen.getByRole("button", { name: "Aprobar inscripción" }));
+  expect(api.put).not.toHaveBeenCalled();
+  expect(api.post).not.toHaveBeenCalled();
+});

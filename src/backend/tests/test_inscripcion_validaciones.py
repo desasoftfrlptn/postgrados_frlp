@@ -78,7 +78,7 @@ def test_legajo_elimina_espacios_en_extremos():
 
 @pytest.mark.parametrize(
     "documento",
-    ["1234567", "12345678"],
+    ["1234567", "12345678", "1234A678", "ABC12345"],
 )
 def test_legajo_acepta_documento_valido(documento):
     datos = datos_legajo()
@@ -94,8 +94,8 @@ def test_legajo_acepta_documento_valido(documento):
     [
         "123456",
         "123456789",
-        "1234A678",
-        "ABC12345",
+        "AB12",
+        "ABC-12345",
         "",
     ],
 )

@@ -15,7 +15,7 @@ from src.seminarios.aplicacion.servicio import (
 
 
 def test_calcular_porcentaje_asistencia_br002():
-    assert calcular_porcentaje_asistencia(0, 0) == 100.0
+    assert calcular_porcentaje_asistencia(0, 0) is None
     assert calcular_porcentaje_asistencia(3, 4) == 75.0
     assert calcular_porcentaje_asistencia(2, 3) == 66.7
     assert calcular_porcentaje_asistencia(1, 4) == 25.0
@@ -28,6 +28,9 @@ def test_calcular_porcentaje_asistencia_br002():
         (8.5, 90.0, "APROBADO"),
         (3.5, 100.0, "DESAPROBADO"),
         (7.0, 74.9, "DESAPROBADO"),
+        (8.0, None, "CURSANDO"),
+        (3.0, None, "DESAPROBADO"),
+        (8.0, 74.999, "DESAPROBADO"),
     ],
 )
 def test_validar_y_calcular_estado_nota_br003(
@@ -40,7 +43,7 @@ def test_validar_y_calcular_estado_nota_br003(
     assert estado == estado_esperado
 
 
-@pytest.mark.parametrize("nota_invalida", [0.5, 0.0, -2.0, 10.1, 11.0])
+@pytest.mark.parametrize("nota_invalida", [0.5, 0.0, -2.0, 10.1, 11.0, float("nan"), float("inf")])
 def test_validar_nota_fuera_de_rango_rf_doc_003(nota_invalida):
     with pytest.raises(HTTPException) as error:
         validar_y_calcular_estado_nota(nota_invalida, 80.0)

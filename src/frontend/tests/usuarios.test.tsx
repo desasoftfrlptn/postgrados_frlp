@@ -1,3 +1,4 @@
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 
 import {
   fireEvent,
@@ -43,8 +44,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   vi.mocked(api.get).mockImplementation(
-    async <T,>(): Promise<T> => {
-      return [] as T;
+    async <T,>(ruta: string): Promise<T> => {
+      return (ruta.endsWith("/candidatos") ? [{id:"legajo-1", nombre:"Ana", apellido:"Perez", dni:"12345678", correo_electronico:"ana@example.com", carrera:"Maestría", numero_seguimiento:"INS-2026-1"}] : []) as T;
     },
   );
 
@@ -102,36 +103,10 @@ function confirmarOperacion(
   );
 }
 
-function completarFormulario() {
-  fireEvent.change(screen.getByLabelText("Nombre"), {
-    target: { value: "Ana" },
-  });
-
-  fireEvent.change(screen.getByLabelText("Apellido"), {
-    target: { value: "Perez" },
-  });
-
-  fireEvent.change(screen.getByLabelText("DNI"), {
-    target: { value: "12345678" },
-  });
-
-  fireEvent.change(
-    screen.getByLabelText("Correo electrónico"),
-    {
-      target: { value: "ana@example.com" },
-    },
-  );
-
-  fireEvent.change(screen.getByLabelText("Rol"), {
-    target: { value: "ALUMNO" },
-  });
-
-  fireEvent.change(
-    screen.getByLabelText("Contraseña temporal"),
-    {
-      target: { value: "Temporal123" },
-    },
-  );
+async function completarFormulario() {
+  fireEvent.change(screen.getByLabelText("Rol"), { target: { value: "ALUMNO" } });
+  await screen.findByRole("option", { name: /Perez, Ana/ });
+  fireEvent.change(screen.getByLabelText("Alumno matriculado"), { target: { value: "legajo-1" } });
 }
 
 describe("UsuariosPage - Alta de usuarios", () => {
@@ -154,9 +129,8 @@ describe("UsuariosPage - Alta de usuarios", () => {
       screen.getByLabelText("Correo electrónico"),
     ).toBeRequired();
 
-    expect(
-      screen.getByLabelText("Contraseña temporal"),
-    ).toHaveAttribute("minlength", "6");
+    expect(screen.queryByLabelText("Contraseña temporal")).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", {name:"ASPIRANTE"})).not.toBeInTheDocument();
   });
 
   it("permite seleccionar el rol ALUMNO", async () => {
@@ -178,7 +152,7 @@ describe("UsuariosPage - Alta de usuarios", () => {
   it("crea un usuario con el rol ALUMNO", async () => {
     await abrirFormulario();
 
-    completarFormulario();
+    await completarFormulario();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -196,7 +170,7 @@ describe("UsuariosPage - Alta de usuarios", () => {
           apellido: "Perez",
           dni: "12345678",
           correo_electronico: "ana@example.com",
-          contrasena: "Temporal123",
+          legajo_id: "legajo-1",
           tipo_usuario: "ALUMNO",
         },
         "token-admin-prueba",
@@ -213,7 +187,7 @@ describe("UsuariosPage - Alta de usuarios", () => {
 
     await abrirFormulario();
 
-    completarFormulario();
+    await completarFormulario();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -384,7 +358,7 @@ render(<UsuariosPage />);
 describe("Confirmaciones compartidas de usuarios", () => {
   it("no crea un usuario antes de confirmar", async () => {
     await abrirFormulario();
-    completarFormulario();
+    await completarFormulario();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Crear usuario" })
@@ -398,7 +372,7 @@ describe("Confirmaciones compartidas de usuarios", () => {
 
   it("conserva los datos al cancelar el alta", async () => {
     await abrirFormulario();
-    completarFormulario();
+    await completarFormulario();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Crear usuario" })
@@ -422,7 +396,7 @@ describe("Confirmaciones compartidas de usuarios", () => {
 
   it("impide confirmar dos veces la misma operación", async () => {
     await abrirFormulario();
-    completarFormulario();
+    await completarFormulario();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Crear usuario" })
@@ -470,4 +444,15 @@ describe("Confirmaciones compartidas de usuarios", () => {
     expect(screen.queryByRole("alertdialog"))
       .not.toBeInTheDocument();
   });
+});
+
+
+it("abre el legajo indicado por la notificación administrativa", async () => {
+  const candidato = {id:"legajo-1", nombre:"Ana", apellido:"Perez", dni:"12345678", correo_electronico:"ana@example.com", carrera:"Maestría", numero_seguimiento:"INS-2026-1"};
+  vi.mocked(api.get).mockImplementation(async <T,>(ruta:string):Promise<T> => (ruta.endsWith("/legajo/legajo-1") ? {...candidato, estado:"ACTIVO", usuario_id:null, conflicto:false, habilitado:true} : ruta.endsWith("/candidatos") ? [candidato] : []) as T);
+  render(<MemoryRouter initialEntries={["/dashboard/administrador/usuarios/legajo/legajo-1"]}><Routes><Route path="/dashboard/administrador/usuarios/legajo/:legajoId" element={<UsuariosPage/>}/></Routes></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", {name:"Crear cuenta del estudiante"}));
+  await waitFor(() => expect(screen.getByLabelText("Alumno matriculado")).toHaveValue("legajo-1"));
+  expect(screen.getByLabelText("Correo electrónico")).toHaveValue("ana@example.com");
+  expect(api.post).not.toHaveBeenCalled();
 });

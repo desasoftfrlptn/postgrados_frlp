@@ -92,6 +92,7 @@ async def test_cambio_estado_auditado(db, usuario, monkeypatch, activo):
 
 @pytest.fixture
 def descarga(db, usuario, tmp_path, monkeypatch):
+    usuario.debe_cambiar_contrasena = False
     app = FastAPI()
     app.include_router(documentos.enrutador)
     async def sesion():
@@ -115,17 +116,16 @@ def descarga(db, usuario, tmp_path, monkeypatch):
         }, documento, legajo
 
 
-@pytest.mark.parametrize("rol", ["COORDINADOR", "ASPIRANTE"])
-def test_descarga_autorizada(descarga, usuario, rol):
+def test_descarga_autorizada(descarga, usuario):
     client, ruta, headers, _, _ = descarga
-    usuario.rol.nombre = rol
+    usuario.rol.nombre = "COORDINADOR"
     respuesta = client.get(ruta, headers=headers)
     assert respuesta.status_code == 200
     assert respuesta.content.startswith(b"%PDF-")
     assert respuesta.headers["cache-control"] == "no-store"
 
 
-@pytest.mark.parametrize("rol", ["ADMIN", "DOCENTE", "CPR"])
+@pytest.mark.parametrize("rol", ["ADMIN", "DOCENTE", "CPR", "ASPIRANTE", "ALUMNO"])
 def test_descarga_rol_no_autorizado(descarga, usuario, db, rol):
     client, ruta, headers, _, _ = descarga
     usuario.rol.nombre = rol
@@ -133,10 +133,18 @@ def test_descarga_rol_no_autorizado(descarga, usuario, db, rol):
     db.get.assert_not_awaited()
 
 
-@pytest.mark.parametrize("campo", ["correo_electronico", "dni_pasaporte"])
-def test_no_descarga_documento_ajeno(descarga, campo):
-    client, ruta, headers, _, legajo = descarga
-    setattr(legajo, campo, "otra-persona")
+def test_coordinador_sin_activar_no_descarga(descarga, usuario, db):
+    client, ruta, headers, _, _ = descarga
+    usuario.rol.nombre = "COORDINADOR"
+    usuario.debe_cambiar_contrasena = True
+    assert client.get(ruta, headers=headers).status_code == 403
+    db.get.assert_not_awaited()
+
+
+def test_no_descarga_documento_sin_legajo(descarga, usuario, db):
+    client, ruta, headers, documento, _ = descarga
+    usuario.rol.nombre = "COORDINADOR"
+    db.get.side_effect = [documento, None]
     assert client.get(ruta, headers=headers).status_code == 404
 
 
@@ -146,7 +154,8 @@ def test_descarga_anonima(descarga, db):
     db.get.assert_not_awaited()
 
 
-def test_no_descarga_archivo_fuera_del_legajo(descarga, tmp_path):
+def test_no_descarga_archivo_fuera_del_legajo(descarga, tmp_path, usuario):
+    usuario.rol.nombre = "COORDINADOR"
     client, ruta, headers, documento, _ = descarga
     ajeno = tmp_path / "secreto.pdf"
     ajeno.write_bytes(b"%PDF-secreto")
@@ -174,7 +183,8 @@ def test_auditoria_usuarios_solo_admin(cliente, db, usuario, rol):
 async def test_docente_no_inscribe_en_seminario_ajeno(db, usuario):
     from src.seminarios.presentacion.rutas import inscribir_estudiante_en_seminario
     from src.seminarios.presentacion.esquema import InscripcionSeminarioCrear
-    db.get.return_value = SimpleNamespace(docente_id=uuid4())
+    usuario.rol.nombre = "DOCENTE"
+    db.scalar.return_value = SimpleNamespace(docente_id=uuid4())
     with pytest.raises(HTTPException) as error:
         await inscribir_estudiante_en_seminario(
             uuid4(), InscripcionSeminarioCrear(dni_pasaporte="12345678"), db, usuario,
@@ -187,9 +197,13 @@ async def test_docente_no_inscribe_en_seminario_ajeno(db, usuario):
 async def test_consulta_cursada_exige_correo_y_dni(db):
     from src.seminarios.aplicacion.servicio import listar_cursada_estudiante
     assert await listar_cursada_estudiante("ana@example.com", "12345678", db) == []
-    consulta = str(db.scalar.call_args.args[0])
-    assert " AND " in consulta
-    assert " OR " not in consulta
+    consulta = db.execute.call_args.args[0]
+    sql = str(consulta)
+    assert "lower(legajos.correo_electronico)" in sql
+    assert "legajos.dni_pasaporte" in sql
+    assert " AND " in sql
+    assert " OR " not in sql
+    assert {"ana@example.com", "12345678"}.issubset(consulta.compile().params.values())
 
 
 async def test_alta_auditada(db, usuario, monkeypatch):
@@ -197,7 +211,7 @@ async def test_alta_auditada(db, usuario, monkeypatch):
     db.scalar.side_effect = [None, None, SimpleNamespace(id=uuid4())]
     monkeypatch.setattr(s, "buscar_usuario_con_rol", AsyncMock(return_value=usuario))
     await s.crear_usuario("Ana", "Perez", "12345678", "ana@example.com",
-                          "ClavePrueba123!", "ASPIRANTE", db, actor)
+                          "ClavePrueba123!", "DOCENTE", db, actor)
     nuevo, evento = [llamada.args[0] for llamada in db.add.call_args_list]
     assert evento.accion == "CREAR_USUARIO"
     assert evento.recurso_id == nuevo.id

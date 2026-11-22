@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, render, screen, waitFor } from "@testing-library/react";
 import {
   beforeEach,
   afterEach,
@@ -11,11 +11,13 @@ import {
 
 import { AuthProvider } from "../src/modulos/manejo-sesion/AuthProvider";
 import { useAuth } from "../src/modulos/manejo-sesion/useAuth";
-import { api } from "../src/shared/api/client";
+import { api, ApiError } from "../src/shared/api/client";
 
-vi.mock("../src/shared/api/client", () => ({
+vi.mock("../src/shared/api/client", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../src/shared/api/client")>(),
   api: {
     post: vi.fn(),
+    get: vi.fn(),
   },
 }));
 
@@ -41,11 +43,13 @@ function prepararHook() {
 }
 
 beforeEach(() => {
+  sessionStorage.clear();
+  vi.mocked(api.get).mockReset();
   vi.mocked(api.post).mockReset();
   vi.mocked(api.post).mockResolvedValue(respuestaLogin);
 });
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); sessionStorage.clear(); });
 
 it("cierra la sesión al vencer el JWT aunque no haya solicitudes", async () => {
   vi.useFakeTimers();
@@ -264,4 +268,23 @@ describe("useAuth y AuthProvider", () => {
 
     expect(result.current.user?.token).toBe("token-actual");
   });
+});
+
+
+it("restaura la sesión al recargar consultando el servidor", async () => {
+  sessionStorage.setItem("posgrados.token", "token-guardado");
+  vi.mocked(api.get).mockResolvedValue(respuestaLogin);
+  function Perfil() { const { user } = useAuth(); return <span>{user?.nombre}</span>; }
+  render(<AuthProvider><Perfil /></AuthProvider>);
+  await waitFor(() => expect(screen.getByText("Ana")).toBeInTheDocument());
+  expect(api.get).toHaveBeenCalledWith("/autenticacion/me", "token-guardado");
+});
+
+
+it("descarta el token rechazado al restaurar la sesión", async () => {
+  sessionStorage.setItem("posgrados.token", "token-vencido");
+  vi.mocked(api.get).mockRejectedValue(new ApiError("Vencido", 401));
+  render(<AuthProvider><span>Portal</span></AuthProvider>);
+  await screen.findByText("Portal");
+  expect(sessionStorage.getItem("posgrados.token")).toBeNull();
 });

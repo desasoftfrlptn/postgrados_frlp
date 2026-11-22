@@ -22,7 +22,7 @@ describe("Conducción - Alta de cohortes", () => {
     await screen.findByText("No hay cohortes registradas.");
     fireEvent.click(screen.getByRole("button", {name:"+ Nueva cohorte"}));
     fireEvent.change(screen.getByLabelText("Nombre"), {target:{value:"Cohorte 2027"}});
-    fireEvent.change(screen.getByLabelText("Año"), {target:{value:"2027"}});
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Año" }), {target:{value:"2027"}});
     fireEvent.change(document.getElementById("nueva-cohorte-carrera") as HTMLSelectElement, {target:{value:"carrera-1"}});
     fireEvent.click(screen.getByRole("button", {name:"Crear cohorte"}));
 
@@ -54,7 +54,7 @@ async function prepararAlta() {
     target: { value: "Cohorte 2027" },
   });
 
-  fireEvent.change(screen.getByLabelText("Año"), {
+  fireEvent.change(screen.getByRole("spinbutton", { name: "Año" }), {
     target: { value: "2027" },
   });
 
