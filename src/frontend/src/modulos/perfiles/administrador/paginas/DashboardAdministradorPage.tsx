@@ -1,10 +1,9 @@
 // Muestra el resumen general y los accesos principales del Administrador.
 
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { api } from "../../../../shared/api/client";
-import { useAuth } from "../../../manejo-sesion/useAuth";
+import { useResumenAdmin } from "../hooks/useResumenAdmin";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
 
 import "../estilos/Administrador.css";
 
@@ -15,40 +14,6 @@ interface TarjetaAdministradorProps {
   detalle: string;
   ruta: string;
   icono: string;
-}
-
-
-interface Usuario {
-  id: string;
-  nombre: string;
-  apellido: string;
-  dni: string;
-  correo_electronico: string;
-  rol: string;
-  activo: boolean;
-}
-
-
-interface Carrera {
-  id: string;
-  nombre: string;
-  tipo: string;
-  duracion: string;
-  descripcion: string;
-  activo: boolean;
-}
-
-
-interface Seminario {
-  id: string;
-  nombre: string;
-  carrera_id: string;
-  carrera_nombre: string;
-  docente_id: string;
-  docente_nombre: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  activo: boolean;
 }
 
 
@@ -141,126 +106,11 @@ function AccesoAdministrador({
 
 
 export default function DashboardAdministradorPage() {
-  const { user } = useAuth();
-
-  const [
-    cantidadUsuarios,
-    setCantidadUsuarios,
-  ] = useState<number | null>(null);
-
-  const [
-    cantidadCarreras,
-    setCantidadCarreras,
-  ] = useState<number | null>(null);
-
-  const [
-    cantidadSeminarios,
-    setCantidadSeminarios,
-  ] = useState<number | null>(null);
-
-  const [
-    errorUsuarios,
-    setErrorUsuarios,
-  ] = useState(false);
-
-  const [
-    errorCarreras,
-    setErrorCarreras,
-  ] = useState(false);
-
-  const [
-    errorSeminarios,
-    setErrorSeminarios,
-  ] = useState(false);
-
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    const cargarResumen = async () => {
-      try {
-        setErrorUsuarios(false);
-
-        const usuarios =
-          await api.get<Usuario[]>(
-            "/autenticacion/usuarios",
-            user.token
-          );
-
-        setCantidadUsuarios(
-          usuarios.length
-        );
-      } catch {
-        setCantidadUsuarios(null);
-        setErrorUsuarios(true);
-      }
-
-
-      try {
-        setErrorCarreras(false);
-
-        const carreras =
-          await api.get<Carrera[]>(
-            "/carreras",
-            user.token
-          );
-
-        setCantidadCarreras(
-          carreras.length
-        );
-      } catch {
-        setCantidadCarreras(null);
-        setErrorCarreras(true);
-      }
-
-
-      try {
-        setErrorSeminarios(false);
-
-        const seminarios =
-          await api.get<Seminario[]>(
-            "/seminarios",
-            user.token
-          );
-
-        setCantidadSeminarios(
-          seminarios.length
-        );
-      } catch {
-        setCantidadSeminarios(null);
-        setErrorSeminarios(true);
-      }
-    };
-
-    cargarResumen();
-  }, [user]);
-
-
-  const valorUsuarios =
-    cantidadUsuarios === null
-      ? errorUsuarios
-        ? "-"
-        : "..."
-      : cantidadUsuarios.toString();
-
-
-  const valorCarreras =
-    cantidadCarreras === null
-      ? errorCarreras
-        ? "-"
-        : "..."
-      : cantidadCarreras.toString();
-
-
-  const valorSeminarios =
-    cantidadSeminarios === null
-      ? errorSeminarios
-        ? "-"
-        : "..."
-      : cantidadSeminarios.toString();
-
+  const { datos, cargando, error, reintentar } = useResumenAdmin();
+  const valor = (cantidad: number | undefined) => cargando ? "..." : cantidad?.toString() ?? "—";
+  const valorUsuarios = valor(datos.usuarios?.filter(u => u.activo).length);
+  const valorCarreras = valor(datos.carreras?.filter(c => c.activo).length);
+  const valorSeminarios = valor(datos.seminarios?.filter(s => s.activo).length);
 
   return (
     <section className="admin-dashboard">
@@ -276,6 +126,11 @@ export default function DashboardAdministradorPage() {
       </header>
 
 
+      {error && <>
+        <MensajeSistema tipo="error" texto="No se pudieron cargar todos los indicadores." />
+        <button type="button" onClick={reintentar}>Reintentar</button>
+      </>}
+      {cargando && <p role="status">Cargando indicadores...</p>}
       <section
         className="admin-resumen"
         aria-labelledby="titulo-resumen"
@@ -292,11 +147,7 @@ export default function DashboardAdministradorPage() {
             titulo="Usuarios"
             icono="👥"
             valor={valorUsuarios}
-            detalle={
-              errorUsuarios
-                ? "No se pudo cargar"
-                : "Usuarios registrados"
-            }
+            detalle="Usuarios activos"
             ruta="/dashboard/administrador/usuarios"
           />
 
@@ -304,11 +155,7 @@ export default function DashboardAdministradorPage() {
             titulo="Carreras"
             icono="🎓"
             valor={valorCarreras}
-            detalle={
-              errorCarreras
-                ? "No se pudo cargar"
-                : "Carreras registradas"
-            }
+            detalle="Carreras activas"
             ruta="/dashboard/administrador/carreras"
           />
 
@@ -316,19 +163,15 @@ export default function DashboardAdministradorPage() {
             titulo="Seminarios"
             icono="📚"
             valor={valorSeminarios}
-            detalle={
-              errorSeminarios
-                ? "No se pudo cargar"
-                : "Seminarios registrados"
-            }
+            detalle="Seminarios activos"
             ruta="/dashboard/administrador/seminarios"
           />
 
           <TarjetaAdministrador
             titulo="Cohortes"
             icono="📅"
-            valor="0"
-            detalle="Cohortes activas"
+            valor={valor(datos.cohortes?.filter(c => c.abierta).length)}
+            detalle="Cohortes con inscripción abierta"
             ruta="/dashboard/administrador/cohortes"
           />
         </div>
@@ -421,7 +264,7 @@ export default function DashboardAdministradorPage() {
                 <AccesoAdministrador
                   ruta="/dashboard/administrador/reportes"
                   icono="📄"
-                  titulo="Reportes"
+                  titulo="Estadísticas y reportes"
                   descripcion="Generar y descargar información del sistema."
                 />
               </li>

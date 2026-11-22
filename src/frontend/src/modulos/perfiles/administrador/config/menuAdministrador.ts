@@ -34,12 +34,7 @@ export const menuAdministrador: OpcionMenuPerfil[] = [
     ruta: "/dashboard/administrador/cohortes",
   },
   {
-    texto: "Estadísticas",
-    icono: "📊",
-    ruta: "/dashboard/administrador/estadisticas",
-  },
-  {
-    texto: "Reportes",
+    texto: "Estadísticas y reportes",
     icono: "📄",
     ruta: "/dashboard/administrador/reportes",
   },

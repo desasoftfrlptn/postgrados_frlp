@@ -63,7 +63,7 @@ from src.inscripcion.presentacion.esquemas import (
     LegajoRespuesta,
 )
 from src.usuarios.modelos import UsuarioORM
-from src.usuarios.rutas import usuario_actual
+from src.usuarios.rutas import administrador_actual, usuario_actual
 
 
 enrutador = APIRouter(
@@ -453,6 +453,19 @@ async def listar_legajos_conduccion(
         estado=estado,
         cohorte_id=cohorte_id,
     )
+
+
+# Indicadores agregados: no expone datos personales de los legajos.
+@enrutador.get("/resumen-administrativo", response_model=dict[str, int])
+async def resumen_administrativo(
+    db: AsyncSession = Depends(get_db),
+    _administrador=Depends(administrador_actual),
+):
+    filas = await db.execute(
+        select(LegajoORM.estado, func.count(LegajoORM.id))
+        .group_by(LegajoORM.estado)
+    )
+    return {estado: cantidad for estado, cantidad in filas.all()}
 
 
 @enrutador.get(

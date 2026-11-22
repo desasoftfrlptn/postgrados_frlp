@@ -1,88 +1,69 @@
-// Permite seleccionar filtros para la generación de reportes.
+import { useResumenAdmin } from "../hooks/useResumenAdmin";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import { useState } from "react";
+import "../estilos/Administrador.css";
 
+const estados = [
+  ["PENDIENTE", "Pendientes"], ["EN_REVISION", "En revisión"],
+  ["OBSERVADO", "Observadas"], ["COMPLETADO", "Aprobadas"],
+  ["RECHAZADO", "Rechazadas"], ["ACTIVO", "Matriculadas"],
+  ["EN_RIESGO", "En riesgo"], ["VENCIDO", "Vencidas"],
+  ["BAJA", "De baja"], ["GRADUADO", "Graduadas"], ["BORRADOR", "Borradores"],
+];
 export default function ReportesPage() {
-  return (
-    <section>
-      <header className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900">
-          Reportes
-        </h1>
+  const { datos, cargando, error, reintentar } = useResumenAdmin();
+  const [tipo, setTipo] = useState("general");
+  const generales = [
+    ["Usuarios activos", datos.usuarios?.filter(u => u.activo).length],
+    ["Usuarios inactivos", datos.usuarios?.filter(u => !u.activo).length],
+    ["Estudiantes activos", datos.usuarios?.filter(u => u.activo && u.tipo_usuario === "ALUMNO").length],
+    ["Docentes activos", datos.usuarios?.filter(u => u.activo && u.tipo_usuario === "DOCENTE").length],
+    ["Carreras activas", datos.carreras?.filter(c => c.activo).length],
+    ["Carreras inactivas", datos.carreras?.filter(c => !c.activo).length],
+    ["Seminarios activos", datos.seminarios?.filter(s => s.activo).length],
+    ["Seminarios inactivos", datos.seminarios?.filter(s => !s.activo).length],
+    ["Cohortes abiertas", datos.cohortes?.filter(c => c.abierta).length],
+    ["Cohortes cerradas", datos.cohortes?.filter(c => !c.abierta).length],
+  ] as const;
+  const admisiones = estados.map(([estado, nombre]) => [nombre, datos.admisiones === null ? undefined : datos.admisiones[estado] ?? 0] as const);
+  const otros = datos.admisiones === null ? undefined : Object.entries(datos.admisiones).filter(([estado]) => !estados.some(([codigo]) => codigo === estado)).reduce((total, [,cantidad]) => total + cantidad, 0);
+  const filas = tipo === "general" ? generales : [...admisiones, ["Otros estados", otros] as const];
+  const disponible = !cargando && filas.every(([, cantidad]) => cantidad !== undefined);
 
-        <p className="mt-1 text-gray-500">
-          Generá y descargá información del sistema.
-        </p>
-      </header>
+  // Exporta solamente indicadores agregados, sin datos personales.
+  function descargar() {
+    if (!disponible) return;
+    const csv = "\ufeffIndicador;Cantidad\r\n" + filas.map(([nombre, cantidad]) => `${nombre};${cantidad}`).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = `reporte-${tipo}.csv`;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
-      <form className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <fieldset className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          <legend className="mb-4 text-lg font-bold text-gray-900">
-            Configuración del reporte
-          </legend>
-
-          <div>
-            <label
-              htmlFor="tipo-reporte"
-              className="mb-2 block text-sm font-semibold text-gray-700"
-            >
-              Tipo
-            </label>
-
-            <select
-              id="tipo-reporte"
-              className="w-full rounded-md border border-gray-300 p-2"
-            >
-              <option value="">Seleccionar</option>
-              <option value="usuarios">Usuarios</option>
-              <option value="carreras">Carreras</option>
-              <option value="seminarios">Seminarios</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="estado-reporte"
-              className="mb-2 block text-sm font-semibold text-gray-700"
-            >
-              Estado
-            </label>
-
-            <select
-              id="estado-reporte"
-              className="w-full rounded-md border border-gray-300 p-2"
-            >
-              <option value="">Todos</option>
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
-          </div>
-
-          <div>
-            <label
-              htmlFor="formato-reporte"
-              className="mb-2 block text-sm font-semibold text-gray-700"
-            >
-              Formato
-            </label>
-
-            <select
-              id="formato-reporte"
-              className="w-full rounded-md border border-gray-300 p-2"
-            >
-              <option value="pdf">PDF</option>
-              <option value="excel">Excel</option>
-            </select>
-          </div>
-        </fieldset>
-
-        <footer className="mt-6 flex justify-end">
-          <button
-            type="button"
-            className="rounded-md bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700"
-          >
-            Generar reporte
-          </button>
-        </footer>
-      </form>
-    </section>
-  );
+  return <section className="admin-dashboard">
+    <header className="admin-dashboard-encabezado">
+      <h1>Estadísticas y reportes</h1>
+      <p>Consultá indicadores generales y de admisión del sistema.</p>
+    </header>
+    {error && <><MensajeSistema tipo="error" texto="Algunos indicadores no están disponibles." /><button type="button" onClick={reintentar}>Reintentar</button></>}
+    {cargando && <p role="status">Cargando indicadores...</p>}
+    <div className="admin-panel admin-reporte">
+      <label htmlFor="tipo-reporte">Tipo de reporte</label>
+      <select id="tipo-reporte" value={tipo} onChange={e => setTipo(e.target.value)}>
+        <option value="general">Indicadores generales</option>
+        <option value="admision">Estado de admisiones</option>
+      </select>
+      <table className="admin-reporte-tabla">
+        <caption>Vista previa del reporte seleccionado</caption>
+        <thead><tr><th scope="col">Indicador</th><th scope="col">Cantidad</th></tr></thead>
+        <tbody>{filas.map(([nombre, cantidad]) => <tr key={nombre}><th scope="row">{nombre}</th><td>{cargando ? "..." : cantidad ?? "No disponible"}</td></tr>)}</tbody>
+      </table>
+      <button type="button" disabled={!disponible} onClick={descargar}>Descargar CSV</button>
+      <p>Archivo CSV compatible con Excel.</p>
+    </div>
+  </section>;
 }
