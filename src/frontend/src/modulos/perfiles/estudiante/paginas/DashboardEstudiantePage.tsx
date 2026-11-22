@@ -8,7 +8,7 @@ import "../estilos/SeguimientoEstudiante.css";
 
 interface MiLegajo { id: string; carrera_elegida: string; estado: string; dni_pasaporte: string; numero_seguimiento: string; }
 interface Seguimiento { observaciones: string | null; documentacion_a_corregir: string[]; }
-interface Cursada { inscripcion_id: string; seminario_nombre: string; fecha_inicio: string; asistencias: number; total_clases: number; porcentaje_asistencia: number; nota_final: number | null; estado: string; }
+interface Cursada { inscripcion_id: string; seminario_nombre: string; fecha_inicio: string; asistencias: number; total_clases: number; porcentaje_asistencia: number | null; nota_final: number | null; estado: string; }
 type Datos = { estado: "cargando" | "sin-legajo" | "error" } | { estado: "lista"; legajo: MiLegajo; cursada: Cursada[] | null; seguimiento: Seguimiento | null };
 
 export default function DashboardEstudiantePage() {
@@ -43,7 +43,7 @@ export default function DashboardEstudiantePage() {
   const cursada = lista?.cursada;
   const aprobados = cursada?.filter(s => s.estado === "APROBADO").length ?? 0;
   const notas = cursada?.flatMap(s => s.nota_final === null ? [] : [s.nota_final]) ?? [];
-  const alertas = cursada?.filter(s => s.nota_final !== null || (s.total_clases > 0 && s.porcentaje_asistencia < 75)) ?? [];
+  const alertas = cursada?.filter(s => s.nota_final !== null || (s.total_clases > 0 && s.porcentaje_asistencia !== null && s.porcentaje_asistencia < 75)) ?? [];
   const observaciones = lista?.seguimiento?.observaciones;
   const documentos = lista?.seguimiento?.documentacion_a_corregir ?? [];
   const disponible = cursada != null;
@@ -68,7 +68,7 @@ export default function DashboardEstudiantePage() {
         <article className="perfil-panel"><header><h2>Mis seminarios</h2></header>{cursada?.length ? <ul className="perfil-lista">{cursada.map(s => <li key={s.inscripcion_id}><span>{s.seminario_nombre}</span><span>{s.estado}</span></li>)}</ul> : <div className="estudiante-panel-cuerpo"><p>{disponible ? "Todavía no estás inscripto en ningún seminario." : "No se pudo consultar tu cursada."}</p><Link className="perfil-enlace" to="/dashboard/estado-academico">Consultar estado académico →</Link></div>}</article>
         <article className="perfil-panel"><header><h2>Resumen de novedades académicas</h2></header><div className="estudiante-panel-cuerpo">
           {(observaciones || documentos.length > 0) && <div className="estudiante-novedad"><strong>Observaciones del legajo</strong>{observaciones && <p>{observaciones}</p>}{documentos.length > 0 && <p>Documentación a corregir: {documentos.join(", ")}</p>}</div>}
-          {alertas.map(s => <div className="estudiante-novedad" key={s.inscripcion_id}><strong>{s.seminario_nombre}</strong>{s.nota_final !== null && <p>Calificación registrada: {s.nota_final}</p>}{s.total_clases > 0 && s.porcentaje_asistencia < 75 && <p>Asistencia registrada: {s.porcentaje_asistencia}%.</p>}</div>)}
+          {alertas.map(s => <div className="estudiante-novedad" key={s.inscripcion_id}><strong>{s.seminario_nombre}</strong>{s.nota_final !== null && <p>Calificación registrada: {s.nota_final}</p>}{s.total_clases > 0 && s.porcentaje_asistencia !== null && s.porcentaje_asistencia < 75 && <p>Asistencia registrada: {s.porcentaje_asistencia}%.</p>}</div>)}
           {disponible && lista.seguimiento && !observaciones && !documentos.length && !alertas.length && <p>No se encontraron novedades en los datos consultados.</p>}
           {(!disponible || !lista.seguimiento) && <p>La consulta de novedades está incompleta.</p>}
         </div></article>

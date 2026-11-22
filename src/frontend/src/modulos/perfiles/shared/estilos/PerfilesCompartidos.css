@@ -491,3 +491,5 @@
 .perfil-dashboard-filtro select { max-width:100%; }
 .perfil-dashboard-seguimiento { margin-bottom: 24px; }
 .perfil-dashboard-seguimiento .perfil-lista li { flex-wrap:wrap; }
+
+.perfil-usuario-foto { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }

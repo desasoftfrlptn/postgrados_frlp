@@ -20,7 +20,7 @@ interface AlumnoSeminario {
   carrera_elegida: string;
   asistencias: number;
   total_clases: number;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
   estado: string;
 }
 
@@ -450,7 +450,7 @@ export default function FormularioAsistencia() {
                   </td>
 
                   <td className="p-4 text-center text-sm font-semibold text-slate-700">
-                    {alumno.porcentaje_asistencia}% ({alumno.asistencias}/{alumno.total_clases})
+                    {alumno.porcentaje_asistencia === null ? "Sin clases registradas" : `${alumno.porcentaje_asistencia}% (${alumno.asistencias}/${alumno.total_clases})`}
                   </td>
 
                   <td className="p-4 text-center">

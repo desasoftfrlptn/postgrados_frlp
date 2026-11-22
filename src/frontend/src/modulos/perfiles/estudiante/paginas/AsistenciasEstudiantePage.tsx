@@ -9,7 +9,7 @@ interface CursadaAsistencia {
   fecha_inicio: string;
   asistencias: number;
   total_clases: number;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
 }
 
 export default function AsistenciasEstudiantePage() {
@@ -94,7 +94,8 @@ export default function AsistenciasEstudiantePage() {
 
               {!cargando &&
                 registros.map((registro) => {
-                  const cumpleMinimo = registro.porcentaje_asistencia >= 75;
+                  const sinClases = registro.total_clases === 0 || registro.porcentaje_asistencia === null;
+                  const cumpleMinimo = !sinClases && registro.asistencias * 100 >= registro.total_clases * 75;
                   return (
                     <tr
                       key={registro.inscripcion_id}
@@ -117,20 +118,20 @@ export default function AsistenciasEstudiantePage() {
                       <td className="p-4 text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-bold flex items-center justify-center w-32 mx-auto ${
-                            cumpleMinimo
+                            sinClases ? "bg-slate-100 text-slate-600" : cumpleMinimo
                               ? "bg-emerald-100 text-emerald-700"
                               : "bg-red-100 text-red-700"
                           }`}
                         >
                           <span aria-hidden="true" className="mr-1">
-                            {cumpleMinimo ? "✔" : "✖"}
+                            {sinClases ? "—" : cumpleMinimo ? "✔" : "✖"}
                           </span>
-                          {cumpleMinimo ? "Regular (>=75%)" : "Bajo (<75%)"}
+                          {sinClases ? "Sin clases registradas" : cumpleMinimo ? "Regular (>=75%)" : "Bajo (<75%)"}
                         </span>
                       </td>
 
                       <td className="p-4 text-center font-bold text-slate-800">
-                        {registro.porcentaje_asistencia}%
+                        {sinClases ? "—" : `${registro.porcentaje_asistencia}%`}
                       </td>
                     </tr>
                   );

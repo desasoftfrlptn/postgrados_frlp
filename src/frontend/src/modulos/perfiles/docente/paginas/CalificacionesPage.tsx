@@ -17,7 +17,7 @@ interface AlumnoSeminario {
   dni_pasaporte: string;
   apellido: string;
   nombre: string;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
   nota_final: number | null;
   estado: string;
 }
@@ -294,7 +294,7 @@ const handleSubmit = async (event: React.FormEvent) => {
                   */}
                     <td className="p-4 text-center">
                       <span className="font-semibold text-slate-700">
-                        {alumno.porcentaje_asistencia}% asist.
+                        {alumno.porcentaje_asistencia === null ? "Sin clases registradas" : `${alumno.porcentaje_asistencia}% asist.`}
                       </span>{" "}
                       —{" "}
                       <span className="font-bold">

@@ -39,6 +39,11 @@ export const menuDocente: OpcionMenuPerfil[] = [
     ruta: "/dashboard/docente/profesores",
   },
   {
+    texto: "Tutorías",
+    icono: "📋",
+    ruta: "/dashboard/docente/tutorias",
+  },
+  {
     texto: "Reportes",
     icono: "📊",
     ruta: "/dashboard/docente/reportes",

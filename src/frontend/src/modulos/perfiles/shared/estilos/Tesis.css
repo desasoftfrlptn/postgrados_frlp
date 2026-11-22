@@ -32,7 +32,33 @@
 .tesis-vacio p { margin: 0; }
 .tesis-formulario fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; min-width: 0; border: 0; padding: 20px 24px; margin: 0; }
 .tesis-formulario legend { padding: 16px 24px 0; font-weight: 600; }
-.tesis-formulario fieldset > :first-child, .tesis-formulario fieldset > :nth-child(2), .tesis-formulario fieldset > p, .tesis-acciones { grid-column: 1 / -1; }
+.tesis-formulario fieldset > p, .tesis-ancho, .tesis-acciones { grid-column: 1 / -1; }
 .tesis-acciones { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 @media (max-width: 1100px) { .tesis-filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 650px) { .tesis-filtros, .tesis-formulario fieldset { grid-template-columns: 1fr; } .tesis-panel-cuerpo, .tesis-formulario fieldset { padding: 16px; } .tesis-cabecera .tesis-btn { width: 100%; } }
+
+/* Vista exclusiva de alta y modificación. */
+.tesis-formulario { width: 100%; max-width: none; min-width: 0; box-sizing: border-box; }
+.tesis-leyenda { color: #475569; font-size: 14px; }
+.tesis-selector { display: grid; gap: 12px; }
+.tesis-error-campo { color: #b91c1c; font-size: 13px; font-weight: 400; }
+.tesis-formulario [aria-invalid="true"] { border-color: #b91c1c; }
+.tesis-ayuda { font-size: 14px; color: #475569; margin: 0; }
+.tesis-aviso { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tesis-aviso p { margin: 0; flex: 1 1 220px; }
+.tesis-aviso .tesis-btn { margin-left: auto; }
+.tesis-cabecera h1:focus { outline: none; }
+
+/* Filtros de candidatos y distribución de la vista de registro. */
+.tesis-pagina .tesis-formulario { justify-self: stretch; }
+.tesis-cabecera h1 { scroll-margin-top: 20px; }
+.tesis-filtro-candidatos { padding: 18px; border: 1px solid #dbe3ee; border-radius: 10px; background: #f8fafc; }
+.tesis-filtro-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.tesis-filtro-cabecera h3, .tesis-seccion-form { margin: 0; font-size: 16px; color: #172554; font-weight: 600; }
+.tesis-filtro-cabecera p, .tesis-resultados { margin: 5px 0 0; color: #475569; font-size: 14px; }
+.tesis-filtro-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tesis-resultados { margin-top: 14px; }
+.tesis-seleccion { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; padding: 12px 16px; border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff; color: #1e40af; font-size: 14px; }
+.tesis-seccion-form { border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 4px; }
+@media (max-width: 1100px) { .tesis-filtro-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 650px) { .tesis-filtro-grid { grid-template-columns: 1fr; } .tesis-filtro-candidatos { padding: 12px; } }

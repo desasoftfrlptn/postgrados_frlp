@@ -13,7 +13,6 @@ const modulos = [
   { titulo: "Tutorías", icono: "📚", descripcion: "Seguimiento académico de estudiantes.", ruta: "tutorias" },
   { titulo: "Trabajo final y tesis", icono: "📝", descripcion: "Consulta de tesis y trabajos finales.", ruta: "trabajos-finales" },
   { titulo: "Seminarios y notas", icono: "📖", descripcion: "Cursadas, asistencia, calificaciones y acreditación.", ruta: "seminarios" },
-  { titulo: "Alertas académicas", icono: "🔔", descripcion: "Legajos pendientes de seguimiento por cohorte.", ruta: "alertas" },
   { titulo: "Estadísticas", icono: "📊", descripcion: "Indicadores reales de inscripciones y solicitudes de beca.", ruta: "estadisticas" },
 ];
 

@@ -528,6 +528,8 @@ export default function GestionInscripcion({
               </section>
             )}
 
+            <form className="gestion-formulario-unificado" aria-label="Revisión y resolución del legajo" onSubmit={(event) => event.preventDefault()}>
+              <h3>Revisión y resolución del legajo</h3>
             {puedeVerificar && (
               <fieldset
                 className="gestion-verificacion"
@@ -536,7 +538,7 @@ export default function GestionInscripcion({
                 <legend>Verificación del legajo</legend>
 
                 <p className="gestion-ayuda">
-                  Completá los siguientes datos antes de aprobar la inscripción.
+                  Revisá los datos y guardá la verificación para calcular los requisitos de aprobación.
                 </p>
 
                 <div className="gestion-campo">
@@ -586,16 +588,6 @@ export default function GestionInscripcion({
                   )}
                 </div>
 
-                <div className="gestion-verificacion-acciones">
-                  <button
-                    type="button"
-                    className="gestion-boton-guardar"
-                    disabled={tituloPosgrado === ""}
-                    onClick={() => setAccionPendiente("VERIFICAR")}
-                  >
-                    Guardar verificación
-                  </button>
-                </div>
               </fieldset>
             )}
 
@@ -667,7 +659,7 @@ export default function GestionInscripcion({
               className="gestion-resolucion"
               aria-label="Resolución de la inscripción"
             >
-              <h3>Resolución de la inscripción</h3>
+              <h4>Resolución de la inscripción</h4>
               <p className="gestion-ayuda">
                 Seleccioná una operación disponible según el estado actual.
               </p>
@@ -762,6 +754,13 @@ export default function GestionInscripcion({
               )}
 
               <div className="gestion-acciones">
+              {puedeVerificar && (
+                <button type="button" className="gestion-boton-guardar"
+                  disabled={bloqueado || tituloPosgrado === ""}
+                  onClick={() => setAccionPendiente("VERIFICAR")}>
+                  Guardar verificación
+                </button>
+              )}
               {(accionesPorEstado[gestion.estado] ?? []).map(
                 ({ accion, texto }) => (
                   <button
@@ -784,6 +783,7 @@ export default function GestionInscripcion({
             </div>
 
             </section>
+            </form>
 
             <details className="gestion-historial">
               <summary>Historial de operaciones ({eventos.length})</summary>

@@ -18,7 +18,7 @@ interface AsistenciaPorFecha {
   carrera_elegida: string;
   fecha: string;
   presente: boolean;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
 }
 
 export default function HistorialAsistencias() {
@@ -229,7 +229,7 @@ export default function HistorialAsistencias() {
                     </span>
                   </td>
                   <td className="p-4 text-sm text-center font-bold text-slate-800">
-                    {r.porcentaje_asistencia}%
+                    {r.porcentaje_asistencia === null ? "—" : `${r.porcentaje_asistencia}%`}
                   </td>
                 </tr>
               ))}

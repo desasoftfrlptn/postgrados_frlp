@@ -1,6 +1,8 @@
 // Página responsable de mostrar al docente la información detallada de sus estudiantes inscriptos.
 import { useEffect, useState } from "react";
 import { api } from "../../../../shared/api/client";
+import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
 interface SeminarioDocente {
@@ -19,41 +21,14 @@ interface AlumnoSeminario {
   carrera_elegida: string;
   asistencias: number;
   total_clases: number;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
   estado: string;
   nota_final: number | null;
 }
 
 export default function EstudiantesPage() {
-  // Datos simulados (Mock) de los estudiantes a cargo del docente
-  // const estudiantes = [
-  //   { 
-  //     id: "LEG-001", 
-  //     apellido: "Pérez", 
-  //     nombre: "Juan", 
-  //     correo: "juan@estudiante.utn.edu.ar", 
-  //     carreraPosgrado: "Maestría en Ingeniería en Sistemas de Información",
-  //     seminario: "Metodología de la Investigación"
-  //   },
-  //   { 
-  //     id: "LEG-002", 
-  //     apellido: "Gómez", 
-  //     nombre: "Ana", 
-  //     correo: "ana@estudiante.utn.edu.ar", 
-  //     carreraPosgrado: "Especialización en Gestión de TIC",
-  //     seminario: "Metodología de la Investigación"
-  //   },
-  //   { 
-  //     id: "LEG-003", 
-  //     apellido: "López", 
-  //     nombre: "Carlos", 
-  //     correo: "carlos@estudiante.utn.edu.ar", 
-  //     carreraPosgrado: "Maestría en Ingeniería en Sistemas de Información",
-  //     seminario: "Gestión de Proyectos IT"
-  //   }
-  // ];
-
-const { user } = useAuth();
+  const { user } = useAuth();
+const confirmacion = useConfirmacion();
 const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
 const [seminarioId, setSeminarioId] = useState<string>("");
 const [estudiantes, setEstudiantes] = useState<AlumnoSeminario[]>([]);
@@ -92,6 +67,7 @@ useEffect(() => {
 }, [user?.token]);
 
 useEffect(() => {
+  let vigente = true;
   async function cargarEstudiantes() {
     if (!user?.token || !seminarioId) return;
     setCargando(true);
@@ -100,21 +76,20 @@ useEffect(() => {
         `/seminarios/${seminarioId}/estudiantes`,
         user.token
       );
-      setEstudiantes(lista);
-      setError(null);
+      if (vigente) { setEstudiantes(lista); setError(null); }
     } catch (err) {
-      setError(
+      if (vigente) setError(
         err instanceof Error ? err.message : "Error al cargar estudiantes."
       );
     } finally {
-      setCargando(false);
+      if (vigente) setCargando(false);
     }
   }
-  cargarEstudiantes();
+  void cargarEstudiantes();
+  return () => { vigente = false; };
 }, [seminarioId, user?.token]);
 
-  const asociarEstudiante = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const asociarEstudiante = async () => {
     setMensaje(null);
     setError(null);
 
@@ -162,6 +137,7 @@ useEffect(() => {
       setEstudiantes((prev) =>
         prev.filter((e) => e.legajo_id !== estudiante.legajo_id)
       );
+      setEstudianteDetalle(null);
       setMensaje(
         `Estudiante ${estudiante.apellido}, ${estudiante.nombre} desvinculado del seminario.`
       );
@@ -190,7 +166,14 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
       </header>
 
       <form
-        onSubmit={asociarEstudiante}
+        onSubmit={event => {
+          event.preventDefault();
+          if (!dniNuevo.trim() || !seminarioId) {
+            setError("Seleccioná un seminario e ingresá el documento del alumno.");
+            return;
+          }
+          confirmacion.solicitar({ titulo: "Inscribir estudiante", descripcion: `¿Confirmás la inscripción del documento ${dniNuevo.trim()}?`, ejecutar: asociarEstudiante });
+        }}
         className="bg-white rounded-xl shadow-sm border border-slate-200 
       p-5 mt-6 flex flex-col sm:flex-row gap-4 items-end"
         >
@@ -202,7 +185,8 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
             <select
               id="seminario-est"
               value={seminarioId}
-              onChange={(e) => setSeminarioId(e.target.value)}
+              onChange={(e) => { setEstudianteDetalle(null); setEstudiantes([]); setSeminarioId(e.target.value); }}
+              disabled={confirmacion.abierto || cargando}
               className="w-full border border-slate-300 rounded-md p-2 
             text-sm text-slate-700 bg-white"
             >
@@ -233,6 +217,7 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
 
    <button
      type="submit"
+     disabled={confirmacion.abierto || cargando || !seminarioId}
      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-md text-sm"
    >
      Inscribir al Seminario
@@ -330,8 +315,8 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
                  </button>
                  <button
                    type="button"
-                   disabled={estudiante.nota_final !== null}
-                   onClick={() => desvincularEstudiante(estudiante)}
+                   disabled={confirmacion.abierto || estudiante.nota_final !== null || estudiante.total_clases > 0}
+                   onClick={() => confirmacion.solicitar({ titulo: "Desvincular estudiante", descripcion: `¿Confirmás la desvinculación de ${estudiante.nombre} ${estudiante.apellido}?`, peligroso: true, ejecutar: () => desvincularEstudiante(estudiante) })}
                    className="px-3 py-1 bg-red-100 hover:bg-red-200 disabled:bg-slate-100 disabled:text-slate-400 text-red-700 font-semibold rounded-md text-xs transition-colors"
                    title={
                      estudiante.nota_final !== null
@@ -393,9 +378,7 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
             <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
               <dt className="text-slate-500 font-semibold">Asistencia Acumulada (BR-002)</dt>
               <dd className="text-slate-800 font-bold mt-1">
-                {estudianteDetalle.porcentaje_asistencia}% (
-                {estudianteDetalle.asistencias} de {estudianteDetalle.total_clases}{" "}
-                clases)
+                {estudianteDetalle.porcentaje_asistencia === null ? "Sin clases registradas" : `${estudianteDetalle.porcentaje_asistencia}% (${estudianteDetalle.asistencias} de ${estudianteDetalle.total_clases} clases)`}
               </dd>
             </div>
 
@@ -409,6 +392,7 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
           </dl>
         </article>
       )}
+      <ConfirmacionModal abierto={confirmacion.abierto} titulo={confirmacion.titulo} descripcion={confirmacion.descripcion} textoConfirmar={confirmacion.textoConfirmar} alConfirmar={confirmacion.confirmar} alCancelar={confirmacion.cancelar} confirmando={confirmacion.procesando} peligroso={confirmacion.peligroso} />
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import EditarCohorte from "../../shared/componentes/EditarCohorte";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
@@ -49,6 +50,7 @@ export default function PeriodosInscripcionPage() {
   const { user } = useAuth();
   const token = user?.token;
 
+  const [editando, setEditando] = useState<Cohorte | null>(null);
   const [cohortes, setCohortes] = useState<Cohorte[]>([]);
   const [carreras, setCarreras] = useState<Carrera[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -56,6 +58,8 @@ export default function PeriodosInscripcionPage() {
   const [errorCarga, setErrorCarga] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
+  const [filtroNombre, setFiltroNombre] = useState("");
+  const [filtroAnio, setFiltroAnio] = useState("");
   const [filtroCarrera, setFiltroCarrera] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("TODAS");
   const [versionConsulta, setVersionConsulta] = useState(0);
@@ -123,6 +127,7 @@ export default function PeriodosInscripcionPage() {
   );
 
   const cohortesFiltradas = cohortes
+    .filter(c => c.nombre.toLowerCase().includes(filtroNombre.trim().toLowerCase()) && (!filtroAnio || String(c.anio) === filtroAnio))
     .filter((cohorte) => !filtroCarrera || cohorte.carrera_id === filtroCarrera)
     .filter((cohorte) => {
       if (filtroEstado === "ABIERTAS") return cohorte.abierta;
@@ -230,6 +235,12 @@ export default function PeriodosInscripcionPage() {
     }
   }
 
+  if (editando && token) return <EditarCohorte cohorte={editando} carreras={carreras} token={token} cancelar={() => { setEditando(null); setVersionConsulta(v => v + 1); }} guardada={actualizada => {
+    setCohortes(actuales => actuales.map(c => c.id === actualizada.id ? actualizada : c));
+    setEditando(null);
+    setMensaje("La cohorte fue modificada correctamente.");
+  }} />;
+
   return (
     <section className="perfil-pagina" aria-labelledby="titulo-periodos">
       <header className="perfil-pagina-encabezado">
@@ -302,7 +313,7 @@ export default function PeriodosInscripcionPage() {
         </header>
 
         <div className="conduccion-tarjeta-cuerpo">
-          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <label htmlFor="periodos-carrera" className="mb-2 block font-semibold">
                 Carrera
@@ -339,7 +350,10 @@ export default function PeriodosInscripcionPage() {
                 <option value="CERRADAS">Cerradas</option>
               </select>
             </div>
+            <div><label htmlFor="periodos-nombre" className="mb-2 block font-semibold">Buscar cohorte</label><input id="periodos-nombre" type="search" className="w-full rounded-md border border-gray-300 p-2" value={filtroNombre} onChange={e => setFiltroNombre(e.target.value)} /></div>
+            <div><label htmlFor="periodos-anio" className="mb-2 block font-semibold">Año</label><select id="periodos-anio" className="w-full rounded-md border border-gray-300 p-2" value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)}><option value="">Todos</option>{Array.from(new Set(cohortes.map(c => c.anio))).sort((a,b) => b-a).map(a => <option key={a} value={a}>{a}</option>)}</select></div>
           </div>
+          <button type="button" className="mb-4 rounded-md border px-3 py-2" onClick={() => {setFiltroNombre("");setFiltroAnio("");setFiltroCarrera("");setFiltroEstado("TODAS");}}>Limpiar filtros</button>
 
           {error && (
             <MensajeSistema
@@ -400,6 +414,7 @@ export default function PeriodosInscripcionPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3">
+                        <button type="button" className="mr-2 rounded-md border px-3 py-2 text-sm font-semibold" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
                         <button
                           type="button"
                           disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}

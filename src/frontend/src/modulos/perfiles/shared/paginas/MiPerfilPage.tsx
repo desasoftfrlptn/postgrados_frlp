@@ -1,826 +1,134 @@
-// Muestra la información del perfil según el usuario autenticado.
-
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ChangeEvent,
-} from "react";
-
-import { api } from "../../../../shared/api/client";
+import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
+import { api, ApiError } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
-
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
-import CampoPerfil from "../componentes/CampoPerfil";
 import CambiarContrasena from "../componentes/CambiarContrasena";
-
-import DetallePerfilEstudiante from "../../estudiante/componentes/DetallePerfilEstudiante";
-import DetallePerfilDocente from "../../docente/componentes/DetallePerfilDocente";
-
 import "../estilos/MiPerfilPage.css";
 
-
 interface DatosPerfil {
-  nombre: string;
-  apellido: string;
-  dni: string;
-  nacionalidad: string;
-  email: string;
-  emailAlternativo: string;
-  telefono: string;
-  domicilio: string;
-  pais: string;
-  provincia: string;
-  ciudad: string;
-  carrera: string;
-  cohorte: string;
+  nacionalidad: string; correo_alternativo: string | null; telefono_movil: string;
+  domicilio: string; pais: string; provincia: string; ciudad: string;
+  notificaciones_automaticas: boolean;
 }
-
-interface LegajoPerfil {
-  nombre: string;
-  apellido: string;
-  dni_pasaporte: string;
-  nacionalidad: string;
-  correo_electronico: string;
-  correo_alternativo?: string | null;
-  telefono_movil?: string | null;
-  domicilio?: string | null;
-  pais: string;
-  provincia: string;
-  ciudad: string;
-  carrera_elegida: string;
+interface Perfil {
+  datos: DatosPerfil; foto: string | null; version: number;
+  carreras: { id: string; carrera: string; cohorte: string }[];
 }
-
-
-type Pestaña =
-  | "Datos Personales"
-  | "Contacto"
-  | "Domicilio"
-  | "Información"
-  | "Seguridad";
-
+type Cambio = { datos: Partial<DatosPerfil> } | { foto: string | null };
+const campos = [
+  { clave: "nacionalidad", etiqueta: "Nacionalidad", max: 100 },
+  { clave: "correo_alternativo", etiqueta: "Correo alternativo", max: 255, tipo: "email" },
+  { clave: "telefono_movil", etiqueta: "Teléfono móvil", max: 30, tipo: "tel" },
+  { clave: "domicilio", etiqueta: "Domicilio", max: 255 },
+  { clave: "pais", etiqueta: "País", max: 100 },
+  { clave: "provincia", etiqueta: "Provincia", max: 200 },
+  { clave: "ciudad", etiqueta: "Ciudad", max: 200 },
+] as const;
 
 export default function MiPerfilPage() {
   const { user } = useAuth();
+  return user ? <PerfilPersonal key={`${user.id}:${user.token}`} usuario={user} /> : null;
+}
 
-
-  const esAdministrador =
-    user?.rol === "ADMIN";
-
-  const esDocente =
-    user?.rol === "DOCENTE";
-
-  const esEstudiante =
-    user?.rol === "ALUMNO";
-
-
-  const rol =
-    user?.rol === "ADMIN"
-      ? "Administrador"
-      : user?.rol === "DOCENTE"
-        ? "Docente"
-        : user?.rol === "ALUMNO"
-          ? "Alumno"
-          : user?.rol === "ASPIRANTE"
-            ? "Aspirante"
-            : user?.rol === "COORDINADOR"
-              ? "Coordinador"
-              : user?.rol === "CPR"
-                ? "CPR"
-                : "Usuario";
-
-
-  const datosIniciales: DatosPerfil = {
-    nombre:
-      user?.nombre ?? "",
-
-    apellido:
-      user?.apellido ?? "",
-
-    dni:
-      user?.dni ?? "",
-
-    nacionalidad: "",
-
-    email:
-      user?.email ?? "",
-
-    emailAlternativo: "",
-    telefono: "",
-    domicilio: "",
-    pais: "",
-    provincia: "",
-    ciudad: "",
-    carrera: "",
-    cohorte: "",
-  };
-
-
-  const pestañas: Pestaña[] =
-    esAdministrador
-      ? [
-          "Datos Personales",
-          "Contacto",
-          "Seguridad",
-        ]
-      : [
-          "Datos Personales",
-          "Contacto",
-          "Domicilio",
-          "Información",
-          "Seguridad",
-        ];
-
-
-  const claveFoto = user
-    ? `fotoPerfil-${user.id}`
-    : "fotoPerfil";
-
-
-  const [tabActiva, setTabActiva] =
-    useState<Pestaña>(
-      "Datos Personales"
-    );
-
-  const [datos, setDatos] =
-    useState<DatosPerfil>(
-      datosIniciales
-    );
-
-  const [
-    datosEditados,
-    setDatosEditados,
-  ] = useState<DatosPerfil>(
-    datosIniciales
-  );
-
-  const [editando, setEditando] =
-    useState(false);
-
-  const [error, setError] = useState("");
-  const [perfilDisponible, setPerfilDisponible] = useState(false);
-  const [confirmar, setConfirmar] = useState(false);
+function PerfilPersonal({ usuario }: { usuario: NonNullable<ReturnType<typeof useAuth>["user"]> }) {
+  const token = usuario.token;
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [borrador, setBorrador] = useState<DatosPerfil | null>(null);
+  const [pendiente, setPendiente] = useState<Cambio | null>(null);
+  const [tab, setTab] = useState("Datos personales");
+  const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [conflicto, setConflicto] = useState(false);
   const bloqueo = useRef(false);
-  const [mensaje, setMensaje] =
-    useState("");
-
-  const [
-    fotoPerfil,
-    setFotoPerfil,
-  ] = useState<string | null>(
-    () =>
-      localStorage.getItem(
-        claveFoto
-      )
-  );
-
+  const [revisionCarga, setRevisionCarga] = useState(0);
+  function cargar() {
+    setCargando(true);
+    setError("");
+    setRevisionCarga(actual => actual + 1);
+  }
   useEffect(() => {
     let vigente = true;
-    async function cargarLegajo() {
-      if (!esEstudiante || !user?.token) return;
-      try {
-        const legajo = await api.get<LegajoPerfil>(
-          "/inscripcion/mi-legajo",
-          user.token
-        );
-        const cargados: DatosPerfil = {
-          nombre: legajo.nombre,
-          apellido: legajo.apellido,
-          dni: legajo.dni_pasaporte,
-          nacionalidad: legajo.nacionalidad ?? "",
-          email: legajo.correo_electronico,
-          emailAlternativo: legajo.correo_alternativo ?? "",
-          telefono: legajo.telefono_movil ?? "",
-          domicilio: legajo.domicilio ?? "",
-          pais: legajo.pais ?? "",
-          provincia: legajo.provincia ?? "",
-          ciudad: legajo.ciudad ?? "",
-          carrera: legajo.carrera_elegida ?? "",
-          cohorte: "",
-        };
-        if (!vigente) return;
-        setPerfilDisponible(true);
-        setError("");
-        setDatos(cargados);
-        setDatosEditados(cargados);
-      } catch {
-        if (vigente) setError("No se pudo recuperar el legajo académico. No se habilitará la edición hasta que esté disponible.");
-      }
-    }
-    void cargarLegajo();
-    return () => { vigente = false; };
-  }, [esEstudiante, user?.token]);
-
-  const cambiarPestana = (
-    pestana: Pestaña
-  ) => {
-    setTabActiva(
-      pestana
-    );
-
-    setEditando(
-      false
-    );
-
-    setDatosEditados(
-      datos
-    );
-
-    setMensaje("");
-  };
-
-
-  const comenzarEdicion = () => {
-    setDatosEditados(
-      datos
-    );
-
-    setEditando(true);
-    setMensaje("");
-  };
-
-
-  const cancelarEdicion = () => {
-    setDatosEditados(
-      datos
-    );
-
-    setEditando(false);
-    setMensaje("");
-  };
-
-
-    const guardarCambios = async () => {
-    if (!esEstudiante || !user?.token || !perfilDisponible || bloqueo.current) return;
-    bloqueo.current = true;
-    setGuardando(true);
-    setError("");
-    setMensaje("");
-    {
-      try {
-        await api.patch(
-          "/inscripcion/mi-legajo",
-          {
-            nacionalidad: datosEditados.nacionalidad,
-            correo_alternativo: datosEditados.emailAlternativo || null,
-            telefono_movil: datosEditados.telefono || null,
-            domicilio: datosEditados.domicilio || null,
-            ciudad: datosEditados.ciudad,
-            provincia: datosEditados.provincia,
-            pais: datosEditados.pais,
-          },
-          user.token
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "No se pudieron guardar los cambios en el legajo."
-        );
-        return;
-      } finally {
-        bloqueo.current = false;
-        setGuardando(false);
-        setConfirmar(false);
-      }
-    }
-
-    setDatos(datosEditados);
-    setEditando(false);
-    setMensaje("Los datos fueron actualizados correctamente.");
-  };
-
-
-  const actualizarCampo = (
-    campo: keyof DatosPerfil,
-    valor: string
-  ) => {
-    setDatosEditados({
-      ...datosEditados,
-      [campo]: valor,
+    api.get<Perfil>("/autenticacion/mi-perfil", token).then(datos => {
+      if (!vigente) return;
+      setPerfil(datos);
+      setBorrador(null);
+      setConflicto(false);
+    }).catch((e: unknown) => {
+      if (vigente) setError(e instanceof Error ? e.message : "No se pudo cargar el perfil.");
+    }).finally(() => {
+      if (vigente) setCargando(false);
     });
-  };
+    return () => { vigente = false; };
+  }, [token, revisionCarga]);
 
-
-  const cambiarFoto = (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
-    const archivo =
-      event.target.files?.[0];
-
-    if (!archivo) {
-      return;
+  async function guardar() {
+    if (!perfil || !pendiente || bloqueo.current) return;
+    bloqueo.current = true; setGuardando(true); setError(""); setMensaje("");
+    try {
+      const resultado = await api.patch<Perfil>("/autenticacion/mi-perfil", { version: perfil.version, ...pendiente }, token);
+      setPerfil(resultado); setBorrador(null); setMensaje("Los cambios se guardaron correctamente.");
+      window.dispatchEvent(new CustomEvent("perfil-actualizado", { detail: { id: usuario.id, foto: resultado.foto, notificaciones_automaticas: resultado.datos.notificaciones_automaticas } }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo guardar el perfil.");
+      if (e instanceof ApiError && e.status === 409) setConflicto(true);
+    } finally { bloqueo.current = false; setGuardando(false); setPendiente(null); }
+  }
+  function elegirFoto(e: ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]; e.target.value = "";
+    if (!archivo || guardando || conflicto) return;
+    setError(""); setMensaje("");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(archivo.type) || !archivo.size || archivo.size > 2 * 1024 * 1024) {
+      setError("Seleccioná una imagen JPG, PNG o WebP de hasta 2 MB."); return;
     }
-
-    if (
-      !["image/jpeg", "image/png", "image/webp"].includes(archivo.type) || archivo.size > 2 * 1024 * 1024
-    ) {
-      setError(
-        "Seleccioná una imagen JPG, PNG o WebP de hasta 2 MB."
-      );
-
-      return;
-    }
-
-    const lector =
-      new FileReader();
-
-    lector.onload = () => {
-      if (
-        typeof lector.result
-        !== "string"
-      ) {
-        return;
-      }
-
-      try {
-        localStorage.setItem(claveFoto, lector.result);
-        setFotoPerfil(lector.result);
-        setError("");
-      } catch { setError("No hay espacio disponible para guardar la foto en este navegador."); return; }
-
-      setMensaje(
-        "La foto fue actualizada en este navegador."
-      );
-    };
-
+    const lector = new FileReader();
+    lector.onload = () => { if (typeof lector.result === "string") setPendiente({ foto: lector.result }); };
     lector.onerror = () => setError("No se pudo leer la imagen.");
-    lector.readAsDataURL(
-      archivo
-    );
-  };
-
-
-  const eliminarFoto = () => {
-    setFotoPerfil(
-      null
-    );
-
-    localStorage.removeItem(
-      claveFoto
-    );
-
-    setMensaje(
-      "La foto de perfil fue eliminada."
-    );
-  };
-
-
-  return (
-    <section className="perfil-pagina mi-perfil">
-      <header className="perfil-pagina-encabezado">
-        <h1>
-          Mi Perfil
-        </h1>
-
-        <p>
-          Consultá y actualizá la información
-          registrada en tu perfil.
-        </p>
-      </header>
-
-
-      <nav
-        className="mi-perfil-pestanas"
-        aria-label="Secciones del perfil"
-      >
-        {pestañas.map(
-          (pestaña) => (
-            <button
-              key={pestaña}
-              type="button"
-              onClick={() =>
-                cambiarPestana(
-                  pestaña
-                )
-              }
-              aria-pressed={tabActiva === pestaña}
-              disabled={guardando}
-              className={
-                tabActiva === pestaña
-                  ? "mi-perfil-pestana activa"
-                  : "mi-perfil-pestana"
-              }
-            >
-              {pestaña}
-            </button>
-          )
-        )}
-      </nav>
-
-
-      {error && <MensajeSistema tipo="error" texto={error} />}
-      {!esEstudiante && <p className="perfil-panel-interior">Los datos de identificación de tu cuenta son administrados por Administración.</p>}
-      {mensaje && (
-        <p
-          className="mi-perfil-mensaje"
-          role="status"
-        >
-          {mensaje}
-        </p>
-      )}
-
-
-      <div className="mi-perfil-contenido">
-        <article className="mi-perfil-tarjeta-personal">
-          <header>
-            {rol}
-          </header>
-
-
-          <div className="mi-perfil-avatar-contenedor">
-            {fotoPerfil ? (
-              <img
-                src={fotoPerfil}
-                alt={
-                  `Foto de perfil de ${datos.nombre} ${datos.apellido}`
-                }
-                className="mi-perfil-avatar"
-              />
-            ) : (
-              <span
-                className="mi-perfil-avatar mi-perfil-avatar-vacio"
-                aria-hidden="true"
-              >
-                👤
-              </span>
-            )}
-
-
-            {!guardando && (
-              <div className="mi-perfil-foto-acciones">
-                <label
-                  htmlFor="foto-perfil"
-                  className="mi-perfil-boton-foto"
-                >
-                  Cambiar foto (local)
-                </label>
-
-                <input
-                  id="foto-perfil"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={
-                    cambiarFoto
-                  }
-                  className="mi-perfil-input-foto"
-                />
-
-                {fotoPerfil && (
-                  <button
-                    type="button"
-                    onClick={
-                      eliminarFoto
-                    }
-                    className="mi-perfil-eliminar-foto"
-                  >
-                    Eliminar foto
-                  </button>
-                )}
-              </div>
-            )}
-
-
-            <h2>
-              {datos.nombre}{" "}
-              {datos.apellido}
-            </h2>
-
-            {datos.dni && (
-              <p>
-                DNI {datos.dni}
-              </p>
-            )}
-          </div>
-
-
-          <div className="mi-perfil-resumen-personal">
-            <dl>
-              <div>
-                <dt>
-                  Correo
-                </dt>
-
-                <dd>
-                  {datos.email}
-                </dd>
-              </div>
-
-              <div>
-                <dt>
-                  Rol
-                </dt>
-
-                <dd>
-                  {rol}
-                </dd>
-              </div>
-            </dl>
-
-
-            {!editando && esEstudiante && perfilDisponible &&
-              tabActiva !== "Seguridad" && tabActiva !== "Información" && (
-                <button
-                  type="button"
-                  className="mi-perfil-modificar"
-                  onClick={
-                    comenzarEdicion
-                  }
-                >
-                  Modificar datos
-                </button>
-              )}
-          </div>
-        </article>
-
-
-        <article className="mi-perfil-datos">
-          {tabActiva ===
-            "Datos Personales" && (
-            <section>
-              <h2>
-                Datos Personales
-              </h2>
-
-              <div className="mi-perfil-grilla">
-                <CampoPerfil
-                  etiqueta="Nombre"
-                  valor={
-                    datosEditados.nombre
-                  }
-                  editando={false}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "nombre",
-                      valor
-                    )
-                  }
-                />
-
-                <CampoPerfil
-                  etiqueta="Apellido"
-                  valor={
-                    datosEditados.apellido
-                  }
-                  editando={false}
-                  onChange={(valor) =>
-                    actualizarCampo(
-                      "apellido",
-                      valor
-                    )
-                  }
-                />
-
-                <CampoPerfil
-                  etiqueta="DNI"
-                  valor={
-                    datosEditados.dni
-                  }
-                  editando={
-                    false
-                  }
-                  onChange={() => {}}
-                />
-
-                {!esAdministrador && (
-                  <CampoPerfil
-                    etiqueta="Nacionalidad"
-                    valor={
-                      datosEditados.nacionalidad
-                    }
-                    editando={
-                      editando
-                    }
-                    onChange={(valor) =>
-                      actualizarCampo(
-                        "nacionalidad",
-                        valor
-                      )
-                    }
-                  />
-                )}
-              </div>
-            </section>
-          )}
-
-
-          {tabActiva ===
-            "Contacto" && (
-            <section>
-              <h2>
-                Contacto
-              </h2>
-
-              <div className="mi-perfil-grilla">
-                <CampoPerfil
-                  etiqueta="Correo electrónico"
-                  valor={
-                    datosEditados.email
-                  }
-                  editando={
-                    false
-                  }
-                  tipo="email"
-                  onChange={() => {}}
-                />
-
-                {!esAdministrador && (
-                  <>
-                    <CampoPerfil
-                      etiqueta="Correo alternativo"
-                      valor={
-                        datosEditados.emailAlternativo
-                      }
-                      editando={
-                        editando
-                      }
-                      tipo="email"
-                      onChange={(valor) =>
-                        actualizarCampo(
-                          "emailAlternativo",
-                          valor
-                        )
-                      }
-                    />
-
-                    <CampoPerfil
-                      etiqueta="Teléfono"
-                      valor={
-                        datosEditados.telefono
-                      }
-                      editando={
-                        editando
-                      }
-                      tipo="tel"
-                      onChange={(valor) =>
-                        actualizarCampo(
-                          "telefono",
-                          valor
-                        )
-                      }
-                    />
-                  </>
-                )}
-              </div>
-            </section>
-          )}
-
-
-          {!esAdministrador &&
-            tabActiva ===
-              "Domicilio" && (
-              <section>
-                <h2>
-                  Domicilio
-                </h2>
-
-                <div className="mi-perfil-grilla">
-                  <CampoPerfil
-                    etiqueta="Domicilio"
-                    valor={
-                      datosEditados.domicilio
-                    }
-                    editando={
-                      editando
-                    }
-                    onChange={(valor) =>
-                      actualizarCampo(
-                        "domicilio",
-                        valor
-                      )
-                    }
-                  />
-
-                  <CampoPerfil
-                    etiqueta="Ciudad"
-                    valor={
-                      datosEditados.ciudad
-                    }
-                    editando={
-                      editando
-                    }
-                    onChange={(valor) =>
-                      actualizarCampo(
-                        "ciudad",
-                        valor
-                      )
-                    }
-                  />
-
-                  <CampoPerfil
-                    etiqueta="Provincia"
-                    valor={
-                      datosEditados.provincia
-                    }
-                    editando={
-                      editando
-                    }
-                    onChange={(valor) =>
-                      actualizarCampo(
-                        "provincia",
-                        valor
-                      )
-                    }
-                  />
-
-                  <CampoPerfil
-                    etiqueta="País"
-                    valor={
-                      datosEditados.pais
-                    }
-                    editando={
-                      editando
-                    }
-                    onChange={(valor) =>
-                      actualizarCampo(
-                        "pais",
-                        valor
-                      )
-                    }
-                  />
-                </div>
-              </section>
-            )}
-
-
-          {!esAdministrador &&
-            tabActiva ===
-              "Información" && (
-              <>
-                {esDocente && (
-                  <DetallePerfilDocente />
-                )}
-
-                {esEstudiante && (
-                  <DetallePerfilEstudiante
-                    carrera={
-                      datos.carrera
-                    }
-                    cohorte={
-                      datos.cohorte
-                    }
-                  />
-                )}
-
-                {!esDocente &&
-                  !esEstudiante && (
-                    <section>
-                      <h2>
-                        Información
-                      </h2>
-
-                      <p>
-                        No hay información adicional
-                        disponible para este perfil.
-                      </p>
-                    </section>
-                  )}
-              </>
-            )}
-
-
-          {tabActiva ===
-            "Seguridad" && (
-            <CambiarContrasena />
-          )}
-
-
-          {editando &&
-            tabActiva !==
-              "Seguridad" && (
-              <footer className="mi-perfil-acciones">
-                <button
-                  type="button"
-                  className="mi-perfil-cancelar"
-                  onClick={
-                    cancelarEdicion
-                  }
-                >
-                  Cancelar
-                </button>
-
-                <button
-                  type="button"
-                  className="mi-perfil-guardar"
-                  disabled={guardando}
-                  onClick={() => {
-                    setError("");
-                    const email = datosEditados.emailAlternativo.trim();
-                    const telefono = datosEditados.telefono.replace(/[\s()-]/g, "");
-                    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Ingresá un correo alternativo válido."); return; }
-                    if (telefono && !/^\+?\d{7,15}$/.test(telefono)) { setError("Ingresá un teléfono válido."); return; }
-                    setConfirmar(true);
-                  }}
-                >
-                  Guardar cambios
-                </button>
-              </footer>
-            )}
-        </article>
-      </div>
-      <ConfirmacionModal abierto={confirmar} titulo="Guardar datos del perfil" descripcion="¿Confirmás actualizar los datos de contacto y domicilio registrados?" alConfirmar={guardarCambios} alCancelar={() => setConfirmar(false)} confirmando={guardando} />
-    </section>
-  );
+    lector.readAsDataURL(archivo);
+  }
+  function solicitarGuardado(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!borrador || !perfil || conflicto || guardando) return;
+    const datos = { ...borrador, correo_alternativo: borrador.correo_alternativo?.trim() || null,
+      telefono_movil: borrador.telefono_movil.replace(/[\s()-]/g, "") };
+    if (datos.telefono_movil !== perfil.datos.telefono_movil && datos.telefono_movil && !/^\+?\d{7,15}$/.test(datos.telefono_movil)) { setError("Ingresá un teléfono de 7 a 15 dígitos."); return; }
+    if (datos.correo_alternativo !== perfil.datos.correo_alternativo && datos.correo_alternativo?.toLowerCase() === usuario.email.toLowerCase()) { setError("El correo alternativo debe ser diferente al correo de acceso."); return; }
+    if (datos.correo_alternativo !== perfil.datos.correo_alternativo && datos.correo_alternativo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(datos.correo_alternativo)) { setError("Ingresá un correo alternativo válido."); return; }
+    const cambios = Object.fromEntries(Object.entries(datos).filter(([k, v]) => v !== perfil.datos[k as keyof DatosPerfil])) as Partial<DatosPerfil>;
+    if (!Object.keys(cambios).length) { setBorrador(null); return; }
+    setError(""); setPendiente({ datos: cambios });
+  }
+  const datos = borrador ?? perfil?.datos;
+  const pestanas = ["Datos personales", ...(usuario.rol === "ALUMNO" ? ["Información académica"] : []), "Notificaciones", "Seguridad"];
+  return <section className="perfil-pagina mi-perfil">
+    <header className="perfil-pagina-encabezado"><h1>Mi perfil</h1><p>Consultá y actualizá tus datos personales y preferencias.</p></header>
+    {error && <MensajeSistema tipo="error" texto={error} duracion={0} />}
+    {mensaje && <MensajeSistema tipo="exito" texto={mensaje} />}
+    {cargando && <p role="status">Cargando perfil…</p>}
+    {(!perfil || conflicto) && !cargando && <button type="button" className="mi-perfil-guardar" onClick={() => void cargar()}>Volver a cargar</button>}
+    {perfil && datos && !cargando && <div className="mi-perfil-contenido">
+      <article className="mi-perfil-tarjeta-personal">
+        <header>{usuario.rol}</header>
+        <div className="mi-perfil-avatar-contenedor">
+          {perfil.foto ? <img src={perfil.foto} alt="Tu fotografía de perfil" className="mi-perfil-avatar" /> : <span className="mi-perfil-avatar mi-perfil-avatar-vacio" aria-hidden="true">{usuario.nombre[0]}{usuario.apellido[0]}</span>}
+          <label className="mi-perfil-boton-foto">Cambiar fotografía<input className="mi-perfil-input-foto" type="file" accept="image/jpeg,image/png,image/webp" disabled={guardando || conflicto || !!borrador} onChange={elegirFoto} /></label>
+          {perfil.foto && <button type="button" className="mi-perfil-eliminar-foto" disabled={guardando || conflicto || !!borrador} onClick={() => setPendiente({ foto: null })}>Quitar fotografía</button>}
+          <h2>{usuario.nombre} {usuario.apellido}</h2><p>{usuario.email}</p>
+        </div>
+        <div className="mi-perfil-resumen-personal"><dl><div><dt>Documento</dt><dd>{usuario.dni}</dd></div></dl><p>Los datos de identificación son administrados por Administración.</p></div>
+      </article>
+      <article className="mi-perfil-datos">
+        <nav className="mi-perfil-pestanas" aria-label="Secciones de mi perfil">{pestanas.map(p => <button key={p} type="button" aria-pressed={tab === p} disabled={guardando || !!borrador} className={`mi-perfil-pestana ${tab === p ? "activa" : ""}`} onClick={() => { setTab(p); setError(""); setMensaje(""); }}>{p}</button>)}</nav>
+        {tab === "Seguridad" ? <CambiarContrasena /> : tab === "Información académica" ? <section><h2>Carreras matriculadas</h2>{perfil.carreras.length ? <ul>{perfil.carreras.map(c => <li key={c.id}><strong>{c.carrera}</strong> · {c.cohorte}</li>)}</ul> : <p>No hay matrículas activas registradas.</p>}</section> :
+        <form onSubmit={solicitarGuardado} aria-busy={guardando} noValidate>
+          <h2>{tab}</h2>
+          {tab === "Datos personales" ? <><p>Los cambios actualizan tu perfil actual, sin modificar el historial de inscripción.</p><div className="mi-perfil-grilla">{campos.map(c => <div className="mi-perfil-campo" key={c.clave}><label htmlFor={`perfil-${c.clave}`}>{c.etiqueta}</label><input id={`perfil-${c.clave}`} type={"tipo" in c ? c.tipo : "text"} maxLength={c.max} readOnly={!borrador} disabled={guardando} value={datos[c.clave] ?? ""} onChange={e => setBorrador(prev => prev ? { ...prev, [c.clave]: e.target.value } : prev)} /></div>)}</div></> : <label><input type="checkbox" checked={datos.notificaciones_automaticas} disabled={!borrador || guardando} onChange={e => setBorrador(prev => prev ? { ...prev, notificaciones_automaticas: e.target.checked } : prev)} /> Actualizar automáticamente las notificaciones del encabezado</label>}
+          <footer className="mi-perfil-acciones">{borrador ? <><button type="button" className="mi-perfil-cancelar" disabled={guardando} onClick={() => setBorrador(null)}>Cancelar</button><button type="submit" className="mi-perfil-guardar" disabled={guardando || conflicto}>Guardar cambios</button></> : <button type="button" className="mi-perfil-guardar" disabled={conflicto} onClick={() => setBorrador({ ...perfil.datos })}>Modificar</button>}</footer>
+        </form>}
+      </article>
+    </div>}
+    <ConfirmacionModal abierto={!!pendiente} titulo="Actualizar perfil" descripcion={pendiente && "foto" in pendiente ? "¿Confirmás cambiar tu fotografía de perfil?" : "¿Confirmás guardar los datos y preferencias del perfil?"} alConfirmar={guardar} alCancelar={() => setPendiente(null)} confirmando={guardando} />
+  </section>;
 }

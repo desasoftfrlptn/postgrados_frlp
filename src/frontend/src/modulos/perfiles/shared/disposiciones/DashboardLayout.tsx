@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { api } from "../../../../shared/api/client";
 
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 
@@ -39,6 +41,24 @@ const menusPorRol: Record<Rol, OpcionMenuPerfil[]> = {
 
 export default function DashboardLayout() {
   const { logout, user } = useAuth();
+  const [perfil, setPerfil] = useState<{ id: string; foto: string | null; notificaciones_automaticas: boolean } | null>(null);
+  const id = user?.id;
+  const token = user?.token;
+  useEffect(() => {
+    if (!id || !token) return;
+    let vigente = true;
+    let actualizado = false;
+    function actualizar(e: Event) {
+      const datos = (e as CustomEvent<{ id: string; foto: string | null; notificaciones_automaticas: boolean }>).detail;
+      if (datos.id === id) { actualizado = true; setPerfil(datos); }
+    }
+    window.addEventListener("perfil-actualizado", actualizar);
+    api.get<{ foto: string | null; notificaciones_automaticas: boolean }>("/autenticacion/mi-perfil/foto", token).then(datos => {
+      if (vigente && !actualizado) setPerfil({ id, ...datos });
+    }).catch(() => { /* El encabezado conserva las iniciales si no hay foto disponible. */ });
+    return () => { vigente = false; window.removeEventListener("perfil-actualizado", actualizar); };
+  }, [id, token]);
+  const perfilActual = perfil?.id === id ? perfil : null;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -64,7 +84,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <ProveedorAlertas key={user?.token ?? "sin-sesion"} token={user?.token ?? ""}>
+    <ProveedorAlertas key={user?.token ?? "sin-sesion"} token={user?.token ?? ""} automaticas={perfilActual?.notificaciones_automaticas ?? true}>
     <div className="perfil-layout animate-fade-in">
       {/* Navegación compartida de los perfiles */}
       <aside className="perfil-sidebar">
@@ -93,7 +113,7 @@ export default function DashboardLayout() {
       <div className="perfil-contenedor">
         <header className="perfil-header">
           <div className="perfil-header-contenido">
-            <CampanaAlertas key={location.pathname} />
+            <CampanaAlertas automaticas={perfilActual?.notificaciones_automaticas ?? true} key={location.pathname} seguimientoAcademico={user?.rol === "COORDINADOR"} />
 
             <section
               className="perfil-usuario"
@@ -103,7 +123,7 @@ export default function DashboardLayout() {
                 className="perfil-usuario-avatar"
                 aria-hidden="true"
               >
-                {inicialesUsuario}
+                {perfilActual?.foto ? <img src={perfilActual.foto} alt="" className="perfil-usuario-foto" /> : inicialesUsuario}
               </span>
 
               <div className="perfil-usuario-datos">

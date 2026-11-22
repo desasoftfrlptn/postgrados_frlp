@@ -12,7 +12,7 @@ function mensajeError(e: unknown, defecto: string): string {
   return e instanceof Error ? e.message : defecto;
 }
 
-export default function ProveedorAlertas({ token, children }: { token: string; children: ReactNode }) {
+export default function ProveedorAlertas({ token, children, automaticas = true }: { token: string; children: ReactNode; automaticas?: boolean }) {
   const [datos, setDatos] = useState<BandejaAlertas | null>(null);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -28,9 +28,9 @@ export default function ProveedorAlertas({ token, children }: { token: string; c
   useEffect(() => {
     vigente.current = true;
     const inicio = window.setTimeout(() => { void refrescar(); }, 0);
-    const intervalo = window.setInterval(() => { if (!document.hidden) void refrescar(); }, 30000);
+    const intervalo = window.setInterval(() => { if (automaticas && !document.hidden) void refrescar(); }, 30000);
     return () => { vigente.current = false; window.clearTimeout(inicio); window.clearInterval(intervalo); };
-  }, [refrescar]);
+  }, [refrescar, automaticas]);
   async function leer(id?: string) {
     if (!token || bloqueo.current) return;
     bloqueo.current = true; setOcupado(true);

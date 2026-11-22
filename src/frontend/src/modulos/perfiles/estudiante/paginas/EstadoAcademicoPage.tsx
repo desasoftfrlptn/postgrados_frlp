@@ -1,6 +1,8 @@
 // Página responsable de mostrar el historial académico, avance e inscripción a seminarios del estudiante.
 import { useEffect, useState } from "react";
 import { api } from "../../../../shared/api/client";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
 interface CursadaSeminario {
@@ -10,7 +12,7 @@ interface CursadaSeminario {
   carrera_nombre: string;
   asistencias: number;
   total_clases: number;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
   nota_final: number | null;
   estado: string;
 }
@@ -26,6 +28,9 @@ interface SeminarioDisponible {
 
 export default function EstadoAcademicoPage() {
   const { user } = useAuth();
+  const confirmacion = useConfirmacion();
+  const [revision, setRevision] = useState(0);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [cursada, setCursada] = useState<CursadaSeminario[]>([]);
   const [disponibles, setDisponibles] = useState<SeminarioDisponible[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -33,30 +38,36 @@ export default function EstadoAcademicoPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let vigente = true;
     async function cargarDatosAcademicos() {
       if (!user?.token) {
         setCargando(false);
         return;
       }
       try {
+        setCargando(true); setErrorCarga(false); setError(null);
         const [datosCursada, datosDisponibles] = await Promise.all([
           api.get<CursadaSeminario[]>("/seminarios/mi-cursada", user.token),
           api.get<SeminarioDisponible[]>("/seminarios/disponibles", user.token),
         ]);
+        if (!vigente) return;
         setCursada(datosCursada);
         setDisponibles(datosDisponibles);
       } catch (err) {
+        if (!vigente) return;
+        setErrorCarga(true);
         setError(
           err instanceof Error
             ? err.message
             : "No se pudo cargar tu estado académico."
         );
       } finally {
-        setCargando(false);
+        if (vigente) setCargando(false);
       }
     }
-    cargarDatosAcademicos();
-  }, [user?.token]);
+    void cargarDatosAcademicos();
+    return () => { vigente = false; };
+  }, [user?.token, revision]);
 
   const inscribirme = async (seminarioId: string) => {
     setMensaje(null);
@@ -69,7 +80,7 @@ export default function EstadoAcademicoPage() {
         {},
         user.token
       );
-      setCursada((prev) => [nueva, ...prev]);
+      setCursada((prev) => [nueva, ...prev.filter(s => s.seminario_id !== nueva.seminario_id)]);
       setMensaje(`Te inscribiste correctamente en "${nueva.seminario_nombre}".`);
     } catch (err) {
       setError(
@@ -96,6 +107,7 @@ export default function EstadoAcademicoPage() {
       setMensaje(
         `Te desinscribiste correctamente de "${sem.seminario_nombre}".`
       );
+      setRevision(v => v + 1);
     } catch (err) {
       setError(
         err instanceof Error
@@ -119,7 +131,7 @@ export default function EstadoAcademicoPage() {
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
         <h1>Estado Académico</h1>
-        <p>Consultá tu avance en el posgrado y gestioná tus inscripciones a seminarios.</p>
+        <p>Consultá tus seminarios inscriptos, sus resultados y las opciones disponibles.</p>
       </header>
 
       {mensaje && (
@@ -140,19 +152,20 @@ export default function EstadoAcademicoPage() {
         </p>
       )}
 
+      {errorCarga && <button type="button" onClick={() => setRevision(v => v + 1)}>Reintentar consulta</button>}
       {/* Tarjeta de resumen de avance */}
       <article className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
         <header className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-slate-800">Avance de Seminarios</h2>
+          <h2 className="text-lg font-bold text-slate-800">Aprobación de seminarios inscriptos</h2>
           <span className="text-3xl font-extrabold text-blue-600">
-            {porcentajeAvance}%
+            {cargando || errorCarga ? "—" : `${porcentajeAvance}%`}
           </span>
         </header>
 
         <div
           className="w-full bg-slate-100 rounded-full h-4 shadow-inner overflow-hidden"
           role="progressbar"
-          aria-valuenow={porcentajeAvance}
+          aria-valuenow={cargando || errorCarga ? undefined : porcentajeAvance}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label="Progreso de aprobación de seminarios"
@@ -163,7 +176,7 @@ export default function EstadoAcademicoPage() {
           ></div>
         </div>
         <p className="text-sm text-slate-500 mt-4 font-medium">
-          Aprobaste {aprobados} de {totalSeminarios} seminarios inscriptos.
+          {cargando || errorCarga ? "Datos no disponibles todavía." : `Aprobaste ${aprobados} de ${totalSeminarios} seminarios inscriptos. Este indicador no representa el avance total de la carrera.`}
         </p>
       </article>
 
@@ -193,7 +206,7 @@ export default function EstadoAcademicoPage() {
                 </tr>
               )}
 
-              {!cargando && cursada.length === 0 && (
+              {!cargando && !errorCarga && cursada.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-slate-500">
                     Aún no registrás inscripciones a seminarios.
@@ -201,7 +214,7 @@ export default function EstadoAcademicoPage() {
                 </tr>
               )}
 
-              {!cargando &&
+              {!cargando && !errorCarga &&
                 cursada.map((seminario) => {
                   const puedeDesinscribir =
                     seminario.nota_final === null && seminario.total_clases === 0;
@@ -215,7 +228,7 @@ export default function EstadoAcademicoPage() {
                       </td>
 
                       <td className="p-4 text-center font-medium text-slate-600">
-                        {seminario.porcentaje_asistencia}% ({seminario.asistencias}/{seminario.total_clases})
+                        {seminario.total_clases && seminario.porcentaje_asistencia !== null ? `${seminario.porcentaje_asistencia}% (${seminario.asistencias}/${seminario.total_clases})` : "Sin clases registradas"}
                       </td>
 
                       <td className="p-4 text-center">
@@ -247,8 +260,8 @@ export default function EstadoAcademicoPage() {
                       <td className="p-4 text-center">
                         <button
                           type="button"
-                          disabled={!puedeDesinscribir}
-                          onClick={() => desinscribirme(seminario)}
+                          disabled={!puedeDesinscribir || confirmacion.procesando}
+                          onClick={() => confirmacion.solicitar({titulo: "Desinscribirme", descripcion: `¿Confirmás la baja de ${seminario.seminario_nombre}?`, textoConfirmar: "Confirmar baja", peligroso: true, ejecutar: () => desinscribirme(seminario)})}
                           className="px-3 py-1 bg-red-100 hover:bg-red-200 disabled:bg-slate-100 disabled:text-slate-400 text-red-700 font-semibold rounded-md text-xs transition-colors"
                           title={
                             puedeDesinscribir
@@ -287,7 +300,7 @@ export default function EstadoAcademicoPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-              {!cargando && seminariosParaInscribir.length === 0 && (
+              {!cargando && !errorCarga && seminariosParaInscribir.length === 0 && (
                 <tr>
                   <td colSpan={5} className="p-6 text-center text-slate-500">
                     No hay nuevos seminarios disponibles para inscripción en este momento.
@@ -295,7 +308,7 @@ export default function EstadoAcademicoPage() {
                 </tr>
               )}
 
-              {!cargando &&
+              {!cargando && !errorCarga &&
                 seminariosParaInscribir.map((sem) => (
                   <tr key={sem.id} className="hover:bg-blue-50 transition-colors">
                     <td className="p-4 font-semibold text-slate-700">
@@ -311,7 +324,8 @@ export default function EstadoAcademicoPage() {
                     <td className="p-4 text-center">
                       <button
                         type="button"
-                        onClick={() => inscribirme(sem.id)}
+                        disabled={confirmacion.procesando}
+                        onClick={() => confirmacion.solicitar({titulo: "Inscribirme", descripcion: `¿Confirmás la inscripción a ${sem.nombre}?`, textoConfirmar: "Confirmar inscripción", ejecutar: () => inscribirme(sem.id)})}
                         className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md text-xs transition-colors"
                       >
                         Inscribirme
@@ -323,6 +337,7 @@ export default function EstadoAcademicoPage() {
           </table>
         </div>
       </section>
+      <ConfirmacionModal abierto={confirmacion.abierto} titulo={confirmacion.titulo} descripcion={confirmacion.descripcion} textoConfirmar={confirmacion.textoConfirmar} alConfirmar={confirmacion.confirmar} alCancelar={confirmacion.cancelar} confirmando={confirmacion.procesando} peligroso={confirmacion.peligroso} />
     </section>
   );
 }

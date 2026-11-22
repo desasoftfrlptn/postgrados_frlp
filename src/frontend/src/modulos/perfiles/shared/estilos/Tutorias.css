@@ -1,0 +1,21 @@
+.tutorias { display: grid; gap: 1rem; width: 100%; }
+.tutorias-cabecera { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.tutorias h1 { font-size: 1.6rem; font-weight: 700; }
+.tutorias h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: .5rem; }
+.tutorias-panel { background: white; border: 1px solid #dbe2ea; border-radius: 12px; padding: 1.25rem; min-width: 0; }
+.tutorias-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 1rem; margin: 1rem 0; }
+.tutorias label { display: block; font-weight: 600; margin-bottom: .35rem; }
+.tutorias input, .tutorias select, .tutorias textarea { width: 100%; padding: .65rem; border: 1px solid #94a3b8; border-radius: 6px; background: white; color: #172033; }
+.tutorias textarea { resize: vertical; }
+.tutorias-primario, .tutorias-secundario { padding: .65rem 1rem; border-radius: 6px; font-weight: 600; }
+.tutorias-primario { background: #1d4ed8; color: white; }
+.tutorias-secundario { border: 1px solid #94a3b8; background: #fff; color: #172033; }
+.tutorias button:disabled { opacity: .55; cursor: not-allowed; }
+.tutorias-acciones { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.tutorias-error, .tutorias-exito { padding: .8rem; border-radius: 6px; margin: .5rem 0; }
+.tutorias-error { color: #991b1b; background: #fef2f2; }
+.tutorias-exito { color: #166534; background: #f0fdf4; }
+.tutorias-tabla { overflow-x: auto; margin-top: 1rem; }
+.tutorias table { width: 100%; border-collapse: collapse; text-align: left; }
+.tutorias th, .tutorias td { padding: .75rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.tutorias td:last-child { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 180px; }

@@ -24,6 +24,8 @@ export const router = createBrowserRouter([
         path: "login",
         lazy: cargarPagina(() => import("../../modulos/manejo-sesion/paginas/LoginPage")),
       },
+      { path: "restablecer-contrasena", lazy: cargarPagina(() => import("../../modulos/manejo-sesion/paginas/ActivarCuentaPage")) },
+      { path: "activar-cuenta", lazy: cargarPagina(() => import("../../modulos/manejo-sesion/paginas/ActivarCuentaPage")) },
       {
         path: "recuperar-contrasena",
         lazy: cargarPagina(() => import("../../modulos/manejo-sesion/paginas/RecuperarContrasenaPage")),
@@ -76,6 +78,8 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute rolesPermitidos={["CPR"]} />,
             children: [
               { path: "dashboard/general", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/DashboardCPRPage")) },
+              { path: "dashboard/cpr/estudiantes", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/EstudiantesCPRPage")) },
+              { path: "dashboard/cpr/docentes", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/DocentesCPRPage")) },
               { path: "dashboard/cpr/tesis", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/GestionTesisPage")) },
             ],
           },
@@ -122,6 +126,10 @@ export const router = createBrowserRouter([
               {
                 path: "dashboard/docente",
                 lazy: cargarPagina(() => import("../../modulos/perfiles/docente/paginas/DashboardDocentePage")),
+              },
+              {
+                path: "dashboard/docente/tutorias",
+                lazy: cargarPagina(() => import("../../modulos/perfiles/shared/paginas/TutoriasGestionPage")),
               },
               {
                 path: "dashboard/docente/perfil",
@@ -226,11 +234,19 @@ export const router = createBrowserRouter([
             lazy: cargarPagina(() => import("../../modulos/perfiles/administrador/paginas/DashboardAdministradorPage")),
           },
           {
-            path: "dashboard/administrador/perfil",
+            path: "dashboard/administrador/tutorias",
+                lazy: cargarPagina(() => import("../../modulos/perfiles/shared/paginas/TutoriasGestionPage")),
+              },
+              {
+                path: "dashboard/administrador/perfil",
             lazy: cargarPagina(() => import("../../modulos/perfiles/shared/paginas/MiPerfilPage")),
           },
           {
             path: "dashboard/administrador/usuarios",
+            lazy: cargarPagina(() => import("../../modulos/perfiles/administrador/paginas/UsuariosPage")),
+          },
+          {
+            path: "dashboard/administrador/usuarios/legajo/:legajoId",
             lazy: cargarPagina(() => import("../../modulos/perfiles/administrador/paginas/UsuariosPage")),
           },
           {

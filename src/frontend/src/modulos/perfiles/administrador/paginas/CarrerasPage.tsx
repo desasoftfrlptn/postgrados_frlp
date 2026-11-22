@@ -6,6 +6,7 @@ import {
   type FormEvent,
 } from "react";
 
+import AsociacionesCarrera from "../componentes/AsociacionesCarrera";
 import { api } from "../../../../shared/api/client";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
@@ -68,6 +69,7 @@ function obtenerNombreTipo(
 
 export default function CarrerasPage() {
   const confirmacion = useConfirmacion();
+  const [asociaciones, setAsociaciones] = useState<Carrera | null>(null);
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 
@@ -368,6 +370,8 @@ export default function CarrerasPage() {
       }
     );
 
+
+  if (asociaciones && user) return <AsociacionesCarrera carrera={asociaciones} token={user.token} volver={() => setAsociaciones(null)} />;
 
   return (
     <section>
@@ -676,6 +680,9 @@ export default function CarrerasPage() {
                             className="font-semibold text-blue-600 hover:underline"
                           >
                             Editar
+                          </button>
+                          <button type="button" className="font-semibold text-blue-600 hover:underline" onClick={() => setAsociaciones(carrera)}>
+                            Asociaciones
                           </button>
 
                           <button

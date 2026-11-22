@@ -6,6 +6,8 @@ import {
   type FormEvent,
 } from "react";
 
+import { Link, useParams } from "react-router-dom";
+
 import {
   api,
 } from "../../../../shared/api/client";
@@ -32,6 +34,7 @@ interface Usuario {
   tipo_usuario: Rol;
   activo: boolean;
   debe_cambiar_contrasena: boolean;
+  correo_acceso_enviado?: boolean;
 }
 
 
@@ -40,7 +43,7 @@ interface FormularioUsuario {
   apellido: string;
   dni: string;
   correo_electronico: string;
-  contrasena: string;
+  legajo_id: string;
   tipo_usuario: Rol;
 }
 
@@ -51,14 +54,13 @@ const formularioInicial:
     apellido: "",
     dni: "",
     correo_electronico: "",
-    contrasena: "",
-    tipo_usuario: "ASPIRANTE",
+    legajo_id: "",
+    tipo_usuario: "DOCENTE",
   };
 
 
 const roles: Rol[] = [
   "ADMIN",
-  "ASPIRANTE",
   "ALUMNO",
   "COORDINADOR",
   "CPR",
@@ -66,8 +68,19 @@ const roles: Rol[] = [
 ];
 
 
+interface CandidatoCuenta { id: string; nombre: string; apellido: string; dni: string; correo_electronico: string; carrera: string; numero_seguimiento: string }
+
+interface DestinoCuenta extends CandidatoCuenta { estado: string; usuario_id: string | null; conflicto: boolean; habilitado: boolean }
+
 export default function UsuariosPage() {
+  const { legajoId } = useParams();
+  const [destino, setDestino] = useState<DestinoCuenta | null>(null);
+  const [errorDestino, setErrorDestino] = useState("");
+  const [revisionDestino, setRevisionDestino] = useState(0);
   const confirmacion = useConfirmacion();
+  const [candidatos, setCandidatos] = useState<CandidatoCuenta[]>([]);
+  const [estadoCandidatos, setEstadoCandidatos] = useState<"inactivo" | "cargando" | "listo" | "error">("inactivo");
+  const [intentoCandidatos, setIntentoCandidatos] = useState(0);
 
   const {
     user,
@@ -209,11 +222,56 @@ export default function UsuariosPage() {
   }, [user?.token]);
 
 
+  const token = user?.token;
+  useEffect(() => {
+    if (!token || !legajoId) return;
+    let vigente = true;
+    api.get<DestinoCuenta>(`/autenticacion/usuarios/legajo/${legajoId}`, token)
+      .then(d => { if (vigente) { setDestino(d); setErrorDestino(""); } })
+      .catch(e => { if (vigente) { setDestino(null); setErrorDestino(e instanceof Error ? e.message : "No se pudo consultar el legajo."); } });
+    return () => { vigente = false; };
+  }, [token, legajoId, revisionDestino]);
+  const destinoActual = destino?.id === legajoId ? destino : null;
+  const seleccionAlumno = mostrarFormulario && !usuarioEditando && formulario.tipo_usuario === "ALUMNO";
+  useEffect(() => {
+    if (!token || !seleccionAlumno) return;
+    let vigente = true;
+    api.get<CandidatoCuenta[]>("/autenticacion/usuarios/candidatos", token)
+      .then(datos => { if (vigente) { setCandidatos(datos); setEstadoCandidatos("listo");
+        if (legajoId) {
+          const c = datos.find(d => d.id === legajoId);
+          if (c) setFormulario(f => ({...f, legajo_id: c.id, nombre: c.nombre, apellido: c.apellido, dni: c.dni, correo_electronico: c.correo_electronico}));
+        }
+      } })
+      .catch(() => { if (vigente) { setCandidatos([]); setEstadoCandidatos("error"); } });
+    return () => { vigente = false; };
+  }, [token, seleccionAlumno, intentoCandidatos, legajoId]);
+
+  function seleccionarLegajo(id: string) {
+    const candidato = candidatos.find(c => c.id === id);
+    setFormulario(f => ({ ...f, legajo_id: id, nombre: candidato?.nombre ?? "", apellido: candidato?.apellido ?? "", dni: candidato?.dni ?? "", correo_electronico: candidato?.correo_electronico ?? "" }));
+  }
+
+  function reenviarAcceso(usuario: Usuario) {
+    if (!token) return;
+    confirmacion.solicitar({ titulo: "Gestionar acceso", descripcion: `Se enviará un enlace de ${usuario.debe_cambiar_contrasena ? "activación" : "recuperación de contraseña"} a ${usuario.correo_electronico}.`, textoConfirmar: "Reenviar", ejecutar: async () => {
+      setError(""); setMensaje("");
+      try { await api.post(`/autenticacion/usuarios/${usuario.id}/reenviar-acceso`, {}, token); setMensaje("Correo de acceso enviado."); }
+      catch (e) { setError(e instanceof Error ? e.message : "No se pudo enviar el acceso."); }
+    } });
+  }
+
   const cambiarCampo = (
     campo:
       keyof FormularioUsuario,
     valor: string
   ) => {
+    if (campo === "tipo_usuario" && !usuarioEditando) {
+      setCandidatos([]);
+      setEstadoCandidatos(valor === "ALUMNO" ? "cargando" : "inactivo");
+      setFormulario({ ...formularioInicial, tipo_usuario: valor as Rol });
+      return;
+    }
     setFormulario(
       (anterior) => ({
         ...anterior,
@@ -262,7 +320,7 @@ export default function UsuariosPage() {
       correo_electronico:
         usuario.correo_electronico,
 
-      contrasena: "",
+      legajo_id: "",
 
       tipo_usuario:
         usuario.tipo_usuario,
@@ -302,6 +360,10 @@ export default function UsuariosPage() {
       return;
     }
 
+    if (seleccionAlumno && !formulario.legajo_id) {
+      setError("Seleccioná un alumno matriculado.");
+      return;
+    }
     confirmacion.solicitar({
       titulo: "Confirmar guardado de usuario",
       descripcion: "¿Confirmás que deseás guardar los datos ingresados?",
@@ -349,50 +411,22 @@ export default function UsuariosPage() {
         );
 
       } else {
-        if (
-          !formulario.contrasena
-        ) {
-          setError(
-            "Ingresá una contraseña temporal."
-          );
-
-          return;
-        }
-
-        await api.post<Usuario>(
+        const respuesta = await api.post<Usuario>(
           "/autenticacion/usuarios",
-          {
-            nombre:
-              formulario.nombre,
-
-            apellido:
-              formulario.apellido,
-
-            dni:
-              formulario.dni,
-
-            correo_electronico:
-              formulario.correo_electronico,
-
-            contrasena:
-              formulario.contrasena,
-
-            tipo_usuario:
-              formulario.tipo_usuario,
-          },
+          { nombre: formulario.nombre, apellido: formulario.apellido, dni: formulario.dni,
+            correo_electronico: formulario.correo_electronico, tipo_usuario: formulario.tipo_usuario,
+            ...(seleccionAlumno ? { legajo_id: formulario.legajo_id } : {}) },
           user.token
         );
-
-        setMensaje(
-          "El usuario fue creado correctamente. "
-          + "Deberá cambiar su contraseña "
-          + "en el primer ingreso."
-        );
+        setMensaje(respuesta.correo_acceso_enviado
+          ? "Usuario creado correctamente. Se envió el enlace de activación."
+          : "Usuario creado. El correo de acceso no se pudo enviar. Utilizá Gestionar acceso.");
       }
 
       cerrarFormulario();
 
       await cargarUsuarios();
+      setRevisionDestino(v => v + 1);
 
     } catch (error) {
       setError(
@@ -537,6 +571,7 @@ export default function UsuariosPage() {
   const usuariosFiltrados =
     usuarios.filter(
       (usuario) => {
+        if (legajoId && usuario.id !== destinoActual?.usuario_id) return false;
         const nombreCompleto =
         `${usuario.nombre} ${usuario.apellido}`
             .toLowerCase();
@@ -594,6 +629,15 @@ export default function UsuariosPage() {
       </header>
 
 
+      {legajoId && <section className="bg-white border rounded-xl p-6 mb-6">
+        <Link className="text-blue-600" to="/dashboard/administrador/usuarios">← Todos los usuarios</Link>
+        <h2 className="text-xl font-bold mt-3">Cuenta del estudiante</h2>
+        {errorDestino ? <><p role="alert">{errorDestino}</p><button type="button" onClick={() => {setErrorDestino(""); setRevisionDestino(v => v + 1);}}>Reintentar</button></> : !destinoActual ? <p role="status">Consultando legajo…</p> : <>
+          <p>{destinoActual.apellido}, {destinoActual.nombre}</p><p>{destinoActual.carrera} · {destinoActual.numero_seguimiento}</p><p>Estado: {destinoActual.estado}</p>
+          <p>{destinoActual.correo_electronico}</p>
+          {destinoActual.conflicto ? <p role="alert">Hay una cuenta con datos de identidad incompatibles. Revisá los usuarios existentes.</p> : destinoActual.usuario_id ? <p>Cuenta existente: consultá sus acciones debajo.</p> : destinoActual.habilitado ? <button type="button" className="bg-blue-600 text-white rounded px-4 py-2 mt-3" onClick={() => {setUsuarioEditando(null); setEstadoCandidatos("cargando"); setFormulario({...formularioInicial, tipo_usuario:"ALUMNO"}); setMostrarFormulario(true);}}>Crear cuenta del estudiante</button> : <p>El estudiante aún no tiene un legajo matriculado habilitado.</p>}
+        </>}
+      </section>}
       {error && (
         <MensajeSistema
           tipo="error"
@@ -628,15 +672,22 @@ export default function UsuariosPage() {
 
             {!usuarioEditando && (
               <p className="text-sm text-gray-500 mt-1">
-                La contraseña ingresada
-                será temporal. El usuario
-                deberá cambiarla al iniciar
-                sesión por primera vez.
+                Se enviará un enlace de activación al correo del usuario para que establezca su contraseña.
               </p>
             )}
           </header>
 
 
+          {seleccionAlumno && <div className="mb-5">
+            <label htmlFor="legajo-cuenta" className="block text-sm font-semibold mb-2">Alumno matriculado</label>
+            <select id="legajo-cuenta" required value={formulario.legajo_id} disabled={estadoCandidatos !== "listo"} onChange={e => seleccionarLegajo(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option value="">Seleccioná un legajo</option>
+              {candidatos.filter(c => !legajoId || c.id === legajoId).map(c => <option key={c.id} value={c.id}>{c.apellido}, {c.nombre} · {c.carrera} · {c.numero_seguimiento}</option>)}
+            </select>
+            {estadoCandidatos === "cargando" && <p role="status">Cargando alumnos matriculados…</p>}
+            {estadoCandidatos === "listo" && !candidatos.length && <p>No hay alumnos matriculados sin cuenta.</p>}
+            {estadoCandidatos === "error" && <><p role="alert">No se pudieron cargar los alumnos.</p><button type="button" onClick={() => {setEstadoCandidatos("cargando"); setIntentoCandidatos(v => v + 1);}}>Reintentar</button></>}
+          </div>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label
@@ -648,6 +699,7 @@ export default function UsuariosPage() {
 
               <input
                 id="usuario-nombre"
+                readOnly={seleccionAlumno}
                 type="text"
                 required
                 value={
@@ -674,6 +726,7 @@ export default function UsuariosPage() {
 
               <input
                 id="usuario-apellido"
+                readOnly={seleccionAlumno}
                 type="text"
                 required
                 value={
@@ -700,6 +753,7 @@ export default function UsuariosPage() {
 
               <input
                 id="usuario-dni"
+                readOnly={seleccionAlumno}
                 type="text"
                 required
                 value={
@@ -726,6 +780,7 @@ export default function UsuariosPage() {
 
               <input
                 id="usuario-email"
+                readOnly={seleccionAlumno}
                 type="email"
                 required
                 value={
@@ -778,33 +833,7 @@ export default function UsuariosPage() {
             </div>
 
 
-            {!usuarioEditando && (
-              <div>
-                <label
-                  htmlFor="usuario-contrasena"
-                  className="block text-sm font-semibold mb-2"
-                >
-                  Contraseña temporal
-                </label>
 
-                <input
-                  id="usuario-contrasena"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={
-                    formulario.contrasena
-                  }
-                  onChange={(event) =>
-                    cambiarCampo(
-                      "contrasena",
-                      event.target.value
-                    )
-                  }
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                />
-              </div>
-            )}
           </div>
 
 
@@ -973,6 +1002,7 @@ export default function UsuariosPage() {
                           </button>
 
 
+                          <button type="button" disabled={!usuario.activo || usuario.tipo_usuario === "ASPIRANTE"} title={usuario.debe_cambiar_contrasena ? "Enviar enlace de activación" : "Enviar enlace de recuperación"} onClick={() => reenviarAcceso(usuario)} className="text-blue-600 font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed">Gestionar acceso</button>
                           <button
                             type="button"
                             onClick={() =>

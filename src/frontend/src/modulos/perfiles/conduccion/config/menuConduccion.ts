@@ -44,11 +44,6 @@ export const menuConduccion: OpcionMenuPerfil[] = [
     ruta: "/dashboard/conduccion/seminarios",
   },
   {
-    texto: "Alertas académicas",
-    icono: "🔔",
-    ruta: "/dashboard/conduccion/alertas",
-  },
-  {
     texto: "Estadísticas",
     icono: "📊",
     ruta: "/dashboard/conduccion/estadisticas",

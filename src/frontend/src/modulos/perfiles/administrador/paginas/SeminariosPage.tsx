@@ -79,7 +79,7 @@ const formularioInicial: FormularioSeminario = {
 
 export default function SeminariosPage() {
   const confirmacion = useConfirmacion();
-  const [carreraFiltro, setCarreraFiltro] = useState("");
+  const [carreraFiltro, setCarreraFiltro] = useState(() => new URLSearchParams(window.location.search).get("carrera") ?? "");
   const [docenteFiltro, setDocenteFiltro] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 

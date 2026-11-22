@@ -10,9 +10,9 @@ export default function ExportacionesConduccionPage() {
     `${legajo.nombre} ${legajo.apellido} ${legajo.dni_pasaporte}`.toLocaleLowerCase("es")
       .includes(busqueda.toLocaleLowerCase("es")),
   );
-  const legajo = datos.legajos.find((item) => item.id === seleccionado);
+  const legajo = legajos.find((item) => item.id === seleccionado);
   function descargarCohorte() {
-    if (!datos.cohorteId || !datos.legajos.length) return;
+    if (!datos.cohorteId || !legajos.length) return;
     descargarCSV(`legajos_${datos.cohorte?.anio ?? "cohorte"}.csv`, csvLegajos(legajos));
   }
   return <section className="cc-pagina">
@@ -24,11 +24,11 @@ export default function ExportacionesConduccionPage() {
       </div><div className="cc-campo"><label htmlFor="exportar-legajo">Aspirante individual</label>
         <select id="exportar-legajo" value={seleccionado} onChange={(e) => setSeleccionado(e.target.value)}>
           <option value="">Seleccionar aspirante</option>
-          {datos.legajos.map((item) => <option key={item.id} value={item.id}>{item.apellido}, {item.nombre} · {item.dni_pasaporte}</option>)}
+          {legajos.map((item) => <option key={item.id} value={item.id}>{item.apellido}, {item.nombre} · {item.dni_pasaporte}</option>)}
         </select></div></div>
       <div className="cc-acciones">
-        <button className="cc-btn" type="button" onClick={descargarCohorte} disabled={!datos.cohorteId || !legajos.length || datos.cargandoLegajos}>Descargar cohorte CSV ({legajos.length})</button>
-        <button className="cc-btn cc-btn-secundario" type="button" disabled={!legajo} onClick={() => { if (legajo) descargarCSV(`legajo_${legajo.dni_pasaporte}.csv`, csvLegajos([legajo])); }}>Descargar aspirante CSV</button>
+        <button className="cc-btn" type="button" onClick={descargarCohorte} disabled={!datos.cohorteId || !legajos.length || datos.cargandoLegajos || !!datos.error}>Descargar cohorte CSV ({legajos.length})</button>
+        <button className="cc-btn cc-btn-secundario" type="button" disabled={!legajo || datos.cargandoLegajos || !!datos.error} onClick={() => { if (legajo) descargarCSV(`legajo_${legajo.dni_pasaporte}.csv`, csvLegajos([legajo])); }}>Descargar aspirante CSV</button>
       </div>
     </div>
     {datos.cohorteId && <div className="cc-tarjeta"><h2>Vista previa ({legajos.length})</h2><TablaLegajos legajos={legajos} /></div>}

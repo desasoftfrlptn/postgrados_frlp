@@ -1,3 +1,4 @@
+import EditarCohorte from "../../shared/componentes/EditarCohorte";
 // Permite administrar los ciclos y cohortes de las carreras.
 
 import {
@@ -60,6 +61,7 @@ export default function CohortesPage() {
 
   const { user } = useAuth();
 
+  const [editando, setEditando] = useState<Cohorte | null>(null);
   const [cohortes, setCohortes] =
     useState<Cohorte[]>([]);
 
@@ -307,6 +309,12 @@ export default function CohortesPage() {
     (!anioFiltro || String(cohorte.anio) === anioFiltro) &&
     `${cohorte.nombre} ${obtenerNombreCarrera(cohorte.carrera_id)}`.toLowerCase().includes(busqueda.trim().toLowerCase())
   );
+
+  if (editando && user?.token) return <EditarCohorte cohorte={editando} carreras={carreras} token={user?.token} cancelar={() => { setEditando(null); void cargarCohortes(); }} guardada={actualizada => {
+    setCohortes(actuales => actuales.map(c => c.id === actualizada.id ? actualizada : c));
+    setEditando(null);
+    setMensaje("La cohorte fue modificada correctamente.");
+  }} />;
 
   return (
     <section>
@@ -572,7 +580,8 @@ export default function CohortesPage() {
                         : "Cerrada"}
                     </td>
                     <td className="px-3 py-3">
-                      <button
+                      <button type="button" className="mr-2 rounded-md border px-3 py-2 text-sm font-semibold" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={confirmacion.abierto}>Editar</button>
+                        <button
                         type="button"
                         onClick={() => cambiarEstado(cohorte)}
                         className={

@@ -18,7 +18,7 @@ interface AlumnoSeminario {
   carrera_elegida: string;
   asistencias: number;
   total_clases: number;
-  porcentaje_asistencia: number;
+  porcentaje_asistencia: number | null;
   nota_final: number | null;
   estado: string;
 }
@@ -72,7 +72,7 @@ export default function ReportesPage() {
         "DNI;Apellido y Nombre;Correo;Carrera;Asistencias;Total Clases;% Asistencia;Nota Final;Estado";
       const filas = alumnos.map(
         (a) =>
-          `${a.dni_pasaporte};"${a.apellido}, ${a.nombre}";${a.correo_electronico};"${a.carrera_elegida}";${a.asistencias};${a.total_clases};${a.porcentaje_asistencia}%;${a.nota_final ?? "-"};${a.estado}`
+          `${a.dni_pasaporte};"${a.apellido}, ${a.nombre}";${a.correo_electronico};"${a.carrera_elegida}";${a.asistencias};${a.total_clases};${a.porcentaje_asistencia === null ? "" : `${a.porcentaje_asistencia}%`};${a.nota_final ?? "-"};${a.estado}`
       );
       const contenidoCsv = "\uFEFF" + [Encabezado, ...filas].join("\n");
       const blob = new Blob([contenidoCsv], {
