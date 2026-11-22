@@ -48,9 +48,8 @@ from src.configuracion_publica.presentacion.esquema import (
     ConfiguracionSeccionRespuesta,
 )
 
-import asyncio
 import logging
-
+from src.conduccion.servicio import encolar_correo
 from src.compartido.correo import enviar_correo
 
 from src.configuracion_publica.presentacion.esquema import (
@@ -202,33 +201,36 @@ async def enviar_consulta_contacto(
     )
 
     try:
-        await asyncio.to_thread(
-            enviar_correo,
-            destinatario,
-            "Nueva consulta - Posgrado UTN FRLP",
-            contenido,
-            responder_a=str(consulta.email)
+        encolar_correo(
+            db,
+            destinatario=destinatario,
+            asunto="Nueva consulta - Posgrado UTN FRLP",
+            contenido=contenido,
+            responder_a=str(consulta.email),
         )
 
+        await db.commit()
+
     except Exception as exc:
+        await db.rollback()
+
         logger.error(
-            "Error enviando consulta de contacto: %s",
+            "Error guardando consulta de contacto: %s",
             type(exc).__name__,
         )
 
         raise HTTPException(
             status_code=503,
             detail=(
-                "No se pudo enviar la consulta. "
+                "No se pudo registrar la consulta. "
                 "Intentá nuevamente más tarde."
             ),
         ) from exc
 
     return ConsultaContactoRespuesta(
-        mensaje="Tu consulta fue enviada correctamente."
+        mensaje="Recibimos tu consulta correctamente."
     )
 
-# Preguntas frecuentes visibles en el sitio público.
 @enrutador.get(
     "/faq/publicas",
     response_model=list[PreguntaFrecuenteRespuesta],
