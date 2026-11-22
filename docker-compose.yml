@@ -45,6 +45,7 @@ services:
       STORAGE_PATH: /var/postgrado-storage
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
       ENVIRONMENT: development
     ports:
       - "8000:8000"
