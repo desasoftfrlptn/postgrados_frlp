@@ -1,12 +1,17 @@
 // Formulario público de preinscripción para aspirantes a carreras de posgrado.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../../shared/api/client";
+import ConfirmacionModal from "../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import MensajeSistema from "../../../shared/componentes/MensajeSistema/MensajeSistema";
 
 import {
   guardarBorrador,
   recuperarBorrador,
   eliminarBorrador,
 } from "../borrador";
+
+import { validarArchivoPDF } from "../validaciones";
 
 import "./FormularioInscripcion.css";
 
@@ -57,6 +62,9 @@ export default function FormularioInscripcion() {
   const [etapa, setEtapa] = useState(1);
   const [otroPais, setOtroPais] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
+  const envioEnCurso = useRef(false);
 
   const [cargandoBorrador, setCargandoBorrador] = useState(true);
   const [numeroSeguimiento, setNumeroSeguimiento] = useState("");
@@ -73,15 +81,9 @@ export default function FormularioInscripcion() {
   useEffect(() => {
     const cargarCohortes = async () => {
       try {
-        const respuesta = await fetch(
-          "http://localhost:8000/api/v1/cohortes/disponibles"
+        const cohortes = await api.get<CohorteDisponible[]>(
+          "/cohortes/disponibles"
         );
-
-        if (!respuesta.ok) {
-          throw new Error("No se pudieron cargar las cohortes.");
-        }
-
-        const cohortes: CohorteDisponible[] = await respuesta.json();
 
         setCohortesDisponibles(cohortes);
       } catch {
@@ -141,7 +143,12 @@ export default function FormularioInscripcion() {
             ...borrador.documentos,
           }));
           setOtroPais(borrador.otroPais);
-          setEtapa(borrador.etapa);
+          setCohorteSeleccionada(
+            borrador.cohorteSeleccionada ?? ""
+          );
+
+          // Revalidar datos antes de continuar una inscripcion.
+          setEtapa(1);
         }
       } catch (error) {
         console.error("Error al recuperar el borrador:", error);
@@ -164,6 +171,7 @@ export default function FormularioInscripcion() {
           datos,
           documentos,
           otroPais,
+          cohorteSeleccionada,
           etapa,
           actualizadoEn: Date.now(),
         });
@@ -174,41 +182,31 @@ export default function FormularioInscripcion() {
     }, 500);
 
     return () => clearTimeout(temporizador);
-  }, [datos, documentos, otroPais, etapa, cargandoBorrador, inscripcionCompletada]);
+  }, [
+    datos,
+    documentos,
+    otroPais,
+    cohorteSeleccionada,
+    etapa,
+    cargandoBorrador,
+    inscripcionCompletada,
+  ]);
 
-  const MAX_TAMANIO_PDF = 5 * 1024 * 1024;
-
+  // Valida y actualiza cada documento de forma independiente.
   const validarDocumento = (
     archivo: File | undefined,
     campo: keyof typeof documentos
-    ) => {
-    if (!archivo) {
-      setDocumentos({
-        ...documentos,
-        [campo]: null,
-      });
-      return;
-    }
+  ) => {
+    const error = archivo
+      ? validarArchivoPDF(archivo)
+      : null;
 
-    if (
-      archivo.type !== "application/pdf" ||
-      !archivo.name.toLowerCase().endsWith(".pdf")
-    ) {
-      setMensaje("El archivo debe estar en formato PDF.");
-      return;
-    }
+    setDocumentos((actuales) => ({
+      ...actuales,
+      [campo]: archivo && !error ? archivo : null,
+    }));
 
-    if (archivo.size > MAX_TAMANIO_PDF) {
-      setMensaje("El archivo no puede superar los 5 MB.");
-      return;
-    }
-
-    setDocumentos({
-      ...documentos,
-      [campo]: archivo,
-    });
-
-    setMensaje("");
+    setMensaje(error ?? "");
   };
 
   const siguienteEtapa = () => {
@@ -266,8 +264,52 @@ export default function FormularioInscripcion() {
   };
 
 
-const enviarFormulario = async (e: React.FormEvent) => {
+const solicitarEnvio = (e: React.FormEvent) => {
   e.preventDefault();
+
+  if (envioEnCurso.current || inscripcionCompletada) return;
+
+  if (
+    cargandoCohortes ||
+    errorCohortes ||
+    !cohortesDisponibles.some(
+      (cohorte) =>
+        cohorte.id === cohorteSeleccionada &&
+        cohorte.carrera_nombre === datos.tipo_carrera
+    )
+  ) {
+    setMensaje("Seleccioná una carrera y una cohorte disponible.");
+    setEtapa(1);
+    return;
+  }
+
+  const obligatorios = [
+    documentos.formularioPreinscripcion,
+    documentos.formularioInscripcion,
+    documentos.dniPasaporte,
+    documentos.partidaNacimiento,
+    documentos.constanciaCuitCuil,
+    documentos.tituloGrado,
+  ];
+
+  if (obligatorios.some((documento) => !documento)) {
+    setMensaje("Debés adjuntar todos los documentos obligatorios.");
+    setEtapa(2);
+    return;
+  }
+
+  if (datos.solicitud_beca && !documentos.formularioBeca) {
+    setMensaje("Debés adjuntar el formulario de beca firmado.");
+    setEtapa(3);
+    return;
+  }
+
+  setMensaje("");
+  setConfirmacionAbierta(true);
+};
+
+const enviarFormulario = async () => {
+  if (envioEnCurso.current || inscripcionCompletada) return;
 
   if (!cohorteSeleccionada || !datos.tipo_carrera) {
     setMensaje("Seleccioná una carrera y una cohorte disponible.");
@@ -321,28 +363,14 @@ const enviarFormulario = async (e: React.FormEvent) => {
     }
   });
 
+  envioEnCurso.current = true;
+  setEnviando(true);
+  setMensaje("");
+
   try {
-    const respuesta = await fetch(
-      "http://localhost:8000/api/v1/inscripcion/",
-      {
-        method: "POST",
-        body: formulario,
-      }
-    );
-
-    if (!respuesta.ok) {
-      const error: { detail?: string | unknown[] } =
-        await respuesta.json();
-
-      setMensaje(
-        typeof error.detail === "string"
-          ? error.detail
-          : "No se pudo registrar la inscripción. Verificá los datos."
-      );
-      return;
-    }
-
-    const resultado = await respuesta.json();
+    const resultado = await api.postForm<{
+      numero_seguimiento: string;
+    }>("/inscripcion/", formulario);
 
     setInscripcionCompletada(true);
 
@@ -391,8 +419,16 @@ const enviarFormulario = async (e: React.FormEvent) => {
   setMensaje(
     "Inscripción y documentación registradas correctamente."
   );
-    } catch {
-      setMensaje("Error de conexión con el servidor.");
+    } catch (error: unknown) {
+      setMensaje(
+        error instanceof Error
+          ? error.message
+          : "No se pudo registrar la inscripción."
+      );
+    } finally {
+      envioEnCurso.current = false;
+      setEnviando(false);
+      setConfirmacionAbierta(false);
     }
   };
 
@@ -402,6 +438,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
       <section className="inscripcion-formulario">
         <h1 id="titulo-inscripcion">Formulario de Inscripción</h1>
 
+        {!inscripcionCompletada && (
         <ol
           className="inscripcion-etapas"
           aria-label="Etapas de inscripción"
@@ -427,13 +464,20 @@ const enviarFormulario = async (e: React.FormEvent) => {
             );
           })}
         </ol>
+        )}
 
-        {mensaje && (
-          <p className="inscripcion-mensaje" role="status">
-            <span className="inscripcion-aviso-icono" aria-hidden="true" />
-            <span>{mensaje}</span>
+        {cargandoBorrador && (
+          <p role="status">
+            Recuperando los datos de la inscripción...
           </p>
         )}
+
+        <MensajeSistema
+          tipo={inscripcionCompletada ? "exito" : "error"}
+          texto={mensaje}
+          duracion={0}
+          alCerrar={() => setMensaje("")}
+        />
 
         {numeroSeguimiento && (
           <div className="inscripcion-numero-seguimiento">
@@ -444,7 +488,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
         )}
 
 
-        {etapa === 1 && (
+        {!cargandoBorrador && !inscripcionCompletada && etapa === 1 && (
           <form onSubmit={avanzarDesdeDatosPersonales}>
             <fieldset>
               <legend>Datos Personales</legend>
@@ -893,7 +937,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
           </form>
         )}
 
-        {etapa === 2 && (
+        {!cargandoBorrador && !inscripcionCompletada && etapa === 2 && (
           <section className="inscripcion-contenido-etapa">
             <h2>Documentación</h2>
 
@@ -1174,7 +1218,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
           </section>
         )}
 
-       {etapa === 3 && (
+       {!cargandoBorrador && !inscripcionCompletada && etapa === 3 && (
           <section className="inscripcion-contenido-etapa">
             <h2>Beca (Opcional)</h2>
 
@@ -1273,10 +1317,10 @@ const enviarFormulario = async (e: React.FormEvent) => {
           </section>
         )}
 
-        {etapa === 4 && (
+        {!cargandoBorrador && !inscripcionCompletada && etapa === 4 && (
           <form
             className="inscripcion-contenido-etapa"
-            onSubmit={enviarFormulario}
+            onSubmit={solicitarEnvio}
           >
             <h2 className="inscripcion-titulo-confirmacion">
               Confirmación
@@ -1294,6 +1338,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
                   <button
                     type="button"
                     onClick={() => setEtapa(1)}
+                    disabled={enviando || confirmacionAbierta}
                   >
                     Modificar
                   </button>
@@ -1344,6 +1389,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
                   <button
                     type="button"
                     onClick={() => setEtapa(2)}
+                    disabled={enviando || confirmacionAbierta}
                   >
                     Modificar
                   </button>
@@ -1399,6 +1445,7 @@ const enviarFormulario = async (e: React.FormEvent) => {
                   <button
                     type="button"
                     onClick={() => setEtapa(3)}
+                    disabled={enviando || confirmacionAbierta}
                   >
                     Modificar
                   </button>
@@ -1414,18 +1461,36 @@ const enviarFormulario = async (e: React.FormEvent) => {
             </div>
 
             <div className="inscripcion-botones">
-              <button type="button" onClick={etapaAnterior}>
+              <button
+                type="button"
+                onClick={etapaAnterior}
+                disabled={enviando || confirmacionAbierta}
+              >
                 <span aria-hidden="true">←</span>
                 Anterior
               </button>
 
-              <button type="submit">
-                Confirmar inscripción
+              <button
+                type="submit"
+                disabled={enviando || confirmacionAbierta}
+              >
+                {enviando
+                  ? "Enviando inscripción..."
+                  : "Confirmar inscripción"}
               </button>
             </div>
           </form>
         )}
 
+        <ConfirmacionModal
+          abierto={confirmacionAbierta}
+          titulo="Confirmar inscripción"
+          descripcion="¿Estás seguro de que deseás registrar la inscripción con los datos y documentos ingresados?"
+          textoConfirmar="Confirmar envío"
+          alConfirmar={enviarFormulario}
+          alCancelar={() => setConfirmacionAbierta(false)}
+          confirmando={enviando}
+        />
       </section>
     </section>
   );

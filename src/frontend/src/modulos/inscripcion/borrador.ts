@@ -9,6 +9,7 @@ export interface BorradorInscripcion {
   datos: Record<string, string>;
   documentos: Record<string, File | null>;
   otroPais: string;
+  cohorteSeleccionada?: string;
   etapa: number;
   actualizadoEn: number;
 }
