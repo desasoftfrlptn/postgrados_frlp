@@ -31,6 +31,11 @@ services:
   # BACKEND API (FastAPI)
   # ──────────────────────────────────────────
   backend:
+    env_file:
+      - path: ./.env
+        required: false
+      - path: ./src/backend/.env
+        required: false
     build:
       context: ./src/backend
       dockerfile: Dockerfile.dev
@@ -40,15 +45,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}
+      DATABASE_URL: "${DATABASE_URL:-postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}}"
       SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-dev-secret-change-in-production}}
       STORAGE_PATH: /var/postgrado-storage
-      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_FROM: ${SMTP_FROM:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_USER: ${SMTP_USER:-}
-      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ENVIRONMENT: development
     ports:
       - "8000:8000"
