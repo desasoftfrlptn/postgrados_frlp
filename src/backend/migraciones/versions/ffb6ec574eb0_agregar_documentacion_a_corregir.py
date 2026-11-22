@@ -17,18 +17,23 @@ depends_on = None
 
 def upgrade():
     op.add_column(
-        "gestion_legajos",
-        sa.Column(
-            "documentacion_a_corregir",
-            sa.JSON(),
-            nullable=False,
-            server_default=sa.text("'[]'"),
-        ),
+        "notificaciones_conduccion",
+        sa.Column("documento_id", sa.UUID(), nullable=True),
+    )
+    op.create_foreign_key(
+        "fk_notificacion_documento",
+        "notificaciones_conduccion",
+        "documentos_legajo",
+        ["documento_id"],
+        ["id"],
+        ondelete="RESTRICT",
     )
 
 
 def downgrade():
-    op.drop_column(
-        "gestion_legajos",
-        "documentacion_a_corregir",
+    op.drop_constraint(
+        "fk_notificacion_documento",
+        "notificaciones_conduccion",
+        type_="foreignkey",
     )
+    op.drop_column("notificaciones_conduccion", "documento_id")
