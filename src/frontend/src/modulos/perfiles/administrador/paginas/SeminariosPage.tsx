@@ -9,6 +9,9 @@ import {
 import { api } from "../../../../shared/api/client";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import FiltroEstado, { type EstadoFiltro } from "../componentes/FiltroEstado";
+import { coincideEstado } from "../utils/filtros";
+import "../estilos/FiltrosAcademicos.css";
 import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
 
 import type {
@@ -76,6 +79,9 @@ const formularioInicial: FormularioSeminario = {
 
 export default function SeminariosPage() {
   const confirmacion = useConfirmacion();
+  const [carreraFiltro, setCarreraFiltro] = useState("");
+  const [docenteFiltro, setDocenteFiltro] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 
   const { user } = useAuth();
 
@@ -421,6 +427,7 @@ export default function SeminariosPage() {
   const seminariosFiltrados =
     seminarios.filter(
       (seminario) => {
+        if (!coincideEstado(seminario.activo, estadoFiltro) || (carreraFiltro !== "" && seminario.carrera_id !== carreraFiltro) || (docenteFiltro !== "" && seminario.docente_id !== docenteFiltro)) return false;
         if (!textoBusqueda) {
           return true;
         }
@@ -723,6 +730,13 @@ export default function SeminariosPage() {
       </div>
 
 
+      <div className="admin-filtros-academicos">
+        <FiltroEstado valor={estadoFiltro} alCambiar={setEstadoFiltro} />
+        <div className="admin-filtro-campo"><label htmlFor="filtro-carrera-seminario">Carrera</label><select id="filtro-carrera-seminario" value={carreraFiltro} onChange={e => setCarreraFiltro(e.target.value)}><option value="">Todas</option>{carreras.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></div>
+<div className="admin-filtro-campo"><label htmlFor="filtro-docente-seminario">Docente</label><select id="filtro-docente-seminario" value={docenteFiltro} onChange={e => setDocenteFiltro(e.target.value)}><option value="">Todos</option>{Array.from(new Map(seminarios.map(s => [s.docente_id, s.docente_nombre])).entries()).map(([id,nombre]) => <option key={id} value={id}>{nombre}</option>)}</select></div>
+        <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); setCarreraFiltro(""); setDocenteFiltro(""); }}>Limpiar filtros</button>
+      </div>
+      <p role="status" className="admin-resultado-filtros">{seminariosFiltrados.length} de {seminarios.length} resultados</p>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-left">
           <thead className="bg-gray-100">

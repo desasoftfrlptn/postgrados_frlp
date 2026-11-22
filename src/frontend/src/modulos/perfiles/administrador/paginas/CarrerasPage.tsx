@@ -9,6 +9,9 @@ import {
 import { api } from "../../../../shared/api/client";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import FiltroEstado, { type EstadoFiltro } from "../componentes/FiltroEstado";
+import { coincideEstado } from "../utils/filtros";
+import "../estilos/FiltrosAcademicos.css";
 import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
 
 import type { TipoCarrera } from "../../../../shared/tipos";
@@ -65,6 +68,8 @@ function obtenerNombreTipo(
 
 export default function CarrerasPage() {
   const confirmacion = useConfirmacion();
+  const [tipoFiltro, setTipoFiltro] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 
   const { user } = useAuth();
 
@@ -344,6 +349,7 @@ export default function CarrerasPage() {
   const carrerasFiltradas =
     carreras.filter(
       (carrera) => {
+        if (!coincideEstado(carrera.activo, estadoFiltro) || (tipoFiltro !== "" && carrera.tipo !== tipoFiltro)) return false;
         if (!textoBusqueda) {
           return true;
         }
@@ -571,6 +577,12 @@ export default function CarrerasPage() {
       </div>
 
 
+      <div className="admin-filtros-academicos">
+        <FiltroEstado valor={estadoFiltro} alCambiar={setEstadoFiltro} />
+        <div className="admin-filtro-campo"><label htmlFor="filtro-tipo-carrera">Tipo de carrera</label><select id="filtro-tipo-carrera" value={tipoFiltro} onChange={e => setTipoFiltro(e.target.value)}><option value="">Todos</option>{tiposCarrera.map(tipo => <option key={tipo} value={tipo}>{obtenerNombreTipo(tipo)}</option>)}</select></div>
+        <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); setTipoFiltro(""); }}>Limpiar filtros</button>
+      </div>
+      <p role="status" className="admin-resultado-filtros">{carrerasFiltradas.length} de {carreras.length} resultados</p>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-left">
           <thead className="bg-gray-100">

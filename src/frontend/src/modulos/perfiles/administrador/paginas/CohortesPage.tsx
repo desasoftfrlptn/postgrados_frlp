@@ -9,6 +9,9 @@ import {
 import { api } from "../../../../shared/api/client";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import FiltroEstado, { type EstadoFiltro } from "../componentes/FiltroEstado";
+import { coincideEstado } from "../utils/filtros";
+import "../estilos/FiltrosAcademicos.css";
 import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
 
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -50,6 +53,10 @@ const formularioInicial: FormularioCohorte = {
 
 export default function CohortesPage() {
   const confirmacion = useConfirmacion();
+  const [busqueda, setBusqueda] = useState("");
+  const [carreraFiltro, setCarreraFiltro] = useState("");
+  const [anioFiltro, setAnioFiltro] = useState("");
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 
   const { user } = useAuth();
 
@@ -294,6 +301,13 @@ export default function CohortesPage() {
   };
 
 
+  const cohortesFiltradas = cohortes.filter(cohorte =>
+    coincideEstado(cohorte.abierta, estadoFiltro) &&
+    (!carreraFiltro || cohorte.carrera_id === carreraFiltro) &&
+    (!anioFiltro || String(cohorte.anio) === anioFiltro) &&
+    `${cohorte.nombre} ${obtenerNombreCarrera(cohorte.carrera_id)}`.toLowerCase().includes(busqueda.trim().toLowerCase())
+  );
+
   return (
     <section>
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -494,13 +508,20 @@ export default function CohortesPage() {
         </h2>
 
 
+        <div className="admin-filtros-academicos">
+        <FiltroEstado valor={estadoFiltro} alCambiar={setEstadoFiltro} textoActivo="Abiertas" textoInactivo="Cerradas"/>
+        <div className="admin-filtro-campo"><label htmlFor="buscar-cohorte">Buscar cohorte</label><input id="buscar-cohorte" type="search" value={busqueda} onChange={e => setBusqueda(e.target.value)} /></div>
+<div className="admin-filtro-campo"><label htmlFor="filtro-carrera-cohorte">Carrera</label><select id="filtro-carrera-cohorte" value={carreraFiltro} onChange={e => setCarreraFiltro(e.target.value)}><option value="">Todas</option>{carreras.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></div>
+<div className="admin-filtro-campo"><label htmlFor="filtro-anio-cohorte">Año</label><select id="filtro-anio-cohorte" value={anioFiltro} onChange={e => setAnioFiltro(e.target.value)}><option value="">Todos</option>{Array.from(new Set(cohortes.map(c => c.anio))).sort((a,b) => b-a).map(anio => <option key={anio} value={anio}>{anio}</option>)}</select></div>
+        <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); setCarreraFiltro(""); setAnioFiltro(""); }}>Limpiar filtros</button>
+      </div>
         {cargando ? (
           <p className="mt-4 text-gray-500">
             Cargando cohortes...
           </p>
-        ) : cohortes.length === 0 ? (
+        ) : cohortesFiltradas.length === 0 ? (
           <p className="mt-4 text-gray-500">
-            Todavía no hay cohortes registradas.
+            {cohortes.length === 0 ? "Todavía no hay cohortes registradas." : "No hay cohortes que coincidan con los filtros."}
           </p>
         ) : (
           <div className="mt-4 overflow-x-auto">
@@ -517,7 +538,7 @@ export default function CohortesPage() {
               </thead>
 
               <tbody>
-                {cohortes.map((cohorte) => (
+                {cohortesFiltradas.map((cohorte) => (
                   <tr
                     key={cohorte.id}
                     className="border-b border-gray-100"

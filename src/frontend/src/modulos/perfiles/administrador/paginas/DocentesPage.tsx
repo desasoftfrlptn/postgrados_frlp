@@ -11,6 +11,9 @@ import {
 } from "../../../../shared/api/client";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import FiltroEstado, { type EstadoFiltro } from "../componentes/FiltroEstado";
+import { coincideEstado } from "../utils/filtros";
+import "../estilos/FiltrosAcademicos.css";
 import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
 
 
@@ -56,6 +59,7 @@ const formularioInicial:
 
 export default function DocentesPage() {
   const confirmacion = useConfirmacion();
+  const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 
   const {
     user,
@@ -547,6 +551,7 @@ export default function DocentesPage() {
   const docentesFiltrados =
     docentes.filter(
       (docente) => {
+        if (!coincideEstado(docente.activo, estadoFiltro)) return false;
         if (
           !textoBusqueda
         ) {
@@ -870,6 +875,12 @@ export default function DocentesPage() {
       </div>
 
 
+      <div className="admin-filtros-academicos">
+        <FiltroEstado valor={estadoFiltro} alCambiar={setEstadoFiltro} />
+        
+        <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); }}>Limpiar filtros</button>
+      </div>
+      <p role="status" className="admin-resultado-filtros">{docentesFiltrados.length} de {docentes.length} resultados</p>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-left">
           <thead className="bg-gray-100">
