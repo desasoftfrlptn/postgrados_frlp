@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.carreras.modelos import CarreraORM
 from src.compartido.conexion import get_db
+from src.compartido.documentos import normalizar_documento
 from src.conduccion import servicio as servicio_conduccion
 from src.conduccion.esquemas import AccionLegajoPeticion
 from src.conduccion.modelos import GestionLegajoORM
@@ -572,8 +573,8 @@ async def consultar_estado_inscripcion(
 ):
     legajo = await db.scalar(
         select(LegajoORM).where(
-            LegajoORM.numero_seguimiento == numero_seguimiento,
-            LegajoORM.dni_pasaporte == dni_pasaporte,
+            LegajoORM.numero_seguimiento == numero_seguimiento.strip().upper(),
+            LegajoORM.dni_pasaporte == normalizar_documento(dni_pasaporte),
         )
     )
 

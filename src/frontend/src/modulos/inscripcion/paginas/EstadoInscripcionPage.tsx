@@ -3,6 +3,10 @@ import { useRef, useState } from "react";
 import { mostrarEstadoLegajo } from "../../../shared/utils/estadosLegajo";
 import MensajeSistema from "../../../shared/componentes/MensajeSistema/MensajeSistema";
 import { inscripcionApi } from "../api";
+import {
+  normalizarDocumento,
+  validarDniPasaporte,
+} from "../validaciones";
 import type { EstadoInscripcion } from "../tipos";
 import "./EstadoInscripcionPage.css";
 
@@ -41,13 +45,18 @@ export default function EstadoInscripcionPage() {
       return;
     }
 
+    if (!validarDniPasaporte(dniPasaporte)) {
+      setMensaje("Ingresá un DNI o pasaporte válido.");
+      return;
+    }
+
     try {
       consultaEnCurso.current = true;
       setCargando(true);
 
       const respuesta = await inscripcionApi.consultarEstado(
-        numeroSeguimiento.trim(),
-        dniPasaporte.trim()
+        numeroSeguimiento.trim().toUpperCase(),
+        normalizarDocumento(dniPasaporte)
       );
 
       setResultado(respuesta);

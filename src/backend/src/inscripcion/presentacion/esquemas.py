@@ -1,5 +1,7 @@
 import re
 
+from src.compartido.documentos import normalizar_documento
+
 from datetime import datetime
 from uuid import UUID
 from typing import Optional, Literal
@@ -61,7 +63,7 @@ class LegajoCrear(BaseModel):
     @field_validator("dni_pasaporte")
     @classmethod
     def validar_dni_pasaporte(cls, valor):
-        valor = re.sub(r"[.\s]", "", valor).upper()
+        valor = normalizar_documento(valor)
 
         dni_valido = re.fullmatch(r"[0-9]{7,8}", valor)
 

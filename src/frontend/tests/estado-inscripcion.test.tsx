@@ -199,3 +199,87 @@ it("bloquea los campos mientras se realiza la consulta", async () => {
   expect(inscripcionApi.consultarEstado)
     .toHaveBeenCalledTimes(1);
 });
+
+it.each([
+  ["44.000.000", "44000000"],
+  ["ab123456", "AB123456"],
+  [" 44000000 ", "44000000"],
+])(
+  "normaliza el documento %s antes de consultar",
+  async (documento, esperado) => {
+    vi.mocked(inscripcionApi.consultarEstado).mockResolvedValue({
+      numero_seguimiento: "INS-2026-15",
+      estado: "PENDIENTE",
+      observaciones: null,
+      documentacion_a_corregir: [],
+    } as Awaited<
+      ReturnType<typeof inscripcionApi.consultarEstado>
+    >);
+
+    render(<EstadoInscripcionPage />);
+    completarConsulta();
+
+    fireEvent.change(
+      screen.getByLabelText("DNI o pasaporte"),
+      { target: { value: documento } }
+    );
+
+    consultar();
+
+    expect(inscripcionApi.consultarEstado)
+      .toHaveBeenCalledWith("INS-2026-15", esperado);
+
+    expect(
+      await screen.findByText("Pendiente de revisión")
+    ).toBeInTheDocument();
+  }
+);
+
+it("no consulta cuando el documento es inválido", () => {
+  render(<EstadoInscripcionPage />);
+  completarConsulta();
+
+  fireEvent.change(
+    screen.getByLabelText("DNI o pasaporte"),
+    { target: { value: "ABC" } }
+  );
+
+  consultar();
+
+  expect(inscripcionApi.consultarEstado)
+    .not.toHaveBeenCalled();
+
+  expect(screen.getByRole("alert"))
+    .toHaveTextContent("Ingresá un DNI o pasaporte válido.");
+});
+
+it("normaliza el número de seguimiento", async () => {
+  vi.mocked(inscripcionApi.consultarEstado).mockResolvedValue({
+    numero_seguimiento: "INS-2026-15",
+    estado: "PENDIENTE",
+    observaciones: null,
+    documentacion_a_corregir: [],
+  } as Awaited<
+    ReturnType<typeof inscripcionApi.consultarEstado>
+  >);
+
+  render(<EstadoInscripcionPage />);
+  completarConsulta();
+
+  fireEvent.change(
+    screen.getByLabelText("Número de seguimiento"),
+    { target: { value: " ins-2026-15 " } }
+  );
+
+  consultar();
+
+  expect(inscripcionApi.consultarEstado)
+    .toHaveBeenCalledWith(
+      "INS-2026-15",
+      "44000000"
+    );
+
+  expect(
+    await screen.findByText("Pendiente de revisión")
+  ).toBeInTheDocument();
+});
