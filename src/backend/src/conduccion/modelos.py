@@ -218,3 +218,11 @@ class NotificacionConduccionORM(Base):
         DateTime(timezone=True),
         nullable=True,
     )
+
+    documento_id = Column(UUID(as_uuid=True), ForeignKey(
+        "documentos_legajo.id",
+        name="fk_notificacion_documento",
+        ondelete="RESTRICT",
+        ),
+        nullable=True,
+    )

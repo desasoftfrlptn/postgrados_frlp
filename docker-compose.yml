@@ -48,6 +48,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_USER: ${SMTP_USER:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ENVIRONMENT: development
     ports:
       - "8000:8000"

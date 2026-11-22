@@ -5,12 +5,18 @@ import ssl
 import smtplib
 
 from email.message import EmailMessage
+from pathlib import Path
+
+
+TAMANIO_MAXIMO_PDF = 5 * 1024 * 1024
 
 
 def enviar_correo(
     destinatario: str,
     asunto: str,
     contenido: str,
+    ruta_pdf: str | Path | None = None,
+    responder_a: str | None = None,
 ) -> None:
     host = os.getenv("SMTP_HOST", "smtp.gmail.com")
     puerto = int(os.getenv("SMTP_PORT", "587"))
@@ -28,15 +34,32 @@ def enviar_correo(
     mensaje["From"] = remitente
     mensaje["To"] = destinatario
     mensaje["Subject"] = asunto
+
+    if responder_a:
+        mensaje["Reply-To"] = responder_a
+
     mensaje.set_content(contenido)
+
+    if ruta_pdf is not None:
+        with Path(ruta_pdf).open("rb") as archivo:
+            datos = archivo.read(TAMANIO_MAXIMO_PDF + 1)
+
+        if len(datos) > TAMANIO_MAXIMO_PDF:
+            raise ValueError("El PDF supera los 5 MB.")
+
+        if not datos.startswith(b"%PDF-"):
+            raise ValueError("El adjunto no es un PDF valido.")
+
+        mensaje.add_attachment(
+            datos,
+            maintype="application",
+            subtype="pdf",
+            filename="formulario_inscripcion.pdf",
+        )
 
     contexto_tls = ssl.create_default_context()
 
-    with smtplib.SMTP(
-        host,
-        puerto,
-        timeout=15,
-    ) as smtp:
+    with smtplib.SMTP(host, puerto, timeout=15) as smtp:
         smtp.ehlo()
         smtp.starttls(context=contexto_tls)
         smtp.ehlo()

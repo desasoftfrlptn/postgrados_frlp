@@ -33,6 +33,9 @@ from src.conduccion.servicio import (
     ejecutar_transaccion,
     vencer_reservas,
 )
+from src.inscripcion.infraestructura.documentos_modelos import(
+    DocumentoLegajoORM,
+)
 
 
 async def procesar_notificaciones():
@@ -46,9 +49,7 @@ async def procesar_notificaciones():
                 NotificacionConduccionORM.enviado.is_(False),
                 NotificacionConduccionORM.intentos < 5,
             )
-            .order_by(
-                NotificacionConduccionORM.fecha_creacion,
-            )
+            .order_by(NotificacionConduccionORM.fecha_creacion)
             .limit(50)
             .with_for_update(skip_locked=True)
         )
@@ -57,17 +58,32 @@ async def procesar_notificaciones():
             notificacion.intentos += 1
 
             try:
+                ruta_pdf = None
+
+                if notificacion.documento_id is not None:
+                    documento = await db.get(
+                        DocumentoLegajoORM,
+                        notificacion.documento_id,
+                    )
+
+                    if documento is None:
+                        raise ValueError("No existe el documento adjunto.")
+
+                    if documento.tipo != "FORMULARIO_INSCRIPCION":
+                        raise ValueError("Tipo de documento incorrecto.")
+
+                    ruta_pdf = documento.path
+
                 await asyncio.to_thread(
                     enviar_correo,
                     notificacion.destinatario,
                     notificacion.asunto,
                     notificacion.contenido,
+                    ruta_pdf=ruta_pdf,
                 )
 
                 notificacion.enviado = True
-                notificacion.fecha_envio = datetime.now(
-                    timezone.utc
-                )
+                notificacion.fecha_envio = datetime.now(timezone.utc)
                 notificacion.ultimo_error = None
                 enviados += 1
 
@@ -77,11 +93,7 @@ async def procesar_notificaciones():
 
         await db.commit()
 
-    return {
-        "enviados": enviados,
-        "fallidos": fallidos,
-    }
-
+    return {"enviados": enviados, "fallidos": fallidos}
 
 async def ejecutar():
     async with AsyncSessionLocal() as db:

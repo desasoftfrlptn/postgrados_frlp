@@ -5,11 +5,9 @@ from src.inscripcion.aplicacion.notificaciones import (
 
 import hashlib
 import os
-
 from src.inscripcion.aplicacion.validar_duplicados import (
     validar_inscripcion_no_duplicada,
 )
-
 from datetime import datetime
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -317,6 +315,14 @@ async def inscribir_aspirante(
         ZoneInfo("America/Argentina/Buenos_Aires")
     ).year
 
+    correo_administracion = os.getenv("ADMIN_EMAIL", "").strip()
+
+    if not correo_administracion:
+        raise HTTPException(
+            status_code=503,
+            detail="El servicio de inscripción no está configurado.",
+    )
+
     archivos_guardados = []
 
     try:
@@ -349,10 +355,8 @@ async def inscribir_aspirante(
 
         db.add(nuevo_legajo)
 
-        # Obtener el ID antes de guardar los documentos.
         await db.flush()
 
-        # Guardar los PDF y registrar sus metadatos.
         for tipo, contenido in archivos.items():
             if contenido is None:
                 continue
@@ -373,6 +377,26 @@ async def inscribir_aspirante(
             )
 
             db.add(documento)
+            if tipo == "FORMULARIO_INSCRIPCION":
+                await db.flush()
+
+                servicio_conduccion.encolar_correo(
+                    db,
+                    destinatario=correo_administracion,
+                    asunto=(
+                        f"Nueva inscripción "
+                        f"{nuevo_legajo.numero_seguimiento}"
+                    ),
+                    contenido=(
+                        f"Aspirante: {nuevo_legajo.apellido}, "
+                        f"{nuevo_legajo.nombre}\n"
+                        f"Carrera: {nuevo_legajo.carrera_elegida}\n"
+                        f"Seguimiento: "
+                        f"{nuevo_legajo.numero_seguimiento}\n\n"
+                        "Se adjunta el formulario de inscripción."
+                    ),
+                    documento_id=documento.id,
+                )
 
         # Registrar la notificacion en la misma transaccion.
         encolar_confirmacion_inscripcion(db, nuevo_legajo)
