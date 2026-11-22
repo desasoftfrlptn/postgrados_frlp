@@ -9,6 +9,10 @@ import {
 import {
   api,
 } from "../../../../shared/api/client";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
+
 
 import {
   useAuth,
@@ -63,6 +67,8 @@ const roles: Rol[] = [
 
 
 export default function UsuariosPage() {
+  const confirmacion = useConfirmacion();
+
   const {
     user,
   } = useAuth();
@@ -287,11 +293,25 @@ export default function UsuariosPage() {
     };
 
 
-  const guardarUsuario = async (
-    event:
-      FormEvent<HTMLFormElement>
-  ) => {
+  // Solicita confirmación antes de guardar.
+  const guardarUsuario = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      return;
+    }
+
+    confirmacion.solicitar({
+      titulo: "Confirmar guardado de usuario",
+      descripcion: "¿Confirmás que deseás guardar los datos ingresados?",
+      textoConfirmar: "Confirmar guardado",
+      ejecutar: ejecutarGuardado,
+    });
+  };
+
+  // Persiste los datos después de confirmar.
+  const ejecutarGuardado = async () => {
 
     if (!user?.token) {
       return;
@@ -406,20 +426,15 @@ export default function UsuariosPage() {
         : "desactivar";
 
 
-    const confirmado =
-      window.confirm(
-        `¿Querés ${accion} a `
+    confirmacion.solicitar({
+      titulo: "Confirmar cambio de estado",
+      descripcion: `¿Querés ${accion} a `
         + `${usuario.nombre} `
-        + `${usuario.apellido}?`
-      );
-
-
-    if (!confirmado) {
-      return;
-    }
-
-
-    try {
+        + `${usuario.apellido}?`,
+      textoConfirmar: "Confirmar",
+      peligroso: false,
+      ejecutar: async () => {
+        try {
       setError("");
       setMensaje("");
 
@@ -458,6 +473,8 @@ export default function UsuariosPage() {
             )
       );
     }
+      },
+    });
   };
 
 
@@ -469,22 +486,17 @@ export default function UsuariosPage() {
     }
 
 
-    const confirmado =
-      window.confirm(
-        "¿Seguro que querés eliminar "
+    confirmacion.solicitar({
+      titulo: "Confirmar eliminación",
+      descripcion: "¿Seguro que querés eliminar "
         + "definitivamente a "
         + `${usuario.nombre} `
         + `${usuario.apellido}? `
-        + "Esta acción no se puede deshacer."
-      );
-
-
-    if (!confirmado) {
-      return;
-    }
-
-
-    try {
+        + "Esta acción no se puede deshacer.",
+      textoConfirmar: "Confirmar",
+      peligroso: true,
+      ejecutar: async () => {
+        try {
       setError("");
       setMensaje("");
 
@@ -511,6 +523,8 @@ export default function UsuariosPage() {
             )
       );
     }
+      },
+    });
   };
 
 
@@ -581,22 +595,20 @@ export default function UsuariosPage() {
 
 
       {error && (
-        <p
-          role="alert"
-          className="mb-5 p-3 rounded-lg bg-red-50 text-red-700 border border-red-200"
-        >
-          {error}
-        </p>
+        <MensajeSistema
+          tipo="error"
+          texto={error}
+          alCerrar={() => setError("")}
+        />
       )}
 
 
       {mensaje && (
-        <p
-          role="status"
-          className="mb-5 p-3 rounded-lg bg-green-50 text-green-700 border border-green-200"
-        >
-          {mensaje}
-        </p>
+        <MensajeSistema
+          tipo="exito"
+          texto={mensaje}
+          alCerrar={() => setMensaje("")}
+        />
       )}
 
 
@@ -995,6 +1007,16 @@ export default function UsuariosPage() {
           </div>
         )}
       </section>
+      <ConfirmacionModal
+        abierto={confirmacion.abierto}
+        titulo={confirmacion.titulo}
+        descripcion={confirmacion.descripcion}
+        textoConfirmar={confirmacion.textoConfirmar}
+        peligroso={confirmacion.peligroso}
+        confirmando={confirmacion.procesando}
+        alConfirmar={confirmacion.confirmar}
+        alCancelar={confirmacion.cancelar}
+      />
     </section>
   );
 }

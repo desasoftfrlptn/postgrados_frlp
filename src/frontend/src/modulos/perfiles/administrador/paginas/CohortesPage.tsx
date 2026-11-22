@@ -7,6 +7,10 @@ import {
 } from "react";
 
 import { api } from "../../../../shared/api/client";
+import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
+
 import { useAuth } from "../../../manejo-sesion/useAuth";
 
 
@@ -45,6 +49,8 @@ const formularioInicial: FormularioCohorte = {
 
 
 export default function CohortesPage() {
+  const confirmacion = useConfirmacion();
+
   const { user } = useAuth();
 
   const [cohortes, setCohortes] =
@@ -169,10 +175,25 @@ export default function CohortesPage() {
   };
 
 
-  const guardarCohorte = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
+  // Solicita confirmación antes de guardar.
+  const guardarCohorte = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      return;
+    }
+
+    confirmacion.solicitar({
+      titulo: "Confirmar guardado de cohorte",
+      descripcion: "¿Confirmás que deseás guardar los datos ingresados?",
+      textoConfirmar: "Confirmar guardado",
+      ejecutar: ejecutarGuardado,
+    });
+  };
+
+  // Persiste los datos después de confirmar.
+  const ejecutarGuardado = async () => {
 
     if (!user) {
       return;
@@ -221,15 +242,13 @@ export default function CohortesPage() {
 
     const accion = nuevoEstado ? "abrir" : "cerrar";
 
-    const confirmado = window.confirm(
-      `¿Querés ${accion} la cohorte "${cohorte.nombre}"?`
-    );
-
-    if (!confirmado) {
-      return;
-    }
-
-    try {
+    confirmacion.solicitar({
+      titulo: "Confirmar cambio de estado",
+      descripcion: `¿Querés ${accion} la cohorte "${cohorte.nombre}"?`,
+      textoConfirmar: "Confirmar",
+      peligroso: false,
+      ejecutar: async () => {
+        try {
       setError("");
       setMensaje("");
 
@@ -256,6 +275,8 @@ export default function CohortesPage() {
           : "No se pudo modificar el estado de la cohorte"
       );
     }
+      },
+    });
   };
 
 
@@ -297,22 +318,20 @@ export default function CohortesPage() {
 
 
       {error && (
-        <p
-          role="alert"
-          className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-700"
-        >
-          {error}
-        </p>
+        <MensajeSistema
+          tipo="error"
+          texto={error}
+          alCerrar={() => setError("")}
+        />
       )}
 
 
       {mensaje && (
-        <p
-          role="status"
-          className="mb-4 rounded-md border border-green-200 bg-green-50 p-3 text-green-700"
-        >
-          {mensaje}
-        </p>
+        <MensajeSistema
+          tipo="exito"
+          texto={mensaje}
+          alCerrar={() => setMensaje("")}
+        />
       )}
 
 
@@ -553,6 +572,16 @@ export default function CohortesPage() {
           </div>
         )}
       </article>
+      <ConfirmacionModal
+        abierto={confirmacion.abierto}
+        titulo={confirmacion.titulo}
+        descripcion={confirmacion.descripcion}
+        textoConfirmar={confirmacion.textoConfirmar}
+        peligroso={confirmacion.peligroso}
+        confirmando={confirmacion.procesando}
+        alConfirmar={confirmacion.confirmar}
+        alCancelar={confirmacion.cancelar}
+      />
     </section>
   );
 }

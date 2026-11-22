@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 
 import {
@@ -90,6 +91,17 @@ async function abrirFormulario() {
   ).toBeInTheDocument();
 }
 
+function confirmarOperacion(
+  nombre = "Confirmar guardado"
+) {
+  fireEvent.click(
+    within(screen.getByRole("alertdialog")).getByRole(
+      "button",
+      { name: nombre }
+    )
+  );
+}
+
 function completarFormulario() {
   fireEvent.change(screen.getByLabelText("Nombre"), {
     target: { value: "Ana" },
@@ -174,6 +186,8 @@ describe("UsuariosPage - Alta de usuarios", () => {
       }),
     );
 
+    confirmarOperacion();
+
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith(
         "/autenticacion/usuarios",
@@ -206,6 +220,8 @@ describe("UsuariosPage - Alta de usuarios", () => {
         name: "Crear usuario",
       }),
     );
+
+    confirmarOperacion();
 
     expect(
       await screen.findByText(
@@ -278,6 +294,8 @@ describe("UsuariosPage - Edicion y estado", () => {
       }),
     );
 
+    confirmarOperacion();
+
     await waitFor(() => {
       expect(api.put).toHaveBeenCalledWith(
         "/autenticacion/usuarios/usuario-1",
@@ -296,11 +314,7 @@ describe("UsuariosPage - Edicion y estado", () => {
   it("permite desactivar un usuario", async () => {
     simularUsuarioExistente(true);
 
-    const confirmar = vi
-      .spyOn(window, "confirm")
-      .mockReturnValue(true);
-
-    render(<UsuariosPage />);
+render(<UsuariosPage />);
 
     fireEvent.click(
       await screen.findByRole("button", {
@@ -308,7 +322,9 @@ describe("UsuariosPage - Edicion y estado", () => {
       }),
     );
 
-    confirmar.mockRestore();
+    expect(api.patch).not.toHaveBeenCalled();
+
+    confirmarOperacion("Confirmar");
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith(
@@ -322,11 +338,7 @@ describe("UsuariosPage - Edicion y estado", () => {
   it("permite activar un usuario", async () => {
     simularUsuarioExistente(false);
 
-    const confirmar = vi
-      .spyOn(window, "confirm")
-      .mockReturnValue(true);
-
-    render(<UsuariosPage />);
+render(<UsuariosPage />);
 
     fireEvent.click(
       await screen.findByRole("button", {
@@ -334,7 +346,9 @@ describe("UsuariosPage - Edicion y estado", () => {
       }),
     );
 
-    confirmar.mockRestore();
+    expect(api.patch).not.toHaveBeenCalled();
+
+    confirmarOperacion("Confirmar");
 
     await waitFor(() => {
       expect(api.patch).toHaveBeenCalledWith(
@@ -348,11 +362,7 @@ describe("UsuariosPage - Edicion y estado", () => {
   it("no cambia el estado si se cancela", async () => {
     simularUsuarioExistente(true);
 
-    const confirmar = vi
-      .spyOn(window, "confirm")
-      .mockReturnValue(false);
-
-    render(<UsuariosPage />);
+render(<UsuariosPage />);
 
     fireEvent.click(
       await screen.findByRole("button", {
@@ -360,8 +370,104 @@ describe("UsuariosPage - Edicion y estado", () => {
       }),
     );
 
-    confirmar.mockRestore();
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole(
+        "button",
+        { name: "Cancelar" }
+      )
+    );
 
     expect(api.patch).not.toHaveBeenCalled();
+  });
+});
+
+describe("Confirmaciones compartidas de usuarios", () => {
+  it("no crea un usuario antes de confirmar", async () => {
+    await abrirFormulario();
+    completarFormulario();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Crear usuario" })
+    );
+
+    expect(screen.getByRole("alertdialog"))
+      .toBeInTheDocument();
+
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it("conserva los datos al cancelar el alta", async () => {
+    await abrirFormulario();
+    completarFormulario();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Crear usuario" })
+    );
+
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole(
+        "button",
+        { name: "Cancelar" }
+      )
+    );
+
+    expect(api.post).not.toHaveBeenCalled();
+
+    expect(screen.getByLabelText("Nombre"))
+      .toHaveValue("Ana");
+
+    expect(screen.queryByRole("alertdialog"))
+      .not.toBeInTheDocument();
+  });
+
+  it("impide confirmar dos veces la misma operación", async () => {
+    await abrirFormulario();
+    completarFormulario();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Crear usuario" })
+    );
+
+    const boton = within(
+      screen.getByRole("alertdialog")
+    ).getByRole("button", {
+      name: "Confirmar guardado",
+    });
+
+    fireEvent.click(boton);
+    fireEvent.click(boton);
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog"))
+        .not.toBeInTheDocument();
+    });
+
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("no elimina al usuario cuando se cancela", async () => {
+    simularUsuarioExistente();
+
+    render(<UsuariosPage />);
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Eliminar",
+      })
+    );
+
+    expect(api.delete).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole(
+        "button",
+        { name: "Cancelar" }
+      )
+    );
+
+    expect(api.delete).not.toHaveBeenCalled();
+
+    expect(screen.queryByRole("alertdialog"))
+      .not.toBeInTheDocument();
   });
 });
