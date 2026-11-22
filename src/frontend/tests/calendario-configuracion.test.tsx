@@ -86,6 +86,18 @@ it("habilita la edición y guarda los cambios", async () => {
     screen.getByRole("button", { name: "Guardar cambios" })
   );
 
+  expect(api.put).not.toHaveBeenCalled();
+
+  expect(
+    screen.getByRole("alertdialog")
+  ).toBeInTheDocument();
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Confirmar guardado",
+    })
+  );
+
   await waitFor(() => {
     expect(api.put).toHaveBeenCalledWith(
       "/configuracion-publica/calendario",

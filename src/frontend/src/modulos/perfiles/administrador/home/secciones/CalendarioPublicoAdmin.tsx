@@ -4,6 +4,9 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../../../../shared/api/client";
 import { useAuth } from "../../../../manejo-sesion/useAuth";
 import MensajeHomeAdmin from "../componentes/MensajeHomeAdmin";
+import ConfirmacionModal from "../../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import { useConfirmacion } from "../../../../../shared/hooks/useConfirmacion";
+
 import EventosAdmin from "./EventosAdmin";
 
 interface ConfiguracionCalendario {
@@ -12,6 +15,7 @@ interface ConfiguracionCalendario {
 
 export default function CalendarioPublicoAdmin() {
   const { user } = useAuth();
+  const confirmacion = useConfirmacion();
 
   const [valores, setValores] = useState<Record<string, string>>({});
   const [originales, setOriginales] = useState<Record<string, string>>({});
@@ -23,17 +27,7 @@ export default function CalendarioPublicoAdmin() {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
-  useEffect(() => {
-  if (!mensaje) return;
 
-  const temporizador = window.setTimeout(() => {
-    setMensaje("");
-  }, 5000);
-
-  return () => {
-    window.clearTimeout(temporizador);
-  };
-  }, [mensaje]);
 
   useEffect(() => {
     let activo = true;
@@ -108,6 +102,29 @@ export default function CalendarioPublicoAdmin() {
       return;
     }
 
+    if (guardando || confirmacion.abierto) return;
+
+    if (
+      !valores.titulo?.trim() ||
+      !valores.descripcion?.trim()
+    ) {
+      setError("Completá los campos obligatorios.");
+      return;
+    }
+
+    confirmacion.solicitar({
+      titulo: "Confirmar modificación del calendario",
+      descripcion:
+        "¿Deseás guardar los cambios de la configuración del calendario público?",
+      textoConfirmar: "Confirmar guardado",
+      ejecutar: ejecutarGuardado,
+    });
+  }
+
+  // Guarda la configuración únicamente después de confirmar.
+  async function ejecutarGuardado() {
+    if (!user?.token || guardando) return;
+
     try {
       setGuardando(true);
       setError("");
@@ -135,7 +152,12 @@ export default function CalendarioPublicoAdmin() {
 
   return (
     <>
-      <MensajeHomeAdmin error={error} mensaje={mensaje} />
+      <MensajeHomeAdmin
+        error={error}
+        mensaje={mensaje}
+        alCerrarError={() => setError("")}
+        alCerrarMensaje={() => setMensaje("")}
+      />
 
       <article className="admin-home-panel">
         <header>
@@ -191,6 +213,7 @@ export default function CalendarioPublicoAdmin() {
                 </label>
                 <input
                   id="calendario-titulo"
+                  disabled={guardando || confirmacion.abierto}
                   type="text"
                   required
                   value={valores.titulo ?? ""}
@@ -206,6 +229,7 @@ export default function CalendarioPublicoAdmin() {
                 </label>
                 <textarea
                   id="calendario-descripcion"
+                  disabled={guardando || confirmacion.abierto}
                   rows={3}
                   required
                   value={valores.descripcion ?? ""}
@@ -221,6 +245,7 @@ export default function CalendarioPublicoAdmin() {
                 </label>
                 <input
                   id="calendario-anio-minimo"
+                  disabled={guardando || confirmacion.abierto}
                   type="number"
                   required
                   value={valores.anio_minimo ?? ""}
@@ -236,6 +261,7 @@ export default function CalendarioPublicoAdmin() {
                 </label>
                 <input
                   id="calendario-anio-maximo"
+                  disabled={guardando || confirmacion.abierto}
                   type="number"
                   required
                   value={valores.anio_maximo ?? ""}
@@ -251,18 +277,28 @@ export default function CalendarioPublicoAdmin() {
                 type="button"
                 className="admin-noticias-cancelar"
                 onClick={cancelar}
-                disabled={guardando}
+                disabled={guardando || confirmacion.abierto}
               >
                 Cancelar
               </button>
 
-              <button type="submit" disabled={guardando}>
+              <button type="submit" disabled={guardando || confirmacion.abierto}>
                 {guardando ? "Guardando..." : "Guardar cambios"}
               </button>
             </footer>
           </form>
         )}
       </article>
+
+      <ConfirmacionModal
+        abierto={confirmacion.abierto}
+        titulo={confirmacion.titulo}
+        descripcion={confirmacion.descripcion}
+        textoConfirmar={confirmacion.textoConfirmar}
+        confirmando={confirmacion.procesando}
+        alConfirmar={confirmacion.confirmar}
+        alCancelar={confirmacion.cancelar}
+      />
 
       <EventosAdmin />
     </>

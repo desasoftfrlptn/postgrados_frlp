@@ -395,6 +395,8 @@ export default function ContactoAdmin() {
       <MensajeHomeAdmin
         error={error}
         mensaje={mensaje}
+        alCerrarError={() => setError("")}
+        alCerrarMensaje={() => setMensaje("")}
       />
 
       <article className="admin-home-panel">

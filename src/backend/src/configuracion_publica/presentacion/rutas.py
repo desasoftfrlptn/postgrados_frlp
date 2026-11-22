@@ -1,3 +1,18 @@
+from uuid import UUID
+
+from src.configuracion_publica.aplicacion.faq import (
+    listar_preguntas,
+    crear_pregunta,
+    modificar_pregunta,
+    cambiar_estado_pregunta,
+)
+
+from src.configuracion_publica.presentacion.esquema import (
+    PreguntaFrecuenteCrear,
+    PreguntaFrecuenteRespuesta,
+    PreguntaFrecuenteEstado,
+)
+
 from src.usuarios.seguridad import TokenBearer
 # Define las rutas de consulta y administración del contenido público.
 
@@ -149,11 +164,6 @@ logger = logging.getLogger(__name__)
     "/contacto/consultas",
     response_model=ConsultaContactoRespuesta,
 )
-
-@enrutador.post(
-    "/contacto/consultas",
-    response_model=ConsultaContactoRespuesta,
-)
 async def enviar_consulta_contacto(
     consulta: ConsultaContactoCrear,
     request: Request,
@@ -215,4 +225,79 @@ async def enviar_consulta_contacto(
 
     return ConsultaContactoRespuesta(
         mensaje="Tu consulta fue enviada correctamente."
+    )
+
+# Preguntas frecuentes visibles en el sitio público.
+@enrutador.get(
+    "/faq/publicas",
+    response_model=list[PreguntaFrecuenteRespuesta],
+)
+async def consultar_faq_publica(
+    db: AsyncSession = Depends(get_db),
+):
+    return await listar_preguntas(db)
+
+
+# Administración de preguntas frecuentes.
+@enrutador.get(
+    "/faq/admin",
+    response_model=list[PreguntaFrecuenteRespuesta],
+)
+async def consultar_faq_admin(
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    return await listar_preguntas(
+        db,
+        solo_activas=False,
+    )
+
+
+@enrutador.post(
+    "/faq/admin",
+    response_model=PreguntaFrecuenteRespuesta,
+    status_code=201,
+)
+async def registrar_faq(
+    datos: PreguntaFrecuenteCrear,
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    return await crear_pregunta(
+        datos.model_dump(),
+        db,
+    )
+
+
+@enrutador.put(
+    "/faq/admin/{pregunta_id}",
+    response_model=PreguntaFrecuenteRespuesta,
+)
+async def actualizar_faq(
+    pregunta_id: UUID,
+    datos: PreguntaFrecuenteCrear,
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    return await modificar_pregunta(
+        pregunta_id,
+        datos.model_dump(),
+        db,
+    )
+
+
+@enrutador.patch(
+    "/faq/admin/{pregunta_id}/estado",
+    response_model=PreguntaFrecuenteRespuesta,
+)
+async def actualizar_estado_faq(
+    pregunta_id: UUID,
+    datos: PreguntaFrecuenteEstado,
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    return await cambiar_estado_pregunta(
+        pregunta_id,
+        datos.activa,
+        db,
     )

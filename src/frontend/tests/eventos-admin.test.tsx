@@ -85,6 +85,14 @@ it("permite crear un evento académico", async () => {
     screen.getByRole("button", { name: "Crear evento" })
   );
 
+  expect(api.post).not.toHaveBeenCalled();
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Confirmar guardado",
+    })
+  );
+
   await waitFor(() => {
     expect(api.post).toHaveBeenCalledWith(
       "/eventos",
@@ -133,6 +141,14 @@ it("permite especificar un tipo de evento personalizado", async () => {
     screen.getByRole("button", { name: "Crear evento" })
   );
 
+  expect(api.post).not.toHaveBeenCalled();
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Confirmar guardado",
+    })
+  );
+
   await waitFor(() => {
     expect(api.post).toHaveBeenCalledWith(
       "/eventos",
@@ -173,6 +189,14 @@ it("recupera el tipo personalizado al editar un evento", async () => {
 
   fireEvent.click(
     screen.getByRole("button", { name: "Guardar cambios" })
+  );
+
+  expect(api.put).not.toHaveBeenCalled();
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Confirmar guardado",
+    })
   );
 
   await waitFor(() => {

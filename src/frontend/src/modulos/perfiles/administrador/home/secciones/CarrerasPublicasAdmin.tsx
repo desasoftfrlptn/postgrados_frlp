@@ -6,6 +6,8 @@ import { useAuth } from "../../../../manejo-sesion/useAuth";
 
 import CampoConfiguracion from "../componentes/CampoConfiguracion";
 import MensajeHomeAdmin from "../componentes/MensajeHomeAdmin";
+import ConfirmacionModal from "../../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+
 
 import type {
   ConfiguracionPublicaRespuesta,
@@ -177,7 +179,6 @@ export default function CarrerasPublicasAdmin() {
       return;
     }
 
-    setConfirmarGuardado(false);
     setGuardando(true);
     setError("");
     setMensaje("");
@@ -207,6 +208,7 @@ export default function CarrerasPublicasAdmin() {
       );
     } finally {
       setGuardando(false);
+      setConfirmarGuardado(false);
     }
   };
 
@@ -223,6 +225,8 @@ export default function CarrerasPublicasAdmin() {
       <MensajeHomeAdmin
         error={error}
         mensaje={mensaje}
+        alCerrarError={() => setError("")}
+        alCerrarMensaje={() => setMensaje("")}
       />
 
       <article className="admin-home-panel">
@@ -314,46 +318,15 @@ export default function CarrerasPublicasAdmin() {
         </footer>
       </article>
 
-      {confirmarGuardado && (
-        <div className="admin-inicio-modal-fondo">
-          <section
-            className="admin-inicio-modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="carreras-confirmacion-titulo"
-            aria-describedby="carreras-confirmacion-descripcion"
-          >
-            <h3 id="carreras-confirmacion-titulo">
-              ¿Guardar los cambios?
-            </h3>
-
-            <p id="carreras-confirmacion-descripcion">
-              Los nuevos textos se mostrarán
-              en la página pública de Carreras
-              después de guardar.
-            </p>
-
-            <div className="admin-inicio-modal-acciones">
-              <button
-                type="button"
-                className="admin-inicio-boton-secundario"
-                onClick={() =>
-                  setConfirmarGuardado(false)
-                }
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void guardar()}
-              >
-                Confirmar guardado
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+      <ConfirmacionModal
+        abierto={confirmarGuardado}
+        titulo="¿Guardar los cambios?"
+        descripcion="Los nuevos textos se mostrarán en la página pública de Carreras después de guardar."
+        textoConfirmar="Confirmar guardado"
+        confirmando={guardando}
+        alConfirmar={guardar}
+        alCancelar={() => setConfirmarGuardado(false)}
+      />
     </>
   );
 }

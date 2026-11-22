@@ -140,6 +140,14 @@ describe("Administración de noticias", () => {
       })
     );
 
+    expect(api.postForm).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Confirmar guardado",
+      })
+    );
+
     await waitFor(() => {
       expect(api.postForm).toHaveBeenCalledWith(
         "/noticias",

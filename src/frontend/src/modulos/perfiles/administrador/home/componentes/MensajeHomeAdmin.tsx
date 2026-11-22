@@ -3,11 +3,16 @@ import MensajeSistema from "../../../../../shared/componentes/MensajeSistema/Men
 interface MensajeHomeAdminProps {
   error?: string;
   mensaje?: string;
+  alCerrarError?: () => void;
+  alCerrarMensaje?: () => void;
 }
 
+// Unifica los mensajes de la administración del sitio público.
 export default function MensajeHomeAdmin({
   error = "",
   mensaje = "",
+  alCerrarError,
+  alCerrarMensaje,
 }: MensajeHomeAdminProps) {
   return (
     <>
@@ -16,6 +21,7 @@ export default function MensajeHomeAdmin({
           key={`error-${error}`}
           tipo="error"
           texto={error}
+          alCerrar={alCerrarError}
         />
       )}
 
@@ -24,6 +30,7 @@ export default function MensajeHomeAdmin({
           key={`exito-${mensaje}`}
           tipo="exito"
           texto={mensaje}
+          alCerrar={alCerrarMensaje}
         />
       )}
     </>

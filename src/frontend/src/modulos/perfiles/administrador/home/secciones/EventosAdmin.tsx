@@ -4,6 +4,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api } from "../../../../../shared/api/client";
 import { useAuth } from "../../../../manejo-sesion/useAuth";
 import MensajeHomeAdmin from "../componentes/MensajeHomeAdmin";
+import ConfirmacionModal from "../../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import { useConfirmacion } from "../../../../../shared/hooks/useConfirmacion";
+
+
 
 interface Evento {
   id: string;
@@ -44,6 +48,7 @@ function obtenerNombreTipo(tipo: string) {
 export default function EventosAdmin() {
   const { user } = useAuth();
   const token = user?.token;
+  const confirmacionGuardado = useConfirmacion();
 
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [formulario, setFormulario] = useState(formularioVacio);
@@ -164,8 +169,44 @@ export default function EventosAdmin() {
   }
 
   // Crear o modificar un evento.
-  async function guardar(event: FormEvent<HTMLFormElement>) {
+  // Confirma el alta o la modificación de un evento.
+  function guardar(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (
+      guardando ||
+      eventoAConfirmar ||
+      confirmacionGuardado.abierto
+    ) return;
+
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      return;
+    }
+
+    if (!formulario.titulo.trim()) {
+      setError("Ingresá el título del evento.");
+      return;
+    }
+
+    if (formulario.tipo === "otros" && !otroTipo.trim()) {
+      setError("Especificá el tipo de evento.");
+      return;
+    }
+
+    confirmacionGuardado.solicitar({
+      titulo: editando
+        ? "Confirmar modificación del evento"
+        : "Confirmar creación del evento",
+      descripcion:
+        "¿Deseás guardar los datos de este evento académico?",
+      textoConfirmar: "Confirmar guardado",
+      ejecutar: ejecutarGuardado,
+    });
+  }
+
+  // Persiste los datos después de confirmar.
+  async function ejecutarGuardado() {
 
     if (!token) {
       setError("Necesitás iniciar sesión para guardar eventos.");
@@ -278,67 +319,46 @@ export default function EventosAdmin() {
 
   return (
     <>
-      <MensajeHomeAdmin error={error} mensaje={mensaje} />
+      <MensajeHomeAdmin
+        error={error}
+        mensaje={mensaje}
+        alCerrarError={() => setError("")}
+        alCerrarMensaje={() => setMensaje("")}
+      />
 
       {/* Confirmación de activación o desactivación */}
-      {eventoAConfirmar && (
-        <div className="admin-evento-confirmacion-fondo">
-          <section
-            className="admin-evento-confirmacion"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="titulo-confirmacion-evento"
-            aria-describedby="descripcion-confirmacion-evento"
-          >
-            <h2 id="titulo-confirmacion-evento">
-              ¿{eventoAConfirmar.activo
-                ? "Desactivar"
-                : "Activar"}{" "}
-              evento?
-            </h2>
+      <ConfirmacionModal
+        abierto={eventoAConfirmar !== null}
+        titulo={
+          eventoAConfirmar?.activo
+            ? "¿Desactivar evento?"
+            : "¿Activar evento?"
+        }
+        descripcion={
+          eventoAConfirmar?.activo
+            ? `El evento «${eventoAConfirmar.titulo}» dejará de aparecer en el calendario público. Podrás volver a activarlo.`
+            : `El evento «${eventoAConfirmar?.titulo ?? ""}» volverá a aparecer en el calendario público.`
+        }
+        textoConfirmar={
+          eventoAConfirmar?.activo
+            ? "Desactivar evento"
+            : "Activar evento"
+        }
+        peligroso={eventoAConfirmar?.activo ?? false}
+        confirmando={guardando}
+        alConfirmar={cambiarEstado}
+        alCancelar={cancelarCambioEstado}
+      />
 
-            <p id="descripcion-confirmacion-evento">
-              ¿Querés{" "}
-              {eventoAConfirmar.activo
-                ? "desactivar"
-                : "activar"}{" "}
-              <strong>
-                «{eventoAConfirmar.titulo}»
-              </strong>
-              ?
-            </p>
-
-            <p>
-              {eventoAConfirmar.activo
-                ? "El evento dejará de aparecer en el calendario público, pero podrás volver a activarlo."
-                : "El evento volverá a aparecer en el calendario público."}
-            </p>
-
-            <div className="admin-evento-confirmacion-acciones">
-              <button
-                type="button"
-                className="admin-noticias-cancelar"
-                onClick={cancelarCambioEstado}
-                disabled={guardando}
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void cambiarEstado()}
-                disabled={guardando}
-              >
-                {guardando
-                  ? "Guardando..."
-                  : eventoAConfirmar.activo
-                    ? "Desactivar evento"
-                    : "Activar evento"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+      <ConfirmacionModal
+        abierto={confirmacionGuardado.abierto}
+        titulo={confirmacionGuardado.titulo}
+        descripcion={confirmacionGuardado.descripcion}
+        textoConfirmar={confirmacionGuardado.textoConfirmar}
+        confirmando={confirmacionGuardado.procesando}
+        alConfirmar={confirmacionGuardado.confirmar}
+        alCancelar={confirmacionGuardado.cancelar}
+      />
 
       {/* Administración de eventos */}
       <article className="admin-home-panel admin-calendario-eventos">
@@ -467,14 +487,14 @@ export default function EventosAdmin() {
                 type="button"
                 className="admin-noticias-cancelar"
                 onClick={cancelar}
-                disabled={guardando}
+                disabled={guardando || confirmacionGuardado.abierto}
               >
                 Cancelar
               </button>
 
               <button
                 type="submit"
-                disabled={guardando}
+                disabled={guardando || confirmacionGuardado.abierto}
               >
                 {guardando
                   ? "Guardando..."

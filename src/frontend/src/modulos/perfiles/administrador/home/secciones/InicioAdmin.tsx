@@ -6,6 +6,8 @@ import { useAuth } from "../../../../manejo-sesion/useAuth";
 
 import CampoConfiguracion from "../componentes/CampoConfiguracion";
 import MensajeHomeAdmin from "../componentes/MensajeHomeAdmin";
+import ConfirmacionModal from "../../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+
 
 import type {
   ConfiguracionPublicaRespuesta,
@@ -274,6 +276,8 @@ export default function InicioAdmin() {
       <MensajeHomeAdmin
         error={error}
         mensaje={mensaje}
+        alCerrarError={() => setError("")}
+        alCerrarMensaje={() => setMensaje("")}
       />
 
       <article className="admin-home-panel">
@@ -357,48 +361,28 @@ export default function InicioAdmin() {
         </footer>
       </article>
 
-      {confirmacion && (
-        <div className="admin-inicio-modal-fondo">
-          <section
-            className="admin-inicio-modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="inicio-confirmacion-titulo"
-            aria-describedby="inicio-confirmacion-descripcion"
-          >
-            <h3 id="inicio-confirmacion-titulo">
-              {confirmacion === "guardar"
-                ? "¿Guardar los cambios?"
-                : "¿Restablecer la configuración?"}
-            </h3>
-
-            <p id="inicio-confirmacion-descripcion">
-              {confirmacion === "guardar"
-                ? "Los nuevos textos se mostrarán en el Inicio público después de guardar."
-                : "Se reemplazarán todos los textos actuales del Inicio por los valores predeterminados. Esta acción se guardará en el sistema."}
-            </p>
-
-            <div className="admin-inicio-modal-acciones">
-              <button
-                type="button"
-                className="admin-inicio-boton-secundario"
-                onClick={() => setConfirmacion(null)}
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void confirmarAccion()}
-              >
-                {confirmacion === "guardar"
-                  ? "Confirmar guardado"
-                  : "Confirmar restablecimiento"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+      <ConfirmacionModal
+        abierto={confirmacion !== null}
+        titulo={
+          confirmacion === "guardar"
+            ? "¿Guardar los cambios?"
+            : "¿Restablecer la configuración?"
+        }
+        descripcion={
+          confirmacion === "guardar"
+            ? "Los nuevos textos se mostrarán en el Inicio público después de guardar."
+            : "Se reemplazarán todos los textos actuales del Inicio por los valores predeterminados."
+        }
+        textoConfirmar={
+          confirmacion === "guardar"
+            ? "Confirmar guardado"
+            : "Confirmar restablecimiento"
+        }
+        peligroso={confirmacion === "restablecer"}
+        confirmando={guardando}
+        alConfirmar={confirmarAccion}
+        alCancelar={() => setConfirmacion(null)}
+      />
     </>
   );
 }

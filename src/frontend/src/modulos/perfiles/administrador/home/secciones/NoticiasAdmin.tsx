@@ -14,6 +14,10 @@ import {
 import { useAuth } from "../../../../manejo-sesion/useAuth";
 
 import MensajeHomeAdmin from "../componentes/MensajeHomeAdmin";
+import ConfirmacionModal from "../../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
+import { useConfirmacion } from "../../../../../shared/hooks/useConfirmacion";
+
+
 
 
 interface Noticia {
@@ -48,6 +52,7 @@ const formularioInicial: FormularioNoticia = {
 
 export default function NoticiasAdmin() {
   const { user } = useAuth();
+  const confirmacionGuardado = useConfirmacion();
 
   const [noticias, setNoticias] =
     useState<Noticia[]>([]);
@@ -284,10 +289,46 @@ export default function NoticiasAdmin() {
   };
 
 
-  const guardarNoticia = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
+  // Solicita confirmación antes de guardar una noticia.
+  const guardarNoticia = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (
+      !user?.token ||
+      guardando ||
+      actualizandoEstado ||
+      noticiaPendiente ||
+      confirmacionGuardado.abierto
+    ) return;
+
+    if (!event.currentTarget.checkValidity()) {
+      event.currentTarget.reportValidity();
+      return;
+    }
+
+    if (
+      !formulario.titulo.trim() ||
+      !formulario.categoria.trim() ||
+      !formulario.resumen.trim() ||
+      !formulario.contenido.trim() ||
+      !formulario.fecha
+    ) {
+      setError("Completá todos los campos obligatorios.");
+      return;
+    }
+
+    confirmacionGuardado.solicitar({
+      titulo: noticiaEditando
+        ? "Confirmar modificación de noticia"
+        : "Confirmar creación de noticia",
+      descripcion: "¿Deseás guardar los datos de esta noticia?",
+      textoConfirmar: "Confirmar guardado",
+      ejecutar: ejecutarGuardado,
+    });
+  };
+
+  // Persiste la noticia después de confirmar.
+  const ejecutarGuardado = async () => {
 
     if (!user?.token) {
       return;
@@ -383,7 +424,6 @@ export default function NoticiasAdmin() {
 
     const noticia = noticiaPendiente;
     const nuevoEstado = !noticia.activo;
-    setNoticiaPendiente(null);
     setActualizandoEstado(true);
     setError("");
     setMensaje("");
@@ -409,6 +449,7 @@ export default function NoticiasAdmin() {
       );
     } finally {
       setActualizandoEstado(false);
+      setNoticiaPendiente(null);
     }
   };
 
@@ -440,6 +481,8 @@ export default function NoticiasAdmin() {
       <MensajeHomeAdmin
         error={error}
         mensaje={mensaje}
+        alCerrarError={() => setError("")}
+        alCerrarMensaje={() => setMensaje("")}
       />
 
       <article className="admin-home-panel">
@@ -798,48 +841,38 @@ export default function NoticiasAdmin() {
           )}
         </section>
       </article>
-      {noticiaPendiente && (
-        <div className="admin-inicio-modal-fondo">
-          <section
-            className="admin-inicio-modal"
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby="noticia-confirmacion-titulo"
-            aria-describedby="noticia-confirmacion-descripcion"
-          >
-            <h3 id="noticia-confirmacion-titulo">
-              {noticiaPendiente.activo
-                ? "¿Despublicar noticia?"
-                : "¿Publicar noticia?"}
-            </h3>
+      <ConfirmacionModal
+        abierto={confirmacionGuardado.abierto}
+        titulo={confirmacionGuardado.titulo}
+        descripcion={confirmacionGuardado.descripcion}
+        textoConfirmar={confirmacionGuardado.textoConfirmar}
+        confirmando={confirmacionGuardado.procesando}
+        alConfirmar={confirmacionGuardado.confirmar}
+        alCancelar={confirmacionGuardado.cancelar}
+      />
 
-            <p id="noticia-confirmacion-descripcion">
-              {noticiaPendiente.activo
-                ? `La noticia «${noticiaPendiente.titulo}» dejará de mostrarse en el sitio público.`
-                : `La noticia «${noticiaPendiente.titulo}» estará visible en el sitio público.`}
-            </p>
-
-            <div className="admin-inicio-modal-acciones">
-              <button
-                type="button"
-                className="admin-inicio-boton-secundario"
-                onClick={() => setNoticiaPendiente(null)}
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={() => void confirmarCambioEstado()}
-              >
-                {noticiaPendiente.activo
-                  ? "Confirmar despublicación"
-                  : "Confirmar publicación"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
+      <ConfirmacionModal
+        abierto={noticiaPendiente !== null}
+        titulo={
+          noticiaPendiente?.activo
+            ? "¿Despublicar noticia?"
+            : "¿Publicar noticia?"
+        }
+        descripcion={
+          noticiaPendiente?.activo
+            ? `La noticia «${noticiaPendiente.titulo}» dejará de mostrarse en el sitio público.`
+            : `La noticia «${noticiaPendiente?.titulo ?? ""}» estará visible en el sitio público.`
+        }
+        textoConfirmar={
+          noticiaPendiente?.activo
+            ? "Confirmar despublicación"
+            : "Confirmar publicación"
+        }
+        peligroso={noticiaPendiente?.activo ?? false}
+        confirmando={actualizandoEstado}
+        alConfirmar={confirmarCambioEstado}
+        alCancelar={() => setNoticiaPendiente(null)}
+      />
     </>
   );
 }

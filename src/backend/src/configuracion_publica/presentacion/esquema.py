@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -29,3 +31,27 @@ class ConsultaContactoCrear(BaseModel):
 
 class ConsultaContactoRespuesta(BaseModel):
     mensaje: str
+
+class PreguntaFrecuenteCrear(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    categoria: str = Field(min_length=1, max_length=100)
+    pregunta: str = Field(min_length=5, max_length=300)
+    respuesta: str = Field(min_length=5, max_length=10000)
+    orden: int = Field(ge=1, le=9999)
+    activa: bool = True
+
+
+class PreguntaFrecuenteRespuesta(PreguntaFrecuenteCrear):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+
+
+class PreguntaFrecuenteEstado(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    activa: bool
