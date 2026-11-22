@@ -2,6 +2,8 @@ import argparse
 import asyncio
 import os
 import smtplib
+import ssl 
+from pathlib import Path
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from dotenv import load_dotenv
@@ -28,83 +30,65 @@ from src.conduccion.servicio import (
 )
 
 
-def enviar_correo(destinatario, asunto, contenido):
+def enviar_correo(
+    destinatario,
+    asunto,
+    contenido,
+    ruta_pdf=None,
+    responder_a=None,
+):
     host = os.getenv("SMTP_HOST")
-
     if not host:
         raise RuntimeError("SMTP_HOST no está configurado.")
 
     puerto = int(os.getenv("SMTP_PORT", "1025"))
-    remitente = os.getenv(
-        "SMTP_FROM",
-        "posgrado@example.com",
-    )
-
+    usuario = os.getenv("SMTP_USER")
+    clave = os.getenv("SMTP_PASSWORD")
+    remitente = os.getenv("SMTP_FROM") or usuario
+    if not remitente:
+        raise RuntimeError("SMTP_FROM no está configurado.")
     mensaje = EmailMessage()
     mensaje["From"] = remitente
     mensaje["To"] = destinatario
     mensaje["Subject"] = asunto
+
+    if responder_a:
+        mensaje["Reply-To"] = responder_a
+
     mensaje.set_content(contenido)
 
-    with smtplib.SMTP(host, puerto, timeout=15) as smtp:
-        if os.getenv("SMTP_STARTTLS", "false").lower() == "true":
-            smtp.starttls()
+    if ruta_pdf:
+        ruta = Path(ruta_pdf)
 
-        usuario = os.getenv("SMTP_USER")
-        clave = os.getenv("SMTP_PASSWORD")
+        with ruta.open("rb") as archivo:
+            datos = archivo.read(5 * 1024 * 1024 + 1)
 
-        if usuario:
-            smtp.login(usuario, clave or "")
+        if len(datos) > 5 * 1024 * 1024:
+            raise ValueError("El PDF supera los 5 MB.")
 
-        smtp.send_message(mensaje)
+        if not datos.startswith(b"%PDF-"):
+            raise ValueError("El adjunto no es un PDF válido.")
 
-
-async def procesar_notificaciones():
-    enviados = 0
-    fallidos = 0
-
-    async with AsyncSessionLocal() as db:
-        resultado = await db.execute(
-            select(NotificacionConduccionORM)
-            .where(
-                NotificacionConduccionORM.enviado.is_(False),
-                NotificacionConduccionORM.intentos < 5,
-            )
-            .order_by(
-                NotificacionConduccionORM.fecha_creacion,
-            )
-            .limit(50)
-            .with_for_update(skip_locked=True)
+        mensaje.add_attachment(
+            datos,
+            maintype="application",
+            subtype="pdf",
+            filename="formulario_inscripcion.pdf",
         )
 
-        for notificacion in resultado.scalars().all():
-            notificacion.intentos += 1
+    with smtplib.SMTP(host, puerto, timeout=15) as smtp:
+        smtp.ehlo()
 
-            try:
-                await asyncio.to_thread(
-                    enviar_correo,
-                    notificacion.destinatario,
-                    notificacion.asunto,
-                    notificacion.contenido,
-                )
+        if os.getenv("SMTP_STARTTLS", "false").lower() == "true":
+            smtp.starttls(context=ssl.create_default_context())
+            smtp.ehlo()
 
-                notificacion.enviado = True
-                notificacion.fecha_envio = datetime.now(
-                    timezone.utc
-                )
-                notificacion.ultimo_error = None
-                enviados += 1
+        if usuario:
+            if not clave:
+                raise RuntimeError("SMTP_PASSWORD no está configurado.")
+            smtp.login(usuario, clave)
 
-            except Exception as exc:
-                notificacion.ultimo_error = type(exc).__name__
-                fallidos += 1
-
-        await db.commit()
-
-    return {
-        "enviados": enviados,
-        "fallidos": fallidos,
-    }
+        smtp.send_message(mensaje)
 
 
 async def ejecutar():
