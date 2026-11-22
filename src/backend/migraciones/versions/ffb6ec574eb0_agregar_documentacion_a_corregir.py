@@ -15,7 +15,7 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.add_column(
         "notificaciones_conduccion",
         sa.Column("documento_id", sa.UUID(), nullable=True),
@@ -30,7 +30,7 @@ def upgrade():
     )
 
 
-def downgrade():
+def downgrade() -> None:
     op.drop_constraint(
         "fk_notificacion_documento",
         "notificaciones_conduccion",
