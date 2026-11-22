@@ -1,8 +1,4 @@
 from pydantic import ValidationError
-from src.inscripcion.aplicacion.notificaciones import (
-    encolar_confirmacion_inscripcion,
-)
-
 import hashlib
 import os
 from src.inscripcion.aplicacion.validar_duplicados import (
@@ -402,13 +398,10 @@ async def inscribir_aspirante(
                     documento_id=documento.id,
                 )
 
-        # Registrar la notificacion en la misma transaccion.
-        encolar_confirmacion_inscripcion(db, nuevo_legajo)
         await alertar_rol(db, "COORDINADOR", "Nueva inscripción",
             f"Inscripción {nuevo_legajo.numero_seguimiento} pendiente de revisión.",
             f"/dashboard/conduccion/legajos/{nuevo_legajo.id}")
 
-        # Confirmar legajo, documentos y notificacion juntos.
         await db.commit()
 
     except IntegrityError as exc:
