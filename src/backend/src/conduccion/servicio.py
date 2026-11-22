@@ -136,6 +136,7 @@ def encolar_correo(
             destinatario=destinatario,
             asunto=asunto,
             contenido=contenido,
+            documento_id=None,
         )
     )
 
