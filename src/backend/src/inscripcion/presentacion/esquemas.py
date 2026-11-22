@@ -61,12 +61,38 @@ class LegajoCrear(BaseModel):
     @field_validator("dni_pasaporte")
     @classmethod
     def validar_dni_pasaporte(cls, valor):
-        valor = re.sub(r"[.\s]", "", valor)
-        if not re.fullmatch(r"\d{7,8}", valor):
+        valor = re.sub(r"[.\s]", "", valor).upper()
+
+        dni_valido = re.fullmatch(r"[0-9]{7,8}", valor)
+
+        pasaporte_valido = re.fullmatch(
+            r"(?=.*[A-Z])[A-Z0-9]{6,20}",
+            valor,
+        )
+
+        if not dni_valido and not pasaporte_valido:
             raise ValueError(
-                "El DNI o pasaporte debe contener 7 u 8 dígitos"
+                "Ingresá un DNI de 7 u 8 dígitos o "
+                "un pasaporte alfanumérico de 6 a 20 caracteres."
             )
+
         return valor
+
+    @field_validator("telefono_movil")
+    @classmethod
+    def validar_telefono_movil(cls, valor):
+        digitos = re.sub(r"[^0-9]", "", valor)
+
+        if (
+            not re.fullmatch(r"\+?[0-9()\s-]+", valor)
+            or not 7 <= len(digitos) <= 15
+        ):
+            raise ValueError(
+                "Ingresá un teléfono válido de 7 a 15 dígitos."
+            )
+
+        return valor
+
 
 
 class LegajoRespuesta(BaseModel):

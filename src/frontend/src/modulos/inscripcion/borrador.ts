@@ -4,6 +4,22 @@ const NOMBRE_BASE_DATOS = "PostgradosFRLP";
 const VERSION_BASE_DATOS = 1;
 const NOMBRE_ALMACEN = "borradores";
 
+export const VIGENCIA_BORRADOR_MS = 24 * 60 * 60 * 1000;
+
+// Comprueba si el borrador sigue dentro de su periodo de vigencia.
+export function borradorVencido(
+  actualizadoEn: number,
+  ahora = Date.now()
+): boolean {
+  return (
+    !Number.isFinite(actualizadoEn) ||
+    actualizadoEn <= 0 ||
+    actualizadoEn > ahora ||
+    ahora - actualizadoEn >= VIGENCIA_BORRADOR_MS
+  );
+}
+
+
 export interface BorradorInscripcion {
   id: string;
   datos: Record<string, string>;
@@ -68,7 +84,7 @@ export const guardarBorrador = async (
   });
 };
 
-// Recupera el borrador guardado.
+// Recupera el borrador y elimina los datos vencidos.
 export const recuperarBorrador = async (): Promise<
   BorradorInscripcion | undefined
 > => {
@@ -77,21 +93,39 @@ export const recuperarBorrador = async (): Promise<
   return new Promise((resolve, reject) => {
     const transaccion = baseDatos.transaction(
       NOMBRE_ALMACEN,
-      "readonly"
+      "readwrite"
     );
 
-    const solicitud = transaccion
-      .objectStore(NOMBRE_ALMACEN)
-      .get("inscripcion");
+    const almacen = transaccion.objectStore(NOMBRE_ALMACEN);
+    const solicitud = almacen.get("inscripcion");
+
+    let borrador: BorradorInscripcion | undefined;
 
     solicitud.onsuccess = () => {
-      baseDatos.close();
-      resolve(solicitud.result);
+      const resultado = solicitud.result as
+        BorradorInscripcion | undefined;
+
+      if (resultado && borradorVencido(resultado.actualizadoEn)) {
+        almacen.delete("inscripcion");
+        return;
+      }
+
+      borrador = resultado;
     };
 
-    solicitud.onerror = () => {
+    transaccion.oncomplete = () => {
       baseDatos.close();
-      reject(solicitud.error);
+      resolve(borrador);
+    };
+
+    transaccion.onerror = () => {
+      baseDatos.close();
+      reject(transaccion.error);
+    };
+
+    transaccion.onabort = () => {
+      baseDatos.close();
+      reject(transaccion.error);
     };
   });
 };

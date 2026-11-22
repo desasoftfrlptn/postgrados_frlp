@@ -11,7 +11,13 @@ import {
   eliminarBorrador,
 } from "../borrador";
 
-import { validarArchivoPDF } from "../validaciones";
+import {
+  validarArchivoPDF,
+  validarDniPasaporte,
+  validarNombrePersonal,
+  validarTelefonoInscripcion,
+  normalizarDocumento,
+} from "../validaciones";
 
 import "./FormularioInscripcion.css";
 
@@ -57,61 +63,7 @@ const provincias = [
   "Tucumán",
 ];
 
-export default function FormularioInscripcion() {
-  const [inscripcionCompletada, setInscripcionCompletada] = useState(false);
-  const [etapa, setEtapa] = useState(1);
-  const [otroPais, setOtroPais] = useState("");
-  const [mensaje, setMensaje] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
-  const envioEnCurso = useRef(false);
-
-  const [cargandoBorrador, setCargandoBorrador] = useState(true);
-  const [numeroSeguimiento, setNumeroSeguimiento] = useState("");
-
-  const [cohortesDisponibles, setCohortesDisponibles] = useState<
-    CohorteDisponible[]
-  >([]);
-
-  const [cohorteSeleccionada, setCohorteSeleccionada] = useState("");
-
-  const [errorCohortes, setErrorCohortes] = useState("");
-  const [cargandoCohortes, setCargandoCohortes] = useState(true);
-
-  useEffect(() => {
-    const cargarCohortes = async () => {
-      try {
-        const cohortes = await api.get<CohorteDisponible[]>(
-          "/cohortes/disponibles"
-        );
-
-        setCohortesDisponibles(cohortes);
-      } catch {
-        setErrorCohortes(
-          "No se pudieron consultar las carreras disponibles."
-        );
-      } finally {
-        setCargandoCohortes(false);
-      }
-    };
-
-    void cargarCohortes();
-  }, []);
-
-  
-  const [documentos, setDocumentos] = useState({
-    formularioPreinscripcion: null as File | null,
-    formularioInscripcion: null as File | null,
-    dniPasaporte: null as File | null,
-    partidaNacimiento: null as File | null,
-    constanciaCuitCuil: null as File | null,
-    tituloGrado: null as File | null,
-    tituloPosgrado: null as File | null,
-    formularioBeca: null as File | null,
-  });
-
-
-  const [datos, setDatos] = useState({
+const DATOS_INICIALES = {
     dni: "",
     apellido: "",
     nombre: "",
@@ -129,59 +81,192 @@ export default function FormularioInscripcion() {
     forma_conocio_ofertas: "",
     motivos_cursar: "",
     solicitud_beca: "",
-  });
+  };
+
+const DOCUMENTOS_INICIALES = {
+    formularioPreinscripcion: null as File | null,
+    formularioInscripcion: null as File | null,
+    dniPasaporte: null as File | null,
+    partidaNacimiento: null as File | null,
+    constanciaCuitCuil: null as File | null,
+    tituloGrado: null as File | null,
+    tituloPosgrado: null as File | null,
+    formularioBeca: null as File | null,
+  };
+
+export default function FormularioInscripcion() {
+  const [inscripcionCompletada, setInscripcionCompletada] = useState(false);
+  const [etapa, setEtapa] = useState(1);
+  const [otroPais, setOtroPais] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [confirmacionAbierta, setConfirmacionAbierta] = useState(false);
+  const envioEnCurso = useRef(false);
+  const guardadoPendiente = useRef<Promise<void>>(
+    Promise.resolve()
+  );
+  const temporizadorBorrador = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
+  const borradorBloqueado = useRef(false);
+  const [confirmacionDescarte, setConfirmacionDescarte] = useState(false);
+  const [descartando, setDescartando] = useState(false);
+  const descarteEnCurso = useRef(false);
+
+
+  const [cargandoBorrador, setCargandoBorrador] = useState(true);
+  const [numeroSeguimiento, setNumeroSeguimiento] = useState("");
+
+  const [cohortesDisponibles, setCohortesDisponibles] = useState<
+    CohorteDisponible[]
+  >([]);
+
+  const [cohorteSeleccionada, setCohorteSeleccionada] = useState("");
+
+  const [errorCohortes, setErrorCohortes] = useState("");
+  const [cargandoCohortes, setCargandoCohortes] = useState(true);
+  const [reintentoCohortes, setReintentoCohortes] = useState(0);
+
+  // Consulta las cohortes y descarta respuestas desactualizadas.
+  useEffect(() => {
+    let activo = true;
+
+    const cargarCohortes = async () => {
+      try {
+        const cohortes = await api.get<CohorteDisponible[]>(
+          "/cohortes/disponibles"
+        );
+
+        if (activo) {
+          setCohortesDisponibles(cohortes);
+        }
+      } catch {
+        if (activo) {
+          setCohortesDisponibles([]);
+          setErrorCohortes(
+            "No se pudieron consultar las carreras disponibles."
+          );
+        }
+      } finally {
+        if (activo) {
+          setCargandoCohortes(false);
+        }
+      }
+    };
+
+    void cargarCohortes();
+
+    return () => {
+      activo = false;
+    };
+  }, [reintentoCohortes]);
+
+  const reintentarConsultaCohortes = () => {
+    if (cargandoCohortes) return;
+
+    setCargandoCohortes(true);
+    setErrorCohortes("");
+    setReintentoCohortes((actual) => actual + 1);
+  };
+
+
+  const [documentos, setDocumentos] = useState(DOCUMENTOS_INICIALES);
+
+
+  const [datos, setDatos] = useState(DATOS_INICIALES);
+
+  const contieneDatos =
+    Object.values(datos).some((valor) => valor.trim()) ||
+    Object.values(documentos).some(Boolean) ||
+    !!cohorteSeleccionada ||
+    !!otroPais.trim();
 
   useEffect(() => {
+    let activo = true;
+
     const cargarBorrador = async () => {
       try {
         const borrador = await recuperarBorrador();
 
-       if (borrador) {
-          setDatos(borrador.datos as typeof datos);
-          setDocumentos((documentosActuales) => ({
-            ...documentosActuales,
+        if (!activo) return;
+
+        if (borrador) {
+          setDatos((actuales) => ({
+            ...actuales,
+            ...borrador.datos,
+          }));
+
+          setDocumentos((actuales) => ({
+            ...actuales,
             ...borrador.documentos,
           }));
+
           setOtroPais(borrador.otroPais);
           setCohorteSeleccionada(
             borrador.cohorteSeleccionada ?? ""
           );
-
-          // Revalidar datos antes de continuar una inscripcion.
           setEtapa(1);
         }
-      } catch (error) {
-        console.error("Error al recuperar el borrador:", error);
-        setMensaje("No se pudo recuperar el borrador guardado.");
+      } catch {
+        if (activo) {
+          setMensaje(
+            "No se pudo recuperar el borrador guardado."
+          );
+        }
       } finally {
-        setCargandoBorrador(false);
+        if (activo) {
+          setCargandoBorrador(false);
+        }
       }
     };
 
-    cargarBorrador();
+    void cargarBorrador();
+
+    return () => {
+      activo = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (cargandoBorrador || inscripcionCompletada) return;
+    if (
+      cargandoBorrador ||
+      inscripcionCompletada ||
+      enviando ||
+      descartando
+    ) return;
 
-    const temporizador = setTimeout(async () => {
-      try {
-        await guardarBorrador({
-          id: "inscripcion",
-          datos,
-          documentos,
-          otroPais,
-          cohorteSeleccionada,
-          etapa,
-          actualizadoEn: Date.now(),
+    if (!contieneDatos) return;
+
+    let activo = true;
+
+    temporizadorBorrador.current = setTimeout(() => {
+      if (borradorBloqueado.current) return;
+
+      guardadoPendiente.current = guardadoPendiente.current
+        .then(async () => {
+          if (borradorBloqueado.current) return;
+
+          await guardarBorrador({
+            id: "inscripcion",
+            datos,
+            documentos,
+            otroPais,
+            cohorteSeleccionada,
+            etapa,
+            actualizadoEn: Date.now(),
+          });
+        })
+        .catch(() => {
+          if (activo && !borradorBloqueado.current) {
+            setMensaje("No se pudo guardar el borrador.");
+          }
         });
-      } catch (error) {
-        console.error("Error al guardar el borrador:", error);
-        setMensaje("No se pudo guardar el borrador.");
-      }
     }, 500);
 
-    return () => clearTimeout(temporizador);
+    return () => {
+      activo = false;
+      clearTimeout(temporizadorBorrador.current);
+    };
   }, [
     datos,
     documentos,
@@ -190,7 +275,45 @@ export default function FormularioInscripcion() {
     etapa,
     cargandoBorrador,
     inscripcionCompletada,
+    enviando,
+    descartando,
+    contieneDatos,
   ]);
+
+  const descartarBorrador = async () => {
+    if (
+      descarteEnCurso.current ||
+      envioEnCurso.current ||
+      inscripcionCompletada
+    ) return;
+
+    descarteEnCurso.current = true;
+    borradorBloqueado.current = true;
+    clearTimeout(temporizadorBorrador.current);
+
+    setDescartando(true);
+    setMensaje("");
+
+    try {
+      await guardadoPendiente.current;
+      await eliminarBorrador();
+
+      setDatos(DATOS_INICIALES);
+      setDocumentos(DOCUMENTOS_INICIALES);
+      setOtroPais("");
+      setCohorteSeleccionada("");
+      setEtapa(1);
+    } catch {
+      setMensaje(
+        "No se pudo descartar el borrador. Intentá nuevamente."
+      );
+    } finally {
+      descarteEnCurso.current = false;
+      borradorBloqueado.current = false;
+      setDescartando(false);
+      setConfirmacionDescarte(false);
+    }
+  };
 
   // Valida y actualiza cada documento de forma independiente.
   const validarDocumento = (
@@ -250,6 +373,50 @@ export default function FormularioInscripcion() {
     }
   };
 
+  // Valida los datos antes de avanzar o enviar la inscripción.
+  const validarDatosPersonales = (): string | null => {
+    const obligatorios = [
+      [datos.apellido, "apellido"],
+      [datos.nombre, "nombre"],
+      [datos.nacionalidad, "nacionalidad"],
+      [datos.dni, "DNI o pasaporte"],
+      [datos.email, "correo electrónico"],
+      [datos.telefono, "teléfono"],
+      [datos.domicilio, "domicilio"],
+      [datos.pais === "Otro" ? otroPais : datos.pais, "país"],
+      [datos.provincia, "provincia"],
+      [datos.ciudad, "ciudad"],
+      [datos.titulo_anterior, "título anterior"],
+      [datos.universidad_anterior, "universidad anterior"],
+      [datos.forma_conocio_ofertas, "origen de la consulta"],
+      [datos.motivos_cursar, "motivos para cursar"],
+    ];
+
+    for (const [valor, campo] of obligatorios) {
+      if (!valor.trim()) {
+        return `Completá el campo ${campo}.`;
+      }
+    }
+
+    if (!validarNombrePersonal(datos.nombre)) {
+      return "Ingresá un nombre válido.";
+    }
+
+    if (!validarNombrePersonal(datos.apellido)) {
+      return "Ingresá un apellido válido.";
+    }
+
+    if (!validarDniPasaporte(datos.dni)) {
+      return "Ingresá un DNI o pasaporte válido.";
+    }
+
+    if (!validarTelefonoInscripcion(datos.telefono)) {
+      return "Ingresá un teléfono válido de 7 a 15 dígitos.";
+    }
+
+    return null;
+  };
+
   const avanzarDesdeDatosPersonales = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -257,6 +424,13 @@ export default function FormularioInscripcion() {
 
     if (!formulario.checkValidity()) {
       formulario.reportValidity();
+      return;
+    }
+
+    const error = validarDatosPersonales();
+
+    if (error) {
+      setMensaje(error);
       return;
     }
 
@@ -279,6 +453,14 @@ const solicitarEnvio = (e: React.FormEvent) => {
     )
   ) {
     setMensaje("Seleccioná una carrera y una cohorte disponible.");
+    setEtapa(1);
+    return;
+  }
+
+  const errorPersonal = validarDatosPersonales();
+
+  if (errorPersonal) {
+    setMensaje(errorPersonal);
     setEtapa(1);
     return;
   }
@@ -324,7 +506,10 @@ const enviarFormulario = async () => {
   formulario.append("apellido", datos.apellido);
   formulario.append("nombre", datos.nombre);
   formulario.append("nacionalidad", datos.nacionalidad);
-  formulario.append("dni_pasaporte", datos.dni);
+  formulario.append(
+    "dni_pasaporte",
+    normalizarDocumento(datos.dni)
+  );
   formulario.append("correo_electronico", datos.email);
   formulario.append("telefono_movil", datos.telefono);
   if (datos.correo_alternativo.trim()) {
@@ -354,7 +539,12 @@ const enviarFormulario = async () => {
     ["constanciaCuitCuil", documentos.constanciaCuitCuil],
     ["tituloGrado", documentos.tituloGrado],
     ["tituloPosgrado", documentos.tituloPosgrado],
-    ["formularioBeca", documentos.formularioBeca],
+    [
+      "formularioBeca",
+      datos.solicitud_beca
+        ? documentos.formularioBeca
+        : null,
+    ],
   ] as const;
 
   documentosFormulario.forEach(([campo, archivo]) => {
@@ -364,6 +554,8 @@ const enviarFormulario = async () => {
   });
 
   envioEnCurso.current = true;
+  borradorBloqueado.current = true;
+  clearTimeout(temporizadorBorrador.current);
   setEnviando(true);
   setMensaje("");
 
@@ -375,41 +567,15 @@ const enviarFormulario = async () => {
     setInscripcionCompletada(true);
 
     try {
+      await guardadoPendiente.current;
       await eliminarBorrador();
     } catch (error) {
       console.error("No se pudo eliminar el borrador:", error);
     }
 
-  setDatos({
-    dni: "",
-    apellido: "",
-    nombre: "",
-    email: "",
-    tipo_carrera: "",
-    nacionalidad: "",
-    telefono: "",
-    domicilio: "",
-    pais: "",
-    provincia: "",
-    ciudad: "",
-    titulo_anterior: "",
-    universidad_anterior: "",
-    correo_alternativo: "",
-    forma_conocio_ofertas: "",
-    motivos_cursar: "",
-    solicitud_beca: "",
-  });
+  setDatos(DATOS_INICIALES);
 
-  setDocumentos({
-    formularioPreinscripcion: null,
-    formularioInscripcion: null,
-    dniPasaporte: null,
-    partidaNacimiento: null,
-    constanciaCuitCuil: null,
-    tituloGrado: null,
-    tituloPosgrado: null,
-    formularioBeca: null,
-  });
+  setDocumentos(DOCUMENTOS_INICIALES);
 
   setOtroPais("");
   setCohorteSeleccionada("");
@@ -420,6 +586,7 @@ const enviarFormulario = async () => {
     "Inscripción y documentación registradas correctamente."
   );
     } catch (error: unknown) {
+      borradorBloqueado.current = false;
       setMensaje(
         error instanceof Error
           ? error.message
@@ -466,6 +633,34 @@ const enviarFormulario = async () => {
         </ol>
         )}
 
+        {!inscripcionCompletada && (
+          <p className="inscripcion-privacidad">
+            Los datos y documentos se guardan temporalmente en este
+            navegador para que puedas continuar tu inscripción.
+            El borrador vence después de 24 horas sin modificaciones.
+            Evitá utilizar computadoras compartidas.
+          </p>
+        )}
+
+        {!cargandoBorrador &&
+          !inscripcionCompletada &&
+          contieneDatos && (
+            <div className="inscripcion-botones">
+              <button
+                type="button"
+                onClick={() => setConfirmacionDescarte(true)}
+                disabled={
+                  enviando ||
+                  descartando ||
+                  confirmacionAbierta ||
+                  confirmacionDescarte
+                }
+              >
+                Descartar borrador
+              </button>
+            </div>
+        )}
+
         {cargandoBorrador && (
           <p role="status">
             Recuperando los datos de la inscripción...
@@ -488,7 +683,7 @@ const enviarFormulario = async () => {
         )}
 
 
-        {!cargandoBorrador && !inscripcionCompletada && etapa === 1 && (
+        {!cargandoBorrador && !inscripcionCompletada && !descartando && etapa === 1 && (
           <form onSubmit={avanzarDesdeDatosPersonales}>
             <fieldset>
               <legend>Datos Personales</legend>
@@ -503,6 +698,7 @@ const enviarFormulario = async () => {
                   name="carrera"
                   required
                   value={datos.tipo_carrera}
+                  disabled={cargandoCohortes || !!errorCohortes}
                   onChange={(e) => {
                     setDatos({
                       ...datos,
@@ -556,9 +752,22 @@ const enviarFormulario = async () => {
               </div>
 
               {errorCohortes && (
-                <p className="inscripcion-mensaje" role="alert">
-                  {errorCohortes}
-                </p>
+                <div>
+                  <MensajeSistema
+                    tipo="error"
+                    texto={errorCohortes}
+                  />
+
+                  <div className="inscripcion-botones">
+                    <button
+                      type="button"
+                      onClick={reintentarConsultaCohortes}
+                      disabled={cargandoCohortes}
+                    >
+                      Reintentar
+                    </button>
+                  </div>
+                </div>
               )}
 
               {cargandoCohortes && (
@@ -582,7 +791,6 @@ const enviarFormulario = async () => {
                   id="apellido"
                   name="apellido"
                   required
-                  pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+"
                   title="El apellido solo puede contener letras."
                   placeholder="Ingresá tu apellido"
                   value={datos.apellido}
@@ -604,7 +812,6 @@ const enviarFormulario = async () => {
                   id="nombre"
                   name="nombre"
                   required
-                  pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+"
                   title="El nombre solo puede contener letras."
                   placeholder="Ingresá tu nombre"
                   value={datos.nombre}
@@ -626,7 +833,6 @@ const enviarFormulario = async () => {
                   id="nacionalidad"
                   name="nacionalidad"
                   required
-                  pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+"
                   title="La nacionalidad solo puede contener letras."
                   placeholder="Ingresá tu nacionalidad"
                   value={datos.nacionalidad}
@@ -649,7 +855,6 @@ const enviarFormulario = async () => {
                   name="dni"
                   type="text"
                   required
-                  pattern="([0-9]{7,8}|(?=.*[A-Za-z])[A-Za-z0-9]{6,20})"
                   title="El DNI solo puede tener 7 u 8 dígitos. El pasaporte solo puede tener de 6 a 20 carácteres alfanúmericos."
                   placeholder="Ingresá tu DNI o Pasaporte"
                   value={datos.dni}
@@ -669,8 +874,8 @@ const enviarFormulario = async () => {
                   id="telefono"
                   required
                   name="telefono"
-                  pattern="[0-9\s-]+"
-                  title="El teléfono solo puede contener números, espacios y guiones."
+                  type="tel"
+                  autoComplete="tel"
                   placeholder="Ej: 221-221-2221"
                   value={datos.telefono}
                   onChange={(e) =>
@@ -756,6 +961,7 @@ const enviarFormulario = async () => {
                     setDatos({
                       ...datos,
                       pais: e.target.value,
+                      provincia: "",
                     });
 
                     if (e.target.value !== "Otro") {
@@ -793,7 +999,22 @@ const enviarFormulario = async () => {
                   Provincia <span>*</span>
                 </label>
 
-                <select
+                {datos.pais === "Otro" ? (
+                  <input
+                    id="provincia"
+                    name="provincia"
+                    required
+                    placeholder="Ingresá tu provincia, región o estado"
+                    value={datos.provincia}
+                    onChange={(e) =>
+                      setDatos((actuales) => ({
+                        ...actuales,
+                        provincia: e.target.value,
+                      }))
+                    }
+                  />
+                ) : (
+                  <select
                   id="provincia"
                   name="provincia"
                   required
@@ -813,6 +1034,7 @@ const enviarFormulario = async () => {
                     </option>
                   ))}
                 </select>
+                )}
               </div>
 
               <div className="inscripcion-campo">
@@ -824,7 +1046,6 @@ const enviarFormulario = async () => {
                   id="ciudad"
                   name="ciudad"
                   required
-                  pattern="[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s]+"
                   title="La ciudad solo puede contener letras."
                   placeholder="Ingresá tu ciudad"
                   value={datos.ciudad}
@@ -929,7 +1150,14 @@ const enviarFormulario = async () => {
             </fieldset>
 
             <div className="inscripcion-botones">
-              <button type="submit">
+              <button
+                type="submit"
+                disabled={
+                  cargandoCohortes ||
+                  !!errorCohortes ||
+                  cohortesDisponibles.length === 0
+                }
+              >
                 Siguiente
                 <span aria-hidden="true">→</span>
               </button>
@@ -937,7 +1165,7 @@ const enviarFormulario = async () => {
           </form>
         )}
 
-        {!cargandoBorrador && !inscripcionCompletada && etapa === 2 && (
+        {!cargandoBorrador && !inscripcionCompletada && !descartando && etapa === 2 && (
           <section className="inscripcion-contenido-etapa">
             <h2>Documentación</h2>
 
@@ -1020,7 +1248,7 @@ const enviarFormulario = async () => {
                   </p>
                 )}
               </div>
-              
+
 
               <div className="inscripcion-documento">
                 <label htmlFor="dni-pasaporte">
@@ -1178,29 +1406,7 @@ const enviarFormulario = async () => {
               </div>
 
 
-              <div className="inscripcion-documento">
-                <label htmlFor="formulario-beca">
-                  Formulario de beca firmado
-                  {datos.solicitud_beca && <span>*</span>}
-                </label>
 
-                <input
-                  id="formulario-beca"
-                  name="formulario-beca"
-                  type="file"
-                  accept="application/pdf"
-                  onChange={(e) =>
-                    validarDocumento(
-                      e.target.files?.[0],
-                      "formularioBeca"
-                    )
-                  }
-                />
-
-                {documentos.formularioBeca && (
-                  <p>Archivo: {documentos.formularioBeca.name}</p>
-                )}
-              </div>
 
             </fieldset>
 
@@ -1218,7 +1424,7 @@ const enviarFormulario = async () => {
           </section>
         )}
 
-       {!cargandoBorrador && !inscripcionCompletada && etapa === 3 && (
+       {!cargandoBorrador && !inscripcionCompletada && !descartando && etapa === 3 && (
           <section className="inscripcion-contenido-etapa">
             <h2>Beca (Opcional)</h2>
 
@@ -1295,6 +1501,35 @@ const enviarFormulario = async () => {
               </div>
             </fieldset>
 
+            {datos.solicitud_beca && (
+              <fieldset className="inscripcion-documentacion">
+                <legend>Documentación de beca</legend>
+                <div className="inscripcion-documento">
+                <label htmlFor="formulario-beca">
+                  Formulario de beca firmado
+                  <span>*</span>
+                </label>
+
+                <input
+                  id="formulario-beca"
+                  name="formulario-beca"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(e) =>
+                    validarDocumento(
+                      e.target.files?.[0],
+                      "formularioBeca"
+                    )
+                  }
+                />
+
+                {documentos.formularioBeca && (
+                  <p>Archivo: {documentos.formularioBeca.name}</p>
+                )}
+              </div>
+              </fieldset>
+            )}
+
             <p className="inscripcion-aviso-beca">
               <span className="inscripcion-aviso-icono" aria-hidden="true" />
               <span>
@@ -1317,7 +1552,7 @@ const enviarFormulario = async () => {
           </section>
         )}
 
-        {!cargandoBorrador && !inscripcionCompletada && etapa === 4 && (
+        {!cargandoBorrador && !inscripcionCompletada && !descartando && etapa === 4 && (
           <form
             className="inscripcion-contenido-etapa"
             onSubmit={solicitarEnvio}
@@ -1481,6 +1716,17 @@ const enviarFormulario = async () => {
             </div>
           </form>
         )}
+
+        <ConfirmacionModal
+          abierto={confirmacionDescarte}
+          titulo="Descartar borrador"
+          descripcion="Se eliminarán los datos y documentos guardados en este navegador. Esta acción no se puede deshacer."
+          textoConfirmar="Eliminar borrador"
+          alConfirmar={descartarBorrador}
+          alCancelar={() => setConfirmacionDescarte(false)}
+          confirmando={descartando}
+          peligroso
+        />
 
         <ConfirmacionModal
           abierto={confirmacionAbierta}

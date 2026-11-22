@@ -524,3 +524,462 @@ describe("Validaciones adicionales de inscripción", () => {
     expect(api.postForm).not.toHaveBeenCalled();
   });
 });
+
+describe("Flujo de becas y recuperación de cohortes", () => {
+  it("no muestra el formulario de beca en documentación general", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    avanzar();
+
+    expect(
+      screen.queryByLabelText(/Formulario de beca firmado/)
+    ).not.toBeInTheDocument();
+  });
+
+  it("muestra el documento al seleccionar la beca del 30%", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    avanzar();
+    avanzar();
+
+    expect(
+      screen.queryByLabelText(/Formulario de beca firmado/)
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByLabelText("Solicitar beca del 30%")
+    );
+
+    expect(
+      screen.getByLabelText(/Formulario de beca firmado/)
+    ).toBeInTheDocument();
+  });
+
+  it("permite cargar el documento de beca sin volver atrás", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    avanzar();
+    avanzar();
+
+    fireEvent.click(
+      screen.getByLabelText("Solicitar beca del 100%")
+    );
+
+    fireEvent.change(
+      screen.getByLabelText(/Formulario de beca firmado/),
+      {
+        target: {
+          files: [crearPDF()],
+        },
+      }
+    );
+
+    avanzar();
+
+    solicitarEnvio();
+    confirmarEnvio();
+
+    await screen.findByText("INS-2026-99");
+
+    const formulario =
+      vi.mocked(api.postForm).mock.calls[0][1];
+
+    expect(formulario.get("solicitud_beca"))
+      .toBe("100");
+
+    expect(formulario.get("formularioBeca"))
+      .toBeInstanceOf(File);
+  });
+
+  it("elimina el documento cuando se cancela la solicitud de beca", async () => {
+    prepararBorrador("30", true);
+
+    await abrirFormularioCompleto();
+
+    avanzar();
+    avanzar();
+
+    fireEvent.click(
+      screen.getByLabelText("No solicitar beca")
+    );
+
+    expect(
+      screen.queryByLabelText(/Formulario de beca firmado/)
+    ).not.toBeInTheDocument();
+
+    avanzar();
+
+    solicitarEnvio();
+    confirmarEnvio();
+
+    await screen.findByText("INS-2026-99");
+
+    const formulario =
+      vi.mocked(api.postForm).mock.calls[0][1];
+
+    expect(formulario.has("solicitud_beca"))
+      .toBe(false);
+
+    expect(formulario.has("formularioBeca"))
+      .toBe(false);
+  });
+
+  it("permite reintentar la consulta de cohortes después de un error", async () => {
+    vi.mocked(api.get)
+      .mockRejectedValueOnce(new Error("Sin conexión"))
+      .mockResolvedValueOnce([cohorte]);
+
+    render(<FormularioInscripcion />);
+
+    const reintentar = await screen.findByRole(
+      "button",
+      { name: "Reintentar" }
+    );
+
+    fireEvent.click(reintentar);
+
+    expect(
+      await screen.findByRole("option", {
+        name: cohorte.carrera_nombre,
+      })
+    ).toBeInTheDocument();
+
+    expect(api.get).toHaveBeenCalledTimes(2);
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Reintentar",
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it("impide avanzar cuando no hay cohortes disponibles", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+
+    render(<FormularioInscripcion />);
+
+    expect(
+      await screen.findByText(
+        "No hay cohortes abiertas para inscripción."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name: "Siguiente",
+      })
+    ).toBeDisabled();
+
+    expect(api.postForm).not.toHaveBeenCalled();
+  });
+});
+
+describe("Datos personales de inscripción", () => {
+  it("rechaza nombres que contienen únicamente espacios", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    fireEvent.change(
+      screen.getByLabelText(/^Apellido/),
+      { target: { value: "   " } }
+    );
+
+    avanzar();
+
+    expect(
+      screen.getByText("Completá el campo apellido.")
+    ).toBeInTheDocument();
+
+    expect(api.postForm).not.toHaveBeenCalled();
+  });
+
+  it("permite ingresar una provincia extranjera", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    fireEvent.change(
+      screen.getByLabelText(/^País/),
+      { target: { value: "Otro" } }
+    );
+
+    fireEvent.change(
+      screen.getByLabelText(/Especificá el país/),
+      { target: { value: "Italia" } }
+    );
+
+    const provincia = screen.getByRole("textbox", {
+      name: /^Provincia/,
+    });
+
+    fireEvent.change(provincia, {
+      target: { value: "Lombardía" },
+    });
+
+    expect(provincia).toHaveValue("Lombardía");
+  });
+
+  it("envía el pasaporte normalizado", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    fireEvent.change(
+      screen.getByLabelText(/^DNI o Pasaporte/),
+      { target: { value: "ab123456" } }
+    );
+
+    avanzar();
+    avanzar();
+    avanzar();
+
+    solicitarEnvio();
+    confirmarEnvio();
+
+    await screen.findByText("INS-2026-99");
+
+    const formulario =
+      vi.mocked(api.postForm).mock.calls[0][1];
+
+    expect(formulario.get("dni_pasaporte"))
+      .toBe("AB123456");
+  });
+});
+
+describe("Persistencia de borradores", () => {
+  it("informa que los datos se guardan en el navegador", async () => {
+    render(<FormularioInscripcion />);
+
+    expect(
+      screen.getByText(/Los datos y documentos se guardan/)
+    ).toBeInTheDocument();
+
+    await screen.findByLabelText(/^Apellido/);
+  });
+
+  it("no guarda un formulario completamente vacío", async () => {
+    render(<FormularioInscripcion />);
+
+    await screen.findByLabelText(/^Apellido/);
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 650)
+    );
+
+    expect(guardarBorrador).not.toHaveBeenCalled();
+  });
+
+  it("guarda los datos modificados y la cohorte seleccionada", async () => {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    fireEvent.change(
+      screen.getByLabelText(/^Apellido/),
+      { target: { value: "Nuevo apellido" } }
+    );
+
+    await waitFor(() => {
+      expect(guardarBorrador).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cohorteSeleccionada: cohorte.id,
+          datos: expect.objectContaining({
+            apellido: "Nuevo apellido",
+          }),
+        })
+      );
+    }, { timeout: 2000 });
+  });
+});
+
+describe("Eliminación de borradores", () => {
+  async function solicitarDescarte() {
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Descartar borrador",
+      })
+    );
+
+    return screen.getByRole("alertdialog");
+  }
+
+  it("no muestra la opción de descartar un formulario vacío", async () => {
+    render(<FormularioInscripcion />);
+
+    await screen.findByLabelText(/^Apellido/);
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Descartar borrador",
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it("permite cancelar sin eliminar los datos", async () => {
+    const modal = await solicitarDescarte();
+
+    expect(eliminarBorrador).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(modal).getByRole("button", {
+        name: "Cancelar",
+      })
+    );
+
+    expect(eliminarBorrador).not.toHaveBeenCalled();
+
+    expect(
+      screen.getByLabelText(/^Apellido/)
+    ).toHaveValue(datosValidos.apellido);
+
+    expect(
+      screen.queryByRole("alertdialog")
+    ).not.toBeInTheDocument();
+  });
+
+  it("elimina el borrador y limpia el formulario al confirmar", async () => {
+    const modal = await solicitarDescarte();
+
+    fireEvent.click(
+      within(modal).getByRole("button", {
+        name: "Eliminar borrador",
+      })
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/^Apellido/)
+      ).toHaveValue("");
+    });
+
+    expect(eliminarBorrador).toHaveBeenCalledTimes(1);
+
+    expect(
+      screen.getByLabelText(/^Cohorte/)
+    ).toHaveValue("");
+
+    expect(
+      screen.getByLabelText(/^Carrera Elegida/)
+    ).toHaveValue("");
+
+    expect(api.postForm).not.toHaveBeenCalled();
+  });
+
+  it("conserva los datos cuando falla la eliminación", async () => {
+    vi.mocked(eliminarBorrador).mockRejectedValue(
+      new Error("Error de almacenamiento")
+    );
+
+    const modal = await solicitarDescarte();
+
+    fireEvent.click(
+      within(modal).getByRole("button", {
+        name: "Eliminar borrador",
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        "No se pudo descartar el borrador. Intentá nuevamente."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText(/^Apellido/)
+    ).toHaveValue(datosValidos.apellido);
+
+    expect(api.postForm).not.toHaveBeenCalled();
+  });
+
+  it("no permite eliminar el mismo borrador dos veces simultáneamente", async () => {
+    let resolver!: () => void;
+
+    vi.mocked(eliminarBorrador).mockImplementation(
+      () => new Promise<void>((resolve) => {
+        resolver = resolve;
+      })
+    );
+
+    const modal = await solicitarDescarte();
+
+    const boton = within(modal).getByRole(
+      "button",
+      { name: "Eliminar borrador" }
+    );
+
+    fireEvent.click(boton);
+    fireEvent.click(boton);
+
+    await waitFor(() => {
+      expect(eliminarBorrador).toHaveBeenCalledTimes(1);
+    });
+
+    expect(boton).toBeDisabled();
+
+    resolver();
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText(/^Apellido/)
+      ).toHaveValue("");
+    });
+  });
+});
+
+describe("Concurrencia del guardado de inscripción", () => {
+  it("espera el guardado pendiente antes de eliminar el borrador", async () => {
+    let terminarGuardado!: () => void;
+
+    vi.mocked(guardarBorrador).mockImplementation(
+      () => new Promise<void>((resolve) => {
+        terminarGuardado = resolve;
+      })
+    );
+
+    prepararBorrador();
+
+    await abrirFormularioCompleto();
+
+    await waitFor(() => {
+      expect(guardarBorrador).toHaveBeenCalledTimes(1);
+    }, { timeout: 2000 });
+
+    avanzar();
+    avanzar();
+    avanzar();
+
+    solicitarEnvio();
+    confirmarEnvio();
+
+    await waitFor(() => {
+      expect(api.postForm).toHaveBeenCalledTimes(1);
+    });
+
+    expect(eliminarBorrador).not.toHaveBeenCalled();
+
+    terminarGuardado();
+
+    expect(
+      await screen.findByText("INS-2026-99")
+    ).toBeInTheDocument();
+
+    expect(eliminarBorrador).toHaveBeenCalledTimes(1);
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 650)
+    );
+
+    expect(guardarBorrador).toHaveBeenCalledTimes(1);
+  });
+});

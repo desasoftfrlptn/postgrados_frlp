@@ -103,3 +103,81 @@ describe("Validaciones de documentos de inscripción", () => {
       .toBe("El archivo no puede superar los 5 MB.");
   });
 });
+
+import {
+  normalizarDocumento,
+  validarDniPasaporte,
+  validarNombrePersonal,
+  validarTelefonoInscripcion,
+} from "../src/modulos/inscripcion/validaciones";
+
+describe("Validaciones personales", () => {
+  it.each([
+    "44000000",
+    "4400000",
+    "44.000.000",
+    "AB123456",
+    "ab123456",
+  ])("acepta el documento %s", (documento) => {
+    expect(validarDniPasaporte(documento)).toBe(true);
+  });
+
+  it.each([
+    "",
+    "123",
+    "123456789",
+    "ABC",
+    "AB@123456",
+  ])("rechaza el documento inválido %s", (documento) => {
+    expect(validarDniPasaporte(documento)).toBe(false);
+  });
+
+  it("normaliza documentos antes de enviarlos", () => {
+    expect(normalizarDocumento(" 44.000.000 "))
+      .toBe("44000000");
+
+    expect(normalizarDocumento(" ab123456 "))
+      .toBe("AB123456");
+  });
+
+  it.each([
+    "María José",
+    "García-López",
+    "O'Connor",
+    "Müller",
+    "François",
+  ])("acepta nombres internacionales: %s", (nombre) => {
+    expect(validarNombrePersonal(nombre)).toBe(true);
+  });
+
+  it.each([
+    "",
+    "   ",
+    "12345",
+    "Juan123",
+    "---",
+  ])("rechaza nombres inválidos: %s", (nombre) => {
+    expect(validarNombrePersonal(nombre)).toBe(false);
+  });
+
+  it.each([
+    "2215551234",
+    "+54 221 5551234",
+    "+39 (06) 12345678",
+    "221-555-1234",
+  ])("acepta teléfonos válidos: %s", (telefono) => {
+    expect(validarTelefonoInscripcion(telefono))
+      .toBe(true);
+  });
+
+  it.each([
+    "",
+    "123",
+    "abcdef",
+    "1234567890123456",
+    "++542215551234",
+  ])("rechaza teléfonos inválidos: %s", (telefono) => {
+    expect(validarTelefonoInscripcion(telefono))
+      .toBe(false);
+  });
+});

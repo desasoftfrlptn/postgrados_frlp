@@ -532,4 +532,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-} 
+}
+/* Aviso sobre la persistencia local de datos personales. */
+.inscripcion-privacidad {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-left: 3px solid var(--color-secondary);
+  background: rgba(128, 128, 128, 0.08);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
