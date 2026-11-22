@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api } from "../../../shared/api/client";
-import imagenHero from "../../../imagenes/hero-home.png";
+import imagenHero from "../../../imagenes/hero-home.webp";
 
 import "./HomePage.css";
 

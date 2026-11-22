@@ -1,7 +1,8 @@
 
-import { useState, type FormEvent } from "react";
+import { useState, useCallback, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+import Captcha from "../components/Captcha";
 import { useAuth } from "../useAuth";
 import { obtenerRutaInicioPorRol } from "../rutasPorRol";
 import imagenFondo from "../../../imagenes/hero-inicio.jpg";
@@ -17,6 +18,13 @@ export default function LoginPage() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaVersion, setCaptchaVersion] = useState(0);
+
+  const manejarErrorCaptcha = useCallback(() => {
+    setCaptchaToken("");
+    setError("No se pudo cargar la verificación de seguridad.");
+  }, []);
 
   const handleSubmit = async (
     event: FormEvent<HTMLFormElement>
@@ -34,7 +42,11 @@ export default function LoginPage() {
       return;
     }
 
-    // CAPTCHA pendiente de reactivación y validación en Backend.
+    // Verificación de seguridad antes de iniciar sesión.
+    if (!captchaToken) {
+      setError("Completá la verificación CAPTCHA.");
+      return;
+    }
 
     try {
       setEnviando(true);
@@ -67,6 +79,8 @@ export default function LoginPage() {
       );
     } finally {
       setEnviando(false);
+      setCaptchaToken("");
+      setCaptchaVersion((actual) => actual + 1);
     }
   };
 
@@ -192,6 +206,12 @@ export default function LoginPage() {
         >
           ¿Olvidaste tu contraseña?
         </Link>
+
+        <Captcha
+          key={captchaVersion}
+          onVerify={setCaptchaToken}
+          onError={manejarErrorCaptcha}
+        />
 
         <button
           className="sesion-boton"

@@ -118,6 +118,7 @@ export default function FormularioInscripcion() {
 
   const [cargandoBorrador, setCargandoBorrador] = useState(true);
   const [numeroSeguimiento, setNumeroSeguimiento] = useState("");
+  const [mensajeCopia, setMensajeCopia] = useState("");
 
   const [cohortesDisponibles, setCohortesDisponibles] = useState<
     CohorteDisponible[]
@@ -618,9 +619,9 @@ const enviarFormulario = async () => {
 
 
   return (
-    <section className="inscripcion" aria-labelledby="titulo-inscripcion">
+    <section className={`inscripcion${inscripcionCompletada ? " inscripcion-completada" : ""}`} aria-labelledby="titulo-inscripcion">
       <section className="inscripcion-formulario">
-        <h1 id="titulo-inscripcion">Formulario de Inscripción</h1>
+        <h1 id="titulo-inscripcion">{inscripcionCompletada ? "¡Inscripción registrada correctamente!" : "Formulario de Inscripción"}</h1>
 
         {!inscripcionCompletada && (
         <ol
@@ -691,11 +692,29 @@ const enviarFormulario = async () => {
           alCerrar={() => setMensaje("")}
         />
 
-        {numeroSeguimiento && (
-          <div className="inscripcion-numero-seguimiento">
-            <h3>Número de preinscripción</h3>
-            <p>{numeroSeguimiento}</p>
-            <span>Conservá este número para consultar tu inscripción.</span>
+        {inscripcionCompletada && (
+          <div className="inscripcion-resultado">
+            <p>Recibimos tu solicitud y documentación. El Equipo de Conducción realizará la revisión correspondiente.</p>
+            {numeroSeguimiento && (
+              <div className="inscripcion-numero-seguimiento">
+                <h2>Número de seguimiento</h2>
+                <p>{numeroSeguimiento}</p>
+                <button type="button" onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(numeroSeguimiento);
+                    setMensajeCopia("Número copiado.");
+                  } catch {
+                    setMensajeCopia("No se pudo copiar automáticamente. Seleccioná y copiá el número.");
+                  }
+                }}>Copiar número</button>
+                <span role="status" aria-live="polite">{mensajeCopia}</span>
+              </div>
+            )}
+            <p>Conservá este número para consultar tu inscripción. La recepción de la solicitud no implica su aprobación.</p>
+            <div className="inscripcion-resultado-acciones">
+              <a className="inscripcion-consultar" href="/estado-inscripcion">Consultar estado de inscripción</a>
+              <a href="/">Volver al inicio</a>
+            </div>
           </div>
         )}
 

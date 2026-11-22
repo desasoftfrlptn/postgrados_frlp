@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { api, obtenerUrlArchivo } from "../../../shared/api/client";
 import TarjetaNoticia from "../componentes/tarjetasNoticias";
 import BarraLateral from "../componentes/BarraLateral";
-import imagenHero from "../../../imagenes/hero-home.png";
+import imagenHero from "../../../imagenes/hero-home.webp";
 
 import "./PaginaNoticias.css";
 

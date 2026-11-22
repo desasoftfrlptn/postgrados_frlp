@@ -14,7 +14,7 @@
       rgba(0, 31, 63, 0.9),
       rgba(0, 31, 63, 0.45)
     ),
-    url("../../../imagenes/hero-home.png");
+    url("../../../imagenes/hero-home.webp");
   background-size: cover;
   background-position: center 67%;
 }

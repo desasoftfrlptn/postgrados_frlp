@@ -1,7 +1,8 @@
 // Página para solicitar la recuperación de contraseña.
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../../../shared/api/client";
 import Captcha from "../components/Captcha";
 
 import imagenFondo from "../../../imagenes/hero-inicio.jpg";
@@ -13,8 +14,14 @@ export default function RecuperarContrasenaPage() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [ocupado, setOcupado] = useState(false);
+  const [version, setVersion] = useState(0);
+  const bloqueo = useRef(false);
+  const verificar = useCallback((token: string) => setCaptchaToken(token), []);
+  const falloCaptcha = useCallback(() => { setCaptchaToken(""); setError("No se pudo cargar el CAPTCHA"); }, []);
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (bloqueo.current) return;
 
     setMensaje("");
     setError("");
@@ -26,9 +33,12 @@ export default function RecuperarContrasenaPage() {
       return;
     }
 
-    setMensaje(
-      "Se enviaron las instrucciones al correo ingresado."
-    );
+    bloqueo.current = true; setOcupado(true);
+    try {
+      await api.post("/autenticacion/recuperar-contrasena", { correo_electronico: email.trim(), captcha: captchaToken });
+      setMensaje("Si la cuenta está habilitada, recibirás las instrucciones por correo. Revisá también el correo no deseado.");
+    } catch (e) { setError(e instanceof Error ? e.message : "No se pudo solicitar la recuperación."); }
+    finally { bloqueo.current = false; setOcupado(false); setCaptchaToken(""); setVersion(v => v + 1); }
   };
 
   return (
@@ -80,24 +90,17 @@ export default function RecuperarContrasenaPage() {
         />
 
         <Captcha
-          onVerify={(token: string) => {
-            setCaptchaToken(token);
-
-            if (token) {
-              setError("");
-            }
-          }}
-          onError={() => {
-            setCaptchaToken("");
-            setError("No se pudo cargar el CAPTCHA");
-          }}
+          key={version}
+          onVerify={verificar}
+          onError={falloCaptcha}
         />
 
         <button
           className="sesion-boton"
           type="submit"
+          disabled={ocupado}
         >
-          Recuperar
+          {ocupado ? "Enviando…" : "Recuperar"}
         </button>
 
         <Link

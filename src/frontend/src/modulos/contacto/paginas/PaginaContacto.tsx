@@ -1,6 +1,6 @@
 import { useOutletContext } from "react-router-dom";
 
-import imagenHero from "../../../imagenes/hero-home.png";
+import imagenHero from "../../../imagenes/hero-home.webp";
 
 import type {
   ContactoPublicoContexto,

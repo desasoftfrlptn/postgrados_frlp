@@ -123,7 +123,7 @@ export default function Captcha({
     <div
       className="sesion-captcha"
       ref={captchaRef}
-      aria-label="VerificaciÃ³n CAPTCHA"
+      aria-label="Verificación CAPTCHA"
     />
   );
 }
