@@ -9,6 +9,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.compartido.documentos import normalizar_documento
+
 from src.inscripcion.puertos import (
     LegajoRepositorio,
 )
@@ -36,23 +38,20 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
         email: str,
         dni: str,
     ) -> bool:
-        query = select(
-            LegajoORM
-        ).where(
-            or_(
-                LegajoORM.correo_electronico == email,
-                LegajoORM.dni_pasaporte == dni,
+        consulta = (
+            select(LegajoORM.id)
+            .where(
+                or_(
+                    func.lower(LegajoORM.correo_electronico)
+                    == email.strip().lower(),
+                    LegajoORM.dni_pasaporte
+                    == normalizar_documento(dni),
+                )
             )
+            .limit(1)
         )
 
-        resultado = await self.session.execute(
-            query
-        )
-
-        return (
-            resultado.scalars().first()
-            is not None
-        )
+        return await self.session.scalar(consulta) is not None
 
 
     async def obtener_por_email_o_dni(
@@ -112,13 +111,17 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
         self,
         email: str,
     ) -> bool:
-        consulta = select(LegajoORM.id).where(
-            LegajoORM.correo_electronico == email.strip()
+        consulta = (
+            select(LegajoORM.id)
+            .where(
+                func.lower(LegajoORM.correo_electronico)
+                == email.strip().lower()
+            )
+            .limit(1)
         )
 
-        resultado = await self.session.execute(consulta)
+        return await self.session.scalar(consulta) is not None
 
-        return resultado.scalar_one_or_none() is not None
 
     async def existe_dni_en_cohorte(
         self,
@@ -126,7 +129,7 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
         cohorte_id: UUID,
     ) -> bool:
         consulta = select(LegajoORM.id).where(
-            LegajoORM.dni_pasaporte == dni.strip(),
+            LegajoORM.dni_pasaporte == normalizar_documento(dni),
             LegajoORM.cohorte_id == cohorte_id,
         )
 
@@ -168,7 +171,7 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
             )
         if dni and dni.strip():
             consulta = consulta.where(
-                LegajoORM.dni_pasaporte == dni.strip()
+                LegajoORM.dni_pasaporte == normalizar_documento(dni)
             )
 
         if apellido and apellido.strip():

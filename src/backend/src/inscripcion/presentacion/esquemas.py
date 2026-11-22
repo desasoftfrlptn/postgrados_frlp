@@ -60,6 +60,50 @@ class LegajoCrear(BaseModel):
 
         return valores
 
+    @field_validator(
+        "apellido",
+        "nombre",
+        "nacionalidad",
+        "telefono_movil",
+        "pais",
+        "forma_conocio_ofertas",
+    )
+    @classmethod
+    def validar_longitud_100(cls, valor):
+        if len(valor) > 100:
+            raise ValueError(
+                "El campo no puede superar los 100 caracteres."
+            )
+        return valor
+
+    @field_validator(
+        "carrera_elegida",
+        "provincia",
+        "ciudad",
+        "titulo_anterior",
+        "universidad_anterior",
+    )
+    @classmethod
+    def validar_longitud_200(cls, valor):
+        if len(valor) > 200:
+            raise ValueError(
+                "El campo no puede superar los 200 caracteres."
+            )
+        return valor
+
+    @field_validator(
+        "correo_electronico",
+        "correo_alternativo",
+        "domicilio",
+    )
+    @classmethod
+    def validar_longitud_255(cls, valor):
+        if valor is not None and len(valor) > 255:
+            raise ValueError(
+                "El campo no puede superar los 255 caracteres."
+            )
+        return valor
+
     @field_validator("dni_pasaporte")
     @classmethod
     def validar_dni_pasaporte(cls, valor):

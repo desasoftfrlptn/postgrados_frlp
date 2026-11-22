@@ -4,6 +4,8 @@ from fastapi import HTTPException
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.compartido.documentos import normalizar_documento
+
 from src.inscripcion.infraestructura.cohortes_modelos import (
     CohorteORM,
 )
@@ -28,7 +30,7 @@ async def validar_inscripcion_no_duplicada(
     dni_pasaporte: str,
     cohorte_id: UUID,
 ) -> None:
-    dni = dni_pasaporte.strip()
+    dni = normalizar_documento(dni_pasaporte)
     correo = correo_electronico.strip().lower()
 
     # Serializar las inscripciones de un mismo documento.

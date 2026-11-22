@@ -983,3 +983,28 @@ describe("Concurrencia del guardado de inscripción", () => {
     expect(guardarBorrador).toHaveBeenCalledTimes(1);
   });
 });
+
+it("impide avanzar con un apellido demasiado largo", async () => {
+  prepararBorrador();
+
+  await abrirFormularioCompleto();
+
+  fireEvent.change(
+    screen.getByLabelText(/^Apellido/),
+    {
+      target: {
+        value: "A".repeat(101),
+      },
+    }
+  );
+
+  avanzar();
+
+  expect(
+    screen.getByText(
+      "El campo apellido no puede superar los 100 caracteres."
+    )
+  ).toBeInTheDocument();
+
+  expect(api.postForm).not.toHaveBeenCalled();
+});

@@ -17,6 +17,8 @@ import {
   validarNombrePersonal,
   validarTelefonoInscripcion,
   normalizarDocumento,
+  LIMITES_DATOS_INSCRIPCION,
+  validarLongitud,
 } from "../validaciones";
 
 import "./FormularioInscripcion.css";
@@ -375,6 +377,21 @@ export default function FormularioInscripcion() {
 
   // Valida los datos antes de avanzar o enviar la inscripción.
   const validarDatosPersonales = (): string | null => {
+    const valores = {
+      ...datos,
+      pais: datos.pais === "Otro" ? otroPais : datos.pais,
+    };
+
+    for (const [campo, limite] of Object.entries(
+      LIMITES_DATOS_INSCRIPCION
+    )) {
+      const valor = valores[campo as keyof typeof valores];
+
+      if (!validarLongitud(valor, limite)) {
+        return `El campo ${campo.replaceAll("_", " ")} no puede superar los ${limite} caracteres.`;
+      }
+    }
+
     const obligatorios = [
       [datos.apellido, "apellido"],
       [datos.nombre, "nombre"],

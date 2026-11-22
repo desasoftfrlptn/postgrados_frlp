@@ -335,6 +335,30 @@ async def eliminar_calificacion_estudiante(
         db,
     )
 
+async def obtener_alumno_actual(
+    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(
+        credenciales.credentials,
+        db,
+    )
+
+    await db.refresh(usuario, ["rol"])
+
+    if (
+        not usuario.activo
+        or usuario.rol is None
+        or usuario.rol.nombre != "ALUMNO"
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Se requieren permisos de estudiante.",
+        )
+
+    return usuario
+
+
 @enrutador.post(
     "/{seminario_id}/mi-inscripcion",
     response_model=CursadaEstudianteRespuesta,
@@ -342,10 +366,9 @@ async def eliminar_calificacion_estudiante(
 )
 async def inscribirme_en_seminario(
     seminario_id: UUID,
-    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    usuario=Depends(obtener_alumno_actual),
     db: AsyncSession = Depends(get_db),
 ):
-    usuario = await obtener_usuario_actual(credenciales.credentials, db)
     return await autoinscribir_estudiante_seminario(
         seminario_id,
         usuario.correo_electronico,
@@ -360,10 +383,9 @@ async def inscribirme_en_seminario(
 )
 async def desinscribirme_de_seminario(
     seminario_id: UUID,
-    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    usuario=Depends(obtener_alumno_actual),
     db: AsyncSession = Depends(get_db),
 ):
-    usuario = await obtener_usuario_actual(credenciales.credentials, db)
     await autodesinscribir_estudiante_seminario(
         seminario_id,
         usuario.correo_electronico,

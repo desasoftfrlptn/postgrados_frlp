@@ -181,3 +181,33 @@ describe("Validaciones personales", () => {
       .toBe(false);
   });
 });
+
+import {
+  validarLongitud,
+} from "../src/modulos/inscripcion/validaciones";
+
+describe("Límites de longitud de inscripción", () => {
+  it.each([100, 200, 255])(
+    "acepta exactamente %s caracteres",
+    (limite) => {
+      expect(
+        validarLongitud("A".repeat(limite), limite)
+      ).toBe(true);
+    }
+  );
+
+  it.each([100, 200, 255])(
+    "rechaza valores superiores a %s caracteres",
+    (limite) => {
+      expect(
+        validarLongitud("A".repeat(limite + 1), limite)
+      ).toBe(false);
+    }
+  );
+
+  it("ignora los espacios exteriores", () => {
+    expect(
+      validarLongitud("  Nombre  ", 6)
+    ).toBe(true);
+  });
+});

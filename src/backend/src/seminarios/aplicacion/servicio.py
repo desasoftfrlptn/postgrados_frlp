@@ -3,8 +3,17 @@ from datetime import date
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
+from src.compartido.documentos import normalizar_documento
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.inscripcion.infraestructura.cohortes_modelos import CohorteORM
+from src.seminarios.aplicacion.legajos import (
+    ESTADOS_HABILITADOS_CURSADA,
+    consulta_legajos_academicos,
+    obtener_legajo_academico,
+)
+
 
 
 from src.inscripcion.infraestructura.orm_modelos import(
@@ -457,29 +466,60 @@ async def inscribir_alumno_seminario(
     docente_id: UUID,
     db: AsyncSession,
 ) -> AlumnoSeminarioRespuesta:
-    await verificar_seminario_docente(seminario_id, docente_id, db)
+    seminario = await verificar_seminario_docente(
+        seminario_id, docente_id, db
+    )
 
-    legajo = None
+    if not seminario.activo:
+        raise HTTPException(
+            status_code=409,
+            detail="El seminario no está activo.",
+        )
+
     if legajo_id is not None:
         legajo = await db.get(LegajoORM, legajo_id)
-    elif dni_pasaporte and dni_pasaporte.strip():
-        dni_limpio = dni_pasaporte.strip().replace(".", "")
-        legajo = await db.scalar(
-            select(LegajoORM).where(
-                LegajoORM.dni_pasaporte == dni_limpio
+
+        if legajo is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Legajo no encontrado.",
             )
+
+        cohorte = (
+            await db.get(CohorteORM, legajo.cohorte_id)
+            if legajo.cohorte_id is not None
+            else None
         )
 
-    if legajo is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No se encontró un legajo registrado con ese DNI.",
+        if (
+            cohorte is None
+            or cohorte.carrera_id != seminario.carrera_id
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "El legajo no corresponde a la carrera "
+                    "del seminario."
+                ),
+            )
+
+        if legajo.estado not in ESTADOS_HABILITADOS_CURSADA:
+            raise HTTPException(
+                status_code=409,
+                detail="El legajo no está habilitado para cursar.",
+            )
+
+    elif dni_pasaporte and dni_pasaporte.strip():
+        legajo = await obtener_legajo_academico(
+            db=db,
+            dni=dni_pasaporte,
+            carrera_id=seminario.carrera_id,
         )
 
-    if legajo.estado in ("RECHAZADO", "BAJA"):
+    else:
         raise HTTPException(
-            status_code=400,
-            detail=f"No se puede inscribir al estudiante porque su legajo está en estado {legajo.estado}.",
+            status_code=422,
+            detail="Ingresá un DNI o identificador de legajo.",
         )
 
     existente = await db.scalar(
@@ -715,12 +755,11 @@ async def listar_cursada_estudiante(
     dni: str,
     db: AsyncSession,
 ) -> list[CursadaEstudianteRespuesta]:
-    legajo = await db.scalar(select(LegajoORM).where(
-        LegajoORM.correo_electronico == email,
-        LegajoORM.dni_pasaporte == dni,
-    ))
-    if legajo is None:
-        return []
+    legajos_propios = select(LegajoORM.id).where(
+        func.lower(LegajoORM.correo_electronico)
+        == email.strip().lower(),
+        LegajoORM.dni_pasaporte == normalizar_documento(dni),
+    )
 
     consulta = (
         select(InscripcionSeminarioORM, SeminarioORM, CarreraORM)
@@ -732,7 +771,7 @@ async def listar_cursada_estudiante(
             CarreraORM,
             SeminarioORM.carrera_id == CarreraORM.id,
         )
-        .where(InscripcionSeminarioORM.legajo_id == legajo.id)
+        .where(InscripcionSeminarioORM.legajo_id.in_(legajos_propios))
         .order_by(SeminarioORM.fecha_inicio.desc())
     )
 
@@ -833,21 +872,15 @@ async def listar_seminarios_disponibles_estudiante(
     dni: str,
     db: AsyncSession,
 ) -> list[SeminarioRespuesta]:
-    legajo = await db.scalar(
-        select(LegajoORM).where(
-            LegajoORM.correo_electronico == email,
-            LegajoORM.dni_pasaporte == dni,
-        )
+    carreras_habilitadas = consulta_legajos_academicos(
+        dni=dni,
+        email=email,
+    ).with_only_columns(CohorteORM.carrera_id)
+
+    consulta = select(SeminarioORM).where(
+        SeminarioORM.activo.is_(True),
+        SeminarioORM.carrera_id.in_(carreras_habilitadas),
     )
-    consulta = select(SeminarioORM).where(SeminarioORM.activo == True)
-    if legajo is not None and legajo.carrera_elegida:
-        carrera = await db.scalar(
-            select(CarreraORM).where(
-                CarreraORM.nombre == legajo.carrera_elegida.strip()
-            )
-        )
-        if carrera is not None:
-            consulta = consulta.where(SeminarioORM.carrera_id == carrera.id)
 
     resultado = await db.execute(consulta.order_by(SeminarioORM.fecha_inicio))
     seminarios = list(resultado.scalars().all())
@@ -864,29 +897,20 @@ async def autoinscribir_estudiante_seminario(
     dni: str,
     db: AsyncSession,
 ) -> CursadaEstudianteRespuesta:
-    legajo = await db.scalar(
-        select(LegajoORM).where(
-            LegajoORM.correo_electronico == email,
-            LegajoORM.dni_pasaporte == dni,
-        )
-    )
-    if legajo is None:
-        raise HTTPException(
-            status_code=404,
-            detail="No tenés un legajo registrado para inscribirte.",
-        )
-    if legajo.estado in ("RECHAZADO", "BAJA"):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Tu legajo está en estado {legajo.estado} y no permite inscripciones.",
-        )
-
     seminario = await db.get(SeminarioORM, seminario_id)
+
     if seminario is None or not seminario.activo:
         raise HTTPException(
             status_code=404,
             detail="El seminario seleccionado no está disponible.",
         )
+
+    legajo = await obtener_legajo_academico(
+        db=db,
+        dni=dni,
+        email=email,
+        carrera_id=seminario.carrera_id,
+    )
 
     existente = await db.scalar(
         select(InscripcionSeminarioORM).where(
@@ -933,21 +957,37 @@ async def autodesinscribir_estudiante_seminario(
     dni: str,
     db: AsyncSession,
 ) -> None:
-    legajo = await db.scalar(
-        select(LegajoORM).where(
-            LegajoORM.correo_electronico == email,
-            LegajoORM.dni_pasaporte == dni,
+    consulta = (
+        select(InscripcionSeminarioORM)
+        .join(
+            LegajoORM,
+            InscripcionSeminarioORM.legajo_id == LegajoORM.id,
         )
-    )
-    if legajo is None:
-        raise HTTPException(status_code=404, detail="Legajo no encontrado.")
-
-    inscripcion = await db.scalar(
-        select(InscripcionSeminarioORM).where(
+        .where(
             InscripcionSeminarioORM.seminario_id == seminario_id,
-            InscripcionSeminarioORM.legajo_id == legajo.id,
+            func.lower(LegajoORM.correo_electronico)
+            == email.strip().lower(),
+            LegajoORM.dni_pasaporte == normalizar_documento(dni),
+            LegajoORM.estado.in_(ESTADOS_HABILITADOS_CURSADA),
         )
+        .with_for_update(of=InscripcionSeminarioORM)
+        .limit(2)
     )
+
+    resultado = await db.execute(consulta)
+    inscripciones = resultado.scalars().all()
+
+    if len(inscripciones) > 1:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Existe más de una inscripción para este seminario. "
+                "Se requiere identificar el legajo correspondiente."
+            ),
+        )
+
+    inscripcion = inscripciones[0] if inscripciones else None
+
     if inscripcion is None:
         raise HTTPException(
             status_code=404,

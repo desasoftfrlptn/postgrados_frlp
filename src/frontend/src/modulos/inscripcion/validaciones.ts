@@ -40,3 +40,27 @@ export function validarTelefonoInscripcion(
     digitos.length <= 15
   );
 }
+
+export const LIMITES_DATOS_INSCRIPCION = {
+  apellido: 100,
+  nombre: 100,
+  nacionalidad: 100,
+  telefono: 100,
+  email: 255,
+  correo_alternativo: 255,
+  domicilio: 255,
+  pais: 100,
+  provincia: 200,
+  ciudad: 200,
+  titulo_anterior: 200,
+  universidad_anterior: 200,
+  tipo_carrera: 200,
+  forma_conocio_ofertas: 100,
+} as const;
+
+export function validarLongitud(
+  valor: string,
+  maximo: number
+): boolean {
+  return Array.from(valor.trim()).length <= maximo;
+}
