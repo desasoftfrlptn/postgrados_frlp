@@ -58,7 +58,7 @@ class AlumnoSeminarioRespuesta(BaseModel):
     carrera_elegida: str
     asistencias: int
     total_clases: int
-    porcentaje_asistencia: float
+    porcentaje_asistencia: float | None
     nota_final: Optional[float] = None
     estado: str
 
@@ -75,7 +75,7 @@ class CursadaEstudianteRespuesta(BaseModel):
     fecha_fin: date
     asistencias: int
     total_clases: int
-    porcentaje_asistencia: float
+    porcentaje_asistencia: float | None
     nota_final: Optional[float] = None
     estado: str
 
@@ -89,7 +89,7 @@ class AsistenciaFechaRespuesta(BaseModel):
     carrera_elegida: str
     fecha: date
     presente: bool
-    porcentaje_asistencia: float
+    porcentaje_asistencia: float | None
 
 class ColegaDocenteRespuesta(BaseModel):
     id: UUID

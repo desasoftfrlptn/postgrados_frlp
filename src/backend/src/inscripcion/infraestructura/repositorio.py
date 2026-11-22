@@ -8,6 +8,7 @@ from sqlalchemy import (
     update,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
 
 from src.compartido.documentos import normalizar_documento
 
@@ -65,13 +66,16 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
         """
 
         consulta = select(LegajoORM).where(
-            LegajoORM.correo_electronico == email,
-            LegajoORM.dni_pasaporte == dni,
-        )
+            func.lower(LegajoORM.correo_electronico) == email.strip().lower(),
+            LegajoORM.dni_pasaporte == normalizar_documento(dni),
+            LegajoORM.estado.in_(("ACTIVO", "EN_RIESGO")),
+        ).limit(2)
 
         resultado = await self.session.execute(consulta)
-
-        return resultado.scalars().first()
+        legajos = resultado.scalars().all()
+        if len(legajos) > 1:
+            raise HTTPException(status_code=409, detail="Hay más de un legajo activo. Se requiere seleccionar una carrera.")
+        return legajos[0] if legajos else None
 
 
     async def guardar(
@@ -131,11 +135,10 @@ class LegajoRepositorioPostgres(LegajoRepositorio):
         consulta = select(LegajoORM.id).where(
             LegajoORM.dni_pasaporte == normalizar_documento(dni),
             LegajoORM.cohorte_id == cohorte_id,
-        )
+            LegajoORM.estado != "BAJA",
+        ).limit(1)
 
-        resultado = await self.session.execute(consulta)
-
-        return resultado.scalar_one_or_none() is not None
+        return await self.session.scalar(consulta) is not None
 
     async def contar_legajos_por_cohorte(
         self,

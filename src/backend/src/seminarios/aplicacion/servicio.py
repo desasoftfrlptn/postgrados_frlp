@@ -1,5 +1,6 @@
 # Contiene la lógica necesaria para administrar seminarios.
 from datetime import date
+from math import isfinite
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -234,9 +235,9 @@ async def modificar_seminario(
     datos: SeminarioModificar,
     db: AsyncSession,
 ) -> SeminarioRespuesta:
-    seminario = await db.get(
-        SeminarioORM,
-        seminario_id,
+    seminario = await db.scalar(
+        select(SeminarioORM).where(SeminarioORM.id == seminario_id)
+        .with_for_update().execution_options(populate_existing=True)
     )
 
     if seminario is None:
@@ -271,6 +272,11 @@ async def modificar_seminario(
         db,
     )
 
+    if datos.carrera_id != seminario.carrera_id:
+        tiene_cursadas = await db.scalar(select(InscripcionSeminarioORM.id).where(
+            InscripcionSeminarioORM.seminario_id == seminario_id).limit(1))
+        if tiene_cursadas is not None:
+            raise HTTPException(409, "No se puede cambiar la carrera de un seminario con alumnos inscriptos.")
     seminario.nombre = nombre
     seminario.carrera_id = (
         datos.carrera_id
@@ -361,17 +367,17 @@ async def listar_seminarios_docente(
 def calcular_porcentaje_asistencia(
     asistencias: int,
     total_clases: int,
-) -> float:
+) -> float | None:
     if total_clases <= 0:
-        return 100.0
+        return None
     return round((asistencias / total_clases) * 100, 1)
 
 
 def validar_y_calcular_estado_nota(
     nota: float,
-    porcentaje_asistencia: float,
+    porcentaje_asistencia: float | None,
 ) -> tuple[float, str]:
-    if nota < 1 or nota > 10:
+    if not isfinite(nota) or nota < 1 or nota > 10:
         raise HTTPException(
             status_code=400,
             detail="La nota final debe estar entre 1 y 10.",
@@ -385,7 +391,9 @@ def validar_y_calcular_estado_nota(
         )
 
     # Regla de Negocio BR-003: Aprobado = Asistencia >= 75% AND Nota >= 4
-    if nota >= 4 and porcentaje_asistencia >= 75.0:
+    if nota >= 4 and porcentaje_asistencia is None:
+        estado = "CURSANDO"
+    elif nota >= 4 and porcentaje_asistencia is not None and porcentaje_asistencia >= 75.0:
         estado = "APROBADO"
     else:
         estado = "DESAPROBADO"
@@ -466,9 +474,12 @@ async def inscribir_alumno_seminario(
     docente_id: UUID,
     db: AsyncSession,
 ) -> AlumnoSeminarioRespuesta:
-    seminario = await verificar_seminario_docente(
-        seminario_id, docente_id, db
-    )
+    seminario = await db.scalar(select(SeminarioORM).where(SeminarioORM.id == seminario_id)
+        .with_for_update().execution_options(populate_existing=True))
+    if seminario is None:
+        raise HTTPException(404, "Seminario no encontrado.")
+    if seminario.docente_id != docente_id:
+        raise HTTPException(403, "No tenés permiso para acceder a este seminario.")
 
     if not seminario.activo:
         raise HTTPException(
@@ -568,10 +579,10 @@ async def desvincular_alumno_seminario(
             detail="El estudiante no está inscripto en este seminario.",
         )
 
-    if inscripcion.nota_final is not None:
+    if inscripcion.nota_final is not None or inscripcion.total_clases > 0:
         raise HTTPException(
             status_code=400,
-            detail="No se puede desvincular a un estudiante que ya tiene nota final registrada.",
+            detail="No se puede desvincular a un estudiante que ya tiene asistencia o nota final registrada.",
         )
 
     await db.delete(inscripcion)
@@ -600,9 +611,9 @@ async def registrar_calificacion_seminario(
         )
 
     legajo = await db.get(LegajoORM, legajo_id)
-    porcentaje = calcular_porcentaje_asistencia(
-        inscripcion.asistencias,
-        inscripcion.total_clases,
+    porcentaje = (
+        inscripcion.asistencias * 100 / inscripcion.total_clases
+        if inscripcion.total_clases > 0 else None
     )
 
     nota_validada, nuevo_estado = validar_y_calcular_estado_nota(
@@ -676,9 +687,9 @@ async def registrar_asistencia_clase(
                 registro_previo.presente = esta_presente
 
         if inscripcion.nota_final is not None:
-            porcentaje = calcular_porcentaje_asistencia(
-                inscripcion.asistencias,
-                inscripcion.total_clases,
+            porcentaje = (
+                inscripcion.asistencias * 100 / inscripcion.total_clases
+                if inscripcion.total_clases > 0 else None
             )
             _, nuevo_estado = validar_y_calcular_estado_nota(
                 inscripcion.nota_final,
@@ -897,7 +908,8 @@ async def autoinscribir_estudiante_seminario(
     dni: str,
     db: AsyncSession,
 ) -> CursadaEstudianteRespuesta:
-    seminario = await db.get(SeminarioORM, seminario_id)
+    seminario = await db.scalar(select(SeminarioORM).where(SeminarioORM.id == seminario_id)
+        .with_for_update().execution_options(populate_existing=True))
 
     if seminario is None or not seminario.activo:
         raise HTTPException(
@@ -945,7 +957,7 @@ async def autoinscribir_estudiante_seminario(
         fecha_fin=seminario.fecha_fin,
         asistencias=0,
         total_clases=0,
-        porcentaje_asistencia=100.0,
+        porcentaje_asistencia=None,
         nota_final=None,
         estado="CURSANDO",
     )

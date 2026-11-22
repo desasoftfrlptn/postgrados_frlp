@@ -519,7 +519,7 @@ async def aplicar_accion(
         await alertar_rol(db, "ADMIN", "Acceso académico pendiente" if matriculado else "Inscripción aprobada",
             f"{legajo.nombre} {legajo.apellido} · {legajo.numero_seguimiento}. " +
             ("Verificá o habilitá su cuenta." if matriculado else "Pendiente de matriculación."),
-            "/dashboard/administrador/usuarios")
+            f"/dashboard/administrador/usuarios/legajo/{legajo.id}")
     if cambio.estado_anterior != cambio.estado_nuevo:
         await alertar_alumno(db, legajo, "Actualización académica",
             f"{legajo.carrera_elegida}: nuevo estado {cambio.estado_nuevo}.", "/dashboard")

@@ -75,7 +75,7 @@ async def validar_inscripcion_no_duplicada(
         raise HTTPException(
             status_code=409,
             detail=(
-                "El correo electronico ya esta asociado "
+                "El correo electrónico ya está asociado "
                 "a otro documento."
             ),
         )
@@ -85,6 +85,7 @@ async def validar_inscripcion_no_duplicada(
         .where(
             LegajoORM.dni_pasaporte == dni,
             LegajoORM.cohorte_id == cohorte_id,
+            LegajoORM.estado != "BAJA",
         )
         .limit(1)
     )
@@ -92,7 +93,7 @@ async def validar_inscripcion_no_duplicada(
     if inscripcion_misma_cohorte is not None:
         raise HTTPException(
             status_code=409,
-            detail="Ya existe una inscripcion en esta cohorte.",
+            detail="Ya existe una inscripción para este documento en esta cohorte.",
         )
 
     inscripciones_misma_carrera = await db.scalar(

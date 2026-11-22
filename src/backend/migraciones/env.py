@@ -40,6 +40,7 @@ from src.inscripcion.infraestructura import (
 from src.conduccion import modelos as _conduccion
 from src.tesis import modelos as _tesis
 from src.alertas import modelos as _alertas
+from src.tutorias import modelos as _tutorias
 
 
 config = context.config

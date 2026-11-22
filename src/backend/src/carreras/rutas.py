@@ -15,6 +15,8 @@ from src.usuarios.servicio import (
     obtener_administrador_actual,
 )
 
+from src.carreras.asociaciones import consultar_asociaciones
+
 from src.carreras.servicio import (
     cambiar_estado_carrera,
     crear_carrera,
@@ -109,3 +111,11 @@ async def actualizar_estado_carrera(
         datos.activo,
         db,
     )
+
+@enrutador.get("/{carrera_id}/asociaciones")
+async def obtener_asociaciones_carrera(
+    carrera_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    return await consultar_asociaciones(carrera_id, db)

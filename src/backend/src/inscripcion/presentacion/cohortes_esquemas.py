@@ -11,6 +11,14 @@ class CohorteCrear(BaseModel):
     fecha_inicio: date | None = None
 
 
+class CohorteAnterior(CohorteCrear):
+    carrera_id: UUID | None = None
+
+
+class CohorteModificar(CohorteCrear):
+    anterior: CohorteAnterior
+
+
 class CohorteInscripcionModificar(BaseModel):
     abierta: bool
 

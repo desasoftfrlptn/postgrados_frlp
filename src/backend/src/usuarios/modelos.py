@@ -10,8 +10,10 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     String,
+    Integer,
+    Text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from src.compartido.conexion import Base
@@ -147,3 +149,12 @@ class HistorialAccesoORM(Base):
         "UsuarioORM",
         back_populates="historial",
     )
+
+# Datos personales actuales, separados del historial de inscripciones.
+class PerfilUsuarioORM(Base):
+    __tablename__ = "perfiles_usuario"
+
+    usuario_id = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    datos = Column(JSONB, nullable=False, default=dict)
+    foto = Column(Text, nullable=True)
+    version = Column(Integer, nullable=False, default=1)

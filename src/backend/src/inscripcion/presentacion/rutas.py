@@ -100,7 +100,7 @@ async def validar_pdf(
             detail=f"{nombre_documento} debe ser un archivo PDF.",
         )
 
-    contenido = await archivo.read()
+    contenido = await archivo.read(TAMANIO_MAXIMO_PDF + 1)
 
     if len(contenido) > TAMANIO_MAXIMO_PDF:
         raise HTTPException(
@@ -525,8 +525,9 @@ async def actualizar_mi_legajo(
             select(LegajoORM)
             .where(
                 LegajoORM.id == legajo_entidad.id,
-                LegajoORM.correo_electronico == usuario.correo_electronico,
-                LegajoORM.dni_pasaporte == usuario.dni,
+                func.lower(LegajoORM.correo_electronico) == usuario.correo_electronico.strip().lower(),
+                LegajoORM.dni_pasaporte == normalizar_documento(usuario.dni),
+                LegajoORM.estado.in_(("ACTIVO", "EN_RIESGO")),
             )
             .with_for_update()
             .execution_options(populate_existing=True)

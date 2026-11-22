@@ -7,7 +7,8 @@ from sqlalchemy import (
     ForeignKey,
     Text,
     Integer,
-    UniqueConstraint,
+    Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -17,7 +18,13 @@ from src.compartido.conexion import Base
 class LegajoORM(Base):
     __tablename__ = "legajos"
     __table_args__ = (
-        UniqueConstraint("cohorte_id", "dni_pasaporte", name="uq_legajos_cohorte_dni"),
+        Index(
+            "uq_legajos_cohorte_dni_sin_baja",
+            "cohorte_id", "dni_pasaporte",
+            unique=True,
+            postgresql_where=text("estado <> 'BAJA'"),
+        ),
+        Index("ix_legajos_correo_normalizado", text("lower(correo_electronico)")),
     )
 
     id = Column(
@@ -51,7 +58,6 @@ class LegajoORM(Base):
     correo_electronico = Column(
         String(255),
         nullable=False,
-        unique=True,
     )
 
     correo_alternativo = Column(String(255), nullable=False)

@@ -1,6 +1,9 @@
 # Define los datos de entrada y salida del módulo de autenticación.
 
 from uuid import UUID
+from typing import Literal
+
+RolPrivado = Literal["ADMIN", "ALUMNO", "COORDINADOR", "CPR", "DOCENTE"]
 
 from pydantic import (
     BaseModel,
@@ -30,10 +33,9 @@ class UsuarioCrear(BaseModel):
     apellido: str
     dni: str
     correo_electronico: EmailStr
-    contrasena: str = Field(
-        min_length=6
-    )
-    tipo_usuario: str
+    contrasena: str | None = Field(default=None, exclude=True)
+    tipo_usuario: RolPrivado
+    legajo_id: UUID | None = None
 
 
 class UsuarioModificar(BaseModel):
@@ -41,7 +43,7 @@ class UsuarioModificar(BaseModel):
     apellido: str
     dni: str
     correo_electronico: EmailStr
-    tipo_usuario: str
+    tipo_usuario: RolPrivado
 
 
 class UsuarioEstadoModificar(BaseModel):
@@ -57,6 +59,7 @@ class UsuarioRespuesta(BaseModel):
     tipo_usuario: str
     activo: bool
     debe_cambiar_contrasena: bool
+    correo_acceso_enviado: bool | None = None
 
 
 class CambiarContrasenaPeticion(BaseModel):

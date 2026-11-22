@@ -22,17 +22,14 @@ async def descargar_documento(
     usuario=Depends(usuario_actual),
 ):
     rol = usuario.rol.nombre
-    if rol not in {"COORDINADOR", "ASPIRANTE"}:
+    if rol != "COORDINADOR" or usuario.debe_cambiar_contrasena:
         raise HTTPException(status_code=403, detail="No tenés permiso para descargar documentos.")
 
     documento = await db.get(DocumentoLegajoORM, documento_id)
     if documento is None:
         raise HTTPException(status_code=404, detail="Documento no encontrado.")
     legajo = await db.get(LegajoORM, documento.legajo_id)
-    if legajo is None or (rol == "ASPIRANTE" and (
-        legajo.correo_electronico != usuario.correo_electronico
-        or legajo.dni_pasaporte != usuario.dni
-    )):
+    if legajo is None:
         raise HTTPException(status_code=404, detail="Documento no encontrado.")
 
     ruta = Path(documento.path).resolve()

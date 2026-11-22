@@ -148,3 +148,34 @@ async def modificar_tesis(tesis_id: UUID, datos: ModificarTesis, usuario=Depends
     await alertar_rol(db, "COORDINADOR", "Tesis actualizada", "CPR actualizó una tesis.", "/dashboard/conduccion/trabajos-finales")
     await db.commit()
     return registro(*fila)
+
+
+@router.get("/estudiantes")
+async def consultar_estudiantes_cpr(usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
+    exigir_rol(usuario, "CPR")
+    consulta = (select(LegajoORM, CohorteORM, CarreraORM, TesisORM)
+        .join(CohorteORM, CohorteORM.id == LegajoORM.cohorte_id)
+        .join(CarreraORM, CarreraORM.id == CohorteORM.carrera_id)
+        .outerjoin(TesisORM, TesisORM.legajo_id == LegajoORM.id)
+        .where(LegajoORM.estado.in_(ESTADOS))
+        .order_by(LegajoORM.apellido, LegajoORM.nombre))
+    filas = (await db.execute(consulta)).all()
+    return [{**candidato(l, c, carrera).model_dump(), "estado": l.estado,
+             "trabajo": "Aprobado" if t and t.fecha_aprobacion else "Registrado" if t else "Sin registro"}
+            for l, c, carrera, t in filas]
+
+
+@router.get("/docentes")
+async def consultar_docentes_cpr(usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
+    from src.seminarios.infraestructura.orm_modelos import SeminarioORM
+    from src.usuarios.modelos import UsuarioORM, RolORM
+    exigir_rol(usuario, "CPR")
+    consulta = (select(UsuarioORM.id, UsuarioORM.nombre, UsuarioORM.apellido, CarreraORM.nombre, SeminarioORM.nombre)
+        .join(RolORM, UsuarioORM.rol_id == RolORM.id)
+        .join(SeminarioORM, SeminarioORM.docente_id == UsuarioORM.id)
+        .join(CarreraORM, CarreraORM.id == SeminarioORM.carrera_id)
+        .where(RolORM.nombre == "DOCENTE", UsuarioORM.activo.is_(True), SeminarioORM.activo.is_(True))
+        .order_by(UsuarioORM.apellido, UsuarioORM.nombre, CarreraORM.nombre, SeminarioORM.nombre))
+    filas = (await db.execute(consulta)).all()
+    return [{"id": str(id), "docente": f"{apellido}, {nombre}", "carrera": carrera, "seminario": seminario}
+            for id, nombre, apellido, carrera, seminario in filas]

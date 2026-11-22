@@ -92,6 +92,19 @@ async def obtener_docente_actual(
     return usuario
 
 
+@enrutador.get("/consulta-conduccion")
+async def consulta_conduccion(
+    cohorte_id: UUID,
+    credenciales: HTTPAuthorizationCredentials = Depends(seguridad_bearer),
+    db: AsyncSession = Depends(get_db),
+):
+    usuario = await obtener_usuario_actual(credenciales.credentials, db)
+    if usuario.rol.nombre != "COORDINADOR" or usuario.debe_cambiar_contrasena:
+        raise HTTPException(403, "Consulta exclusiva de Conducción.")
+    from src.seminarios.aplicacion.consulta_conduccion import consultar_cursadas
+    return await consultar_cursadas(db, cohorte_id)
+
+
 @enrutador.get(
     "",
     response_model=list[SeminarioRespuesta],

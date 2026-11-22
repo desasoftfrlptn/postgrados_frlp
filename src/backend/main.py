@@ -130,3 +130,5 @@ app.include_router(noticias_rutas)
 app.include_router(cohortes_rutas)
 app.include_router(conduccion_rutas)
 app.include_router(eventos_rutas)
+from src.tutorias.rutas import router as tutorias_rutas
+app.include_router(tutorias_rutas)

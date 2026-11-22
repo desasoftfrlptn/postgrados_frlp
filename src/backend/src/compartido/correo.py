@@ -5,10 +5,34 @@ import ssl
 import smtplib
 
 from email.message import EmailMessage
+from html import escape
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 TAMANIO_MAXIMO_PDF = 5 * 1024 * 1024
+
+
+def renderizar_correo_institucional(asunto: str, contenido: str) -> str:
+    """Presentación compartida; los textos de usuarios nunca se interpretan como HTML."""
+    titulo = escape(asunto)
+    partes = []
+    base = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+    for linea in contenido.split("\n"):
+        segura = escape(linea)
+        if base and asunto.startswith(("Activación de cuenta |", "Recuperación de contraseña |")) and linea.startswith((base + "/activar-cuenta#token=", base + "/restablecer-contrasena#token=")) and urlsplit(linea).scheme in {"https", "http"}:
+            segura = f'<a href="{escape(linea, quote=True)}" style="display:inline-block;background:#341478;color:white;padding:14px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Establecer contraseña</a>'
+        partes.append(segura)
+    cuerpo = "<br>\n".join(partes)
+    return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;background:#eef1f5;font-family:Arial,sans-serif;color:#1e293b">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="16"><tr><td align="center">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:white;border:1px solid #dbe1e8;border-radius:12px">
+<tr><td style="background:#142c4e;color:white;padding:24px"><strong style="font-size:24px">UTN FRLP</strong><br>Departamento de Posgrado</td></tr>
+<tr><td style="padding:28px;overflow-wrap:anywhere"><h1 style="font-size:23px;color:#142c4e;margin:0 0 20px">{titulo}</h1><div style="font-size:16px;line-height:1.65">{cuerpo}</div></td></tr>
+<tr><td style="padding:20px;background:#f1f5f9;text-align:center;font-size:13px;line-height:1.6;color:#475569">Universidad Tecnológica Nacional<br>Facultad Regional La Plata<br>Comunicación del sistema de Posgrados</td></tr>
+</table></td></tr></table></body></html>"""
 
 
 def enviar_correo(
@@ -39,6 +63,7 @@ def enviar_correo(
         mensaje["Reply-To"] = responder_a
 
     mensaje.set_content(contenido)
+    mensaje.add_alternative(renderizar_correo_institucional(asunto, contenido), subtype="html")
 
     if ruta_pdf is not None:
         with Path(ruta_pdf).open("rb") as archivo:

@@ -10,11 +10,12 @@ from uuid import UUID, uuid4
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.compartido.documentos import normalizar_documento
 from src.usuarios.seguridad import (
     hash_password,
     verificar_password,
@@ -80,7 +81,7 @@ async def iniciar_sesion(
             )
         )
         .where(
-            UsuarioORM.correo_electronico
+            func.lower(UsuarioORM.correo_electronico)
             == correo.strip().lower()
         )
     )
@@ -126,6 +127,7 @@ def crear_token(
     contenido = {
         "sub": str(usuario_id),
         "tipo_usuario": tipo_usuario,
+        "finalidad": "sesion",
         "exp": vencimiento,
     }
 
@@ -170,6 +172,9 @@ async def obtener_usuario_actual(
             algorithms=[ALGORITHM],
             options={"require_exp": True, "require_sub": True},
         )
+
+        if contenido.get("finalidad", "sesion") != "sesion" or not isinstance(contenido.get("tipo_usuario"), str):
+            raise JWTError("Finalidad o rol de token incorrecto.")
 
         if (not isinstance(contenido["exp"], (int, float))
                 or isinstance(contenido["exp"], bool)
@@ -256,6 +261,9 @@ async def obtener_rol(
         .upper()
     )
 
+    if nombre not in {"ADMIN", "ALUMNO", "COORDINADOR", "CPR", "DOCENTE"}:
+        raise HTTPException(400, "El rol indicado no permite crear cuentas privadas.")
+
     rol = await db.scalar(
         select(RolORM).where(
             RolORM.nombre
@@ -312,7 +320,7 @@ async def crear_usuario(
     )
 
     dni_limpio = (
-        dni.strip()
+        normalizar_documento(dni)
     )
 
     nombre_limpio = (
@@ -338,7 +346,7 @@ async def crear_usuario(
 
     usuario_correo = await db.scalar(
         select(UsuarioORM).where(
-            UsuarioORM.correo_electronico
+            func.lower(UsuarioORM.correo_electronico)
             == correo
         )
     )
@@ -354,7 +362,7 @@ async def crear_usuario(
 
     usuario_dni = await db.scalar(
         select(UsuarioORM).where(
-            UsuarioORM.dni
+            func.upper(func.regexp_replace(UsuarioORM.dni, r"[.\s]", "", "g"))
             == dni_limpio
         )
     )
@@ -450,12 +458,12 @@ async def modificar_usuario(
     )
 
     dni_limpio = (
-        dni.strip()
+        normalizar_documento(dni)
     )
 
     usuario_mismo_correo = await db.scalar(
         select(UsuarioORM).where(
-            UsuarioORM.correo_electronico
+            func.lower(UsuarioORM.correo_electronico)
             == correo,
             UsuarioORM.id
             != usuario_id,
@@ -473,7 +481,7 @@ async def modificar_usuario(
 
     usuario_mismo_dni = await db.scalar(
         select(UsuarioORM).where(
-            UsuarioORM.dni
+            func.upper(func.regexp_replace(UsuarioORM.dni, r"[.\s]", "", "g"))
             == dni_limpio,
             UsuarioORM.id
             != usuario_id,

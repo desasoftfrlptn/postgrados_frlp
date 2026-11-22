@@ -28,12 +28,10 @@ from src.inscripcion.infraestructura.cohortes_repositorio import (
 )
 from src.inscripcion.presentacion.cohortes_esquemas import (
     CohorteCrear,
+    CohorteModificar,
     CohorteDisponible,
     CohorteInscripcionModificar,
     CohorteRespuesta,
-)
-from src.inscripcion.presentacion.rutas import (
-    coordinador_actual,
 )
 
 
@@ -167,3 +165,21 @@ async def modificar_inscripcion_controller(
         )
 
     return cohorte
+
+
+@enrutador.put("/{cohorte_id}", response_model=CohorteRespuesta)
+async def editar_cohorte_controller(
+    cohorte_id: UUID,
+    datos: CohorteModificar,
+    db: AsyncSession = Depends(get_db),
+    _usuario=Depends(administrador_o_coordinador_actual),
+):
+    repositorio = CohorteRepositorioPostgres(db)
+    try:
+        return await repositorio.editar_cohorte(cohorte_id, datos)
+    except HTTPException:
+        await db.rollback()
+        raise
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(409, "No se pudo guardar: nombre duplicado o datos relacionados.") from exc
