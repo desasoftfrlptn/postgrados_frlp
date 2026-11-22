@@ -877,7 +877,7 @@ export default function DocentesPage() {
 
       <div className="admin-filtros-academicos">
         <FiltroEstado valor={estadoFiltro} alCambiar={setEstadoFiltro} />
-        
+
         <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); }}>Limpiar filtros</button>
       </div>
       <p role="status" className="admin-resultado-filtros">{docentesFiltrados.length} de {docentes.length} resultados</p>
