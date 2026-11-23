@@ -1,0 +1,43 @@
+.sesion-acceso .sesion-acceso-formulario {
+  width: 440px;
+  background: #fff;
+  padding: 30px;
+  border-radius: 14px;
+}
+.sesion-acceso-formulario > input {
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #102238;
+  height: 44px;
+  border-color: #a0a9b4;
+}
+.sesion-acceso-ayuda {
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0 0 18px;
+}
+.sesion-acceso-visible {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.sesion-acceso-visible input { width: 18px; height: 18px; accent-color: var(--color-secondary); }
+.sesion-acceso-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  text-decoration: none;
+  text-align: center;
+}
+.sesion-acceso-exito { display: grid; justify-items: center; gap: 12px; text-align: center; color: #166534; }
+.sesion-acceso-exito p { color: #475569; margin: 0; font-size: 14px; }
+.sesion-acceso-check { display: grid; place-items: center; background: #dcfce7; width: 56px; height: 56px; border-radius: 50%; font-size: 30px; }
+.sesion-acceso-formulario .sesion-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px; font-size: 14px; }
+.sesion-acceso-formulario :is(input, button, a):focus-visible { outline: 2px solid #402780; outline-offset: 3px; }
+@media (max-width: 480px) { .sesion-acceso .sesion-acceso-formulario { padding: 22px; } }

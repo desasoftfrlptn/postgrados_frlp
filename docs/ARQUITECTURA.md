@@ -102,7 +102,7 @@ Dentro de cada módulo de dominio, Clean Architecture organiza las capas. Los do
 | **Linting / Formato** | Ruff + pre-commit | Ruff 0.4+ | Ruff reemplaza flake8 + isort + black con una sola herramienta, 100× más rápido. |
 | **Tareas programadas** | APScheduler | 3.x | Para los jobs diarios (recálculo de semáforo, recordatorios). Simple de integrar con FastAPI. |
 | **DevOps** | Docker + Docker Compose + GitHub Actions | Docker 26+ | Ambiente completamente reproducible. `docker compose up` levanta todo. |
-| **Email (dev)** | MailHog | latest | SMTP falso para desarrollo. Los emails se ven en `http://localhost:8025`. |
+| **Email** | Gmail SMTP | STARTTLS | Servicio externo de correo electrónico autenticado. |
 | **Dependencias** | Dependabot (GitHub) | — | Actualiza dependencias automáticamente. Se configura en `.github/dependabot.yml`. |
 
 ---
@@ -303,7 +303,7 @@ backend/
 │       │   ├── connection.py    ← Configuración de SQLAlchemy async engine
 │       │   └── session.py       ← FastAPI Dependency: get_db()
 │       ├── email/
-│       │   └── smtp_client.py   ← Cliente SMTP compartido (MailHog en dev, UTN en prod)
+│       │   └── correo.py        ← Servicio SMTP compartido mediante Gmail
 │       └── exceptions.py        ← Excepciones de dominio: LegajoNoEncontrado, etc.
 │
 ├── tests/

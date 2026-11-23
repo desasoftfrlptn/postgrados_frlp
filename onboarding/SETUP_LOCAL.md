@@ -78,7 +78,7 @@ Este comando descarga las imágenes y levanta cuatro servicios:
 postgrado-db        → PostgreSQL 16 (base de datos)
 postgrado-backend   → FastAPI en Python  (o NestJS, según tu stack)
 postgrado-frontend  → React 19 + Vite
-postgrado-mailhog   → Servidor de email falso para desarrollo
+Gmail SMTP          → Servicio externo de correo electrónico
 ```
 
 La primera vez puede tardar 3–5 minutos según tu conexión. Las siguientes veces son casi instantáneas porque las imágenes quedan en caché.
@@ -96,7 +96,7 @@ NAME              STATUS          PORTS
 postgrado-db          Up (healthy)    0.0.0.0:5432->5432/tcp
 postgrado-backend     Up              0.0.0.0:8000->8000/tcp
 postgrado-frontend    Up              0.0.0.0:3000->3000/tcp
-postgrado-mailhog     Up              0.0.0.0:1025->1025/tcp, 0.0.0.0:8025->8025/tcp
+
 ```
 
 > El campo **STATUS** debe decir **Up**. Si dice **Restarting** o **Exit**, algo salió mal → ir a Troubleshooting.
@@ -173,7 +173,7 @@ Abrí estos URLs en tu navegador:
 | `http://localhost:8000/docs` | Swagger UI — **stack FastAPI** (generado automáticamente) |
 | `http://localhost:8000/api` | Swagger UI — **stack NestJS** |
 | `http://localhost:8000/api/v1/health` | Responde `{"status": "ok", "stack": "fastapi"}` |
-| `http://localhost:8025` | MailHog: todos los emails del sistema aparecen acá |
+| Gmail SMTP | Envío de correos mediante el Backend autenticado |
 
 > **Tip:** Con FastAPI, el Swagger en `/docs` es la documentación viva de tu API. Podés probar los endpoints directamente desde ahí durante el desarrollo.
 
@@ -515,7 +515,7 @@ APLICACIÓN
 [ ] http://localhost:3000 muestra la pantalla de login
 [ ] http://localhost:3000/inscripcion muestra el formulario público
 [ ] http://localhost:8000/docs (FastAPI) o /api (NestJS) muestra el Swagger
-[ ] http://localhost:8025 muestra MailHog con la bandeja vacía
+[ ] El servicio SMTP de Gmail envía correctamente un correo de prueba
 [ ] Login con admin@postgrado.test / Admin1234! funciona sin errores de consola
 
 BASE DE DATOS
