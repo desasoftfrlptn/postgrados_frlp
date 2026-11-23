@@ -26,11 +26,8 @@ async def procesar_correos_periodicamente(
                     resultado,
                 )
 
-        except Exception as exc:
-            logger.error(
-                "Error procesando notificaciones: %s",
-                type(exc).__name__,
-            )
+        except Exception:
+            logger.exception("Error procesando notificaciones")
 
         try:
             await asyncio.wait_for(
