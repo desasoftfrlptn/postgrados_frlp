@@ -416,6 +416,14 @@ export default function FormularioInscripcion() {
       }
     }
 
+    if (!/\p{L}/u.test(datos.titulo_anterior.trim())) {
+      return "El título anterior debe contener al menos una letra.";
+    }
+
+    if (!/\p{L}/u.test(datos.universidad_anterior.trim())) {
+      return "La universidad anterior debe contener al menos una letra.";
+    }
+
     if (!validarNombrePersonal(datos.nombre)) {
       return "Ingresá un nombre válido.";
     }
