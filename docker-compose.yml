@@ -45,7 +45,8 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: "postgresql+asyncpg://${DB_USER:-postgrado_user}:${DB_PASSWORD:-postgrado_dev_password}@db:5432/${DB_NAME:-postgrado_dev}"      
+      DB_HOST: db
+      DB_PORT: "5432"
       SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-dev-secret-change-in-production}}
       STORAGE_PATH: /var/postgrado-storage
       ENVIRONMENT: development
