@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 TipoCarrera = Literal["Especializacion", "Maestria", "Doctorado"]
 TipoBeca = Literal["30", "100"]
@@ -135,7 +135,19 @@ class CohorteResponse(BaseModel):
     id: UUID
     anio: int
     nombre: str
-    abierta: bool
+    abierta: bool = Field(validation_alias=AliasChoices("abierta", "inscripcion_abierta"))
     fecha_inicio: Optional[date] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EstadisticasCohorteResponse(BaseModel):
+    """Ultimas tres cohortes. Inscriptos excluye BORRADOR; riesgo cuenta semaforos ROJO."""
+    cohorte_id: UUID
+    cohorte_nombre: str
+    anio: int
+    total_inscriptos: int
+    activos: int
+    graduados: int
+    en_riesgo: int
+    dados_de_baja: int

@@ -51,3 +51,13 @@ export function useExportarLegajos() {
     },
   });
 }
+
+
+export function useExportarLegajoPdf() {
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { blob, filename } = await legajosApi.exportarPdf(id);
+      saveBlob(blob, filename ?? `legajo-${id}.pdf`);
+    },
+  });
+}

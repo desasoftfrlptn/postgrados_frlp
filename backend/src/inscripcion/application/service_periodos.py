@@ -25,8 +25,8 @@ class PeriodoService:
     def __init__(self, repository: PeriodoRepository):
         self._repository = repository
 
-    async def vigente(self):
-        resultado = await self._repository.obtener_vigente(date.today())
+    async def vigente(self, cohorte_id: UUID | None = None):
+        resultado = await self._repository.obtener_vigente(date.today(), cohorte_id)
         if resultado is None:
             return {"abierto": False, "periodo": None, "cohorte_id": None}
 

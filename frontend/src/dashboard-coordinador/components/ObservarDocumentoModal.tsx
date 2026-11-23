@@ -2,157 +2,59 @@ import { useState } from "react";
 import VentanaEmergente from "@/shared/components/VentanaEmergente";
 import { Button } from "@/shared/components/Button";
 import { useObservarDocumento } from "../hooks/useDocumentos";
-import type { DocumentoConEstado, EstadoLegajo } from "@/shared/types/types";
-import { ETIQUETA_TIPO } from "@/shared/types/types";
-import { useActualizarEstado } from "@/shared/hooks/useEstado";
-
-type Accion = "OBSERVAR" | "MARCAR_FALTANTE";
+import { ETIQUETA_TIPO, type DocumentoConEstado } from "@/shared/types/types";
 
 interface ObservarDocumentoModalProps {
   doc: DocumentoConEstado | null;
   legajoId: string;
   onClose: () => void;
 }
+type Accion = "APROBAR" | "OBSERVAR" | "MARCAR_FALTANTE";
+const acciones: { value: Accion; label: string }[] = [
+  { value: "APROBAR", label: "Aprobar" },
+  { value: "OBSERVAR", label: "Observar" },
+  { value: "MARCAR_FALTANTE", label: "Marcar faltante" },
+];
 
-export function ObservarDocumentoModal({
-  doc,
-  legajoId,
-  onClose,
-}: ObservarDocumentoModalProps) {
+export function ObservarDocumentoModal({ doc, legajoId, onClose }: ObservarDocumentoModalProps) {
   const [accion, setAccion] = useState<Accion>("OBSERVAR");
   const [motivo, setMotivo] = useState("");
   const [errorMotivo, setErrorMotivo] = useState<string | null>(null);
-
-  const observar = useObservarDocumento();
-  const {
-    mutate: actualizarLegajo,
-    isPending,
-    isError: errorEstado,
-    error: detalleErrorEstado,
-    reset: resetEstado,
-  } = useActualizarEstado();
-
-  function handleCerrar() {
-    setAccion("OBSERVAR");
-    setMotivo("");
-    setErrorMotivo(null);
-    observar.reset();
-    resetEstado();
-    onClose();
+  const revisar = useObservarDocumento();
+  function cerrar() {
+    if (revisar.isPending) return;
+    revisar.reset(); setMotivo(""); setErrorMotivo(null); onClose();
   }
-
-  function handleGuardar() {
-    if (!doc) return;
-
-    if (motivo.trim().length === 0) {
-      setErrorMotivo("Contale al aspirante qué tiene que corregir.");
-      return;
+  function guardar() {
+    if (!doc || revisar.isPending) return;
+    if (accion !== "APROBAR" && !motivo.trim()) {
+      setErrorMotivo("Indicá qué debe corregir o volver a adjuntar el aspirante."); return;
     }
     setErrorMotivo(null);
-
-    observar.mutate(
-      { legajoId, docId: doc.id, accion, motivo: motivo.trim() },
-      {
-        onSuccess: () =>
-          actualizarLegajo(
-            { id: legajoId, estado: "OBSERVADO" as EstadoLegajo },
-            { onSuccess: handleCerrar },
-          ),
-      },
-    );
+    revisar.mutate({ legajoId, docId: doc.id, accion, motivo: accion === "APROBAR" ? undefined : motivo.trim() },
+      { onSuccess: () => { revisar.reset(); onClose(); } });
   }
-
   return (
-    <VentanaEmergente
-      isOpen={doc !== null}
-      onClose={handleCerrar}
-      title="Observar documento"
-    >
-      {doc && (
-        <div className="space-y-4">
-          <p className="text-sm text-ink-secondary">
-            Documento:{" "}
-            <span className="font-medium text-ink">
-              {ETIQUETA_TIPO[doc.tipo]}
-            </span>
-          </p>
-
-          {/* Selección de acción */}
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant={accion === "OBSERVAR" ? "primary" : "outline"}
-              className="flex-1"
-              onClick={() => setAccion("OBSERVAR")}
-            >
-              Observar
-            </Button>
-            <Button
-              type="button"
-              variant={accion === "MARCAR_FALTANTE" ? "danger" : "outline"}
-              className="flex-1"
-              onClick={() => setAccion("MARCAR_FALTANTE")}
-            >
-              Marcar faltante
-            </Button>
-          </div>
-          <p className="text-xs text-ink-muted">
-            {accion === "OBSERVAR"
-              ? "El documento queda guardado, pero el aspirante va a ver que tiene que corregirlo."
-              : "El documento se invalida por completo — el aspirante lo va a ver como no subido y tiene que volver a adjuntarlo."}
-          </p>
-
-          {/* Texto de observación */}
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor="motivo-observacion"
-              className="text-sm font-medium text-ink-secondary"
-            >
-              Texto de observación
-            </label>
-            <textarea
-              id="motivo-observacion"
-              rows={3}
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ej: falta el reverso legalizado del título."
-              aria-invalid={Boolean(errorMotivo)}
-            />
-            {errorMotivo && (
-              <span role="alert" className="text-xs text-semaforo-rojo">
-                {errorMotivo}
-              </span>
-            )}
-          </div>
-
-          {observar.isError && (
-            <p role="alert" className="text-sm text-semaforo-rojo">
-              No se pudo guardar: {observar.error.message}
-            </p>
-          )}
-
-          {/* El documento ya quedó observado pero falló el pase del legajo a OBSERVADO */}
-          {errorEstado && (
-            <p role="alert" className="text-sm text-semaforo-rojo">
-              El documento se guardó, pero no pudimos pasar el legajo a Observado:{" "}
-              {detalleErrorEstado?.message}
-            </p>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" onClick={handleCerrar}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleGuardar}
-              isLoading={observar.isPending || isPending}
-            >
-              Guardar
-            </Button>
-          </div>
+    <VentanaEmergente isOpen={doc !== null} onClose={cerrar} title="Revisar documento">
+      {doc && <div className="space-y-4">
+        <p className="text-sm text-ink">{ETIQUETA_TIPO[doc.tipo]}: {doc.nombre_original}</p>
+        <label htmlFor="accion-documento" className="block text-sm text-ink">Acción</label>
+        <select id="accion-documento" value={accion} disabled={revisar.isPending}
+          onChange={(e) => { setAccion(e.target.value as Accion); setErrorMotivo(null); }}>
+          {acciones.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+        </select>
+        {accion !== "APROBAR" && <>
+          <label htmlFor="motivo-documento" className="block text-sm text-ink">Motivo</label>
+          <textarea id="motivo-documento" value={motivo} maxLength={2000} disabled={revisar.isPending}
+            onChange={(e) => setMotivo(e.target.value)} rows={3} />
+          <p className="text-xs text-ink-muted">Se conserva el archivo recibido y el historial de revisiones.</p>
+        </>}
+        {(errorMotivo || revisar.isError) && <p role="alert" className="text-sm text-semaforo-rojo">{errorMotivo ?? revisar.error?.message}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={cerrar} disabled={revisar.isPending}>Cancelar</Button>
+          <Button onClick={guardar} isLoading={revisar.isPending}>Guardar revisión</Button>
         </div>
-      )}
+      </div>}
     </VentanaEmergente>
   );
 }

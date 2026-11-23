@@ -35,6 +35,8 @@ export function ejecutarRecalculoSemaforoDiario(
   const notificacionesGeneradas: Notificacion[] = [];
 
   const estudiantesActualizados = estudiantes.map((estudiante) => {
+    // Sin métricas reales no se puede inferir ni modificar el semáforo persistido.
+    if (estudiante.diasSinAvance === null || estudiante.seminariosAdeudados === null) return estudiante;
     const tipoCarrera = obtenerTipoCarrera(estudiante.carrera);
     const reglas = REGLAS_POR_CARRERA[tipoCarrera];
 
@@ -48,7 +50,7 @@ export function ejecutarRecalculoSemaforoDiario(
     ) {
       estadoCalculado = 'rojo';
       motivo = `${estudiante.diasSinAvance} días sin avance (máx. ${reglas.diasSinAvanceRojo}) o ${estudiante.seminariosAdeudados} seminarios adeudados`;
-    } 
+    }
     // 2. Evaluar si es AMARILLO
     else if (
       estudiante.diasSinAvance >= reglas.diasSinAvanceAmarillo ||

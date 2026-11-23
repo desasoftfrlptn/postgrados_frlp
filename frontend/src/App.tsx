@@ -78,6 +78,7 @@ export default function App() {
 
             {/* ── Solo coordinación: el backend limita listar/exportar legajos a este rol ── */}
             <Route element={<RequireAuth roles={ROLES_COORDINACION} />}>
+              <Route path="enlaces" element={<Dashboard path="/enlaces" />} />
               <Route
                 path="inscriptos"
                 element={<Dashboard path="/inscriptos" />}

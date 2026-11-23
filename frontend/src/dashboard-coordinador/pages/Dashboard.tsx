@@ -12,6 +12,7 @@ import type { Notificacion } from "@/AlertasNotificaciones/types/notificacion.ty
 import { NotificationsButton } from "@/shared/components/NotificationsButton";
 import { Desgranamiento } from "../components/Desgranamiento";
 import { FormularioInscripcion } from "@/Inscripcion/components/FormularioInscripcion";
+import EnlacesAccesoPage from "./EnlacesAccesoPage";
 import { useAuth } from "@/shared/auth/authContext";
 
 export function Dashboard({ path }: { path: string }) {
@@ -71,6 +72,8 @@ export function Dashboard({ path }: { path: string }) {
         {path === "/estadisticas" && <Desgranamiento />}
 
         {path === "/inscriptos" && <ListaInscriptos />}
+
+        {path === "/enlaces" && user.rol === "coordinador" && <EnlacesAccesoPage />}
 
         {path === "/inscriptos/nuevo" && (
           puedeInscribir ? (

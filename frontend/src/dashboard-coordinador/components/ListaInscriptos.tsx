@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, Download, Search, ArrowLeft } from "lucide-react";
+import { Eye, Download, Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { EstadoLegajo, TipoCarrera } from "@/shared/types/types";
 import { useExportarLegajos, useLegajos } from "../hooks/useLegajos";
@@ -30,7 +30,6 @@ function ListaInscriptos() {
     undefined,
   );
   const [page, setPage] = useState(1);
-  const [inscripto, setInscripto] = useState<string | undefined>(undefined);
 
   // La búsqueda y los filtros los resuelve el backend (antes se filtraba solo la página visible).
   // El apellido necesita al menos 3 letras: con menos, el backend lo rechaza y no se envía.

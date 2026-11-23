@@ -12,7 +12,9 @@
 // Si en main.py se monta con include_router(prefix="/api/v1") este default es correcto;
 // si no, definir VITE_API_BASE_URL.
 
-const BASE_URL = String(import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1").replace(/\/+$/, "");
+const BASE_URL = String(
+  import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_API_URL ?? "/api/v1",
+).replace(/\/+$/, "");
 
 /* ───────────────────────────── Errores ───────────────────────────── */
 
@@ -58,7 +60,7 @@ export class ApiError extends Error {
     this.fieldErrors = init.fieldErrors;
   }
 
-  get isNetworkError() { return this.statusCode === 0; }
+  get isNetworkError() { return this.statusCode === 0 && this.errorCode === "NETWORK_ERROR"; }
   get isUnauthorized() { return this.statusCode === 401; }
   get isForbidden() { return this.statusCode === 403; }
   get isNotFound() { return this.statusCode === 404; }
@@ -74,6 +76,7 @@ export const isApiError = (e: unknown): e is ApiError => e instanceof ApiError;
  * No tiene sentido reintentar 4xx (401/403/404/409/422/429): solo errores de red o 5xx.
  */
 export const shouldRetryQuery = (failureCount: number, error: unknown) => {
+  if (isApiError(error) && error.errorCode === "FEATURE_UNAVAILABLE") return false;
   if (failureCount >= 2) return false;
   if (isApiError(error)) return error.statusCode === 0 || error.statusCode >= 500;
   return true;

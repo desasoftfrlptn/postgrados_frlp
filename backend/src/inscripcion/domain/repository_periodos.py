@@ -36,9 +36,9 @@ class PeriodoRepository:
         await self._db.refresh(periodo)
         return periodo
 
-    async def obtener_vigente(self, hoy: date):
+    async def obtener_vigente(self, hoy: date, cohorte_id: UUID | None = None):
         """Devuelve el período en fecha cuya cohorte tiene la inscripción habilitada."""
-        result = await self._db.execute(
+        query = (
             select(PeriodoInscripcion, Cohorte.id)
             .join(Cohorte, Cohorte.id == PeriodoInscripcion.cohorte_id)
             .where(
@@ -49,4 +49,7 @@ class PeriodoRepository:
             .order_by(PeriodoInscripcion.fecha_abre.desc(), PeriodoInscripcion.created_at.desc())
             .limit(1)
         )
+        if cohorte_id is not None:
+            query = query.where(Cohorte.id == cohorte_id)
+        result = await self._db.execute(query)
         return result.first()

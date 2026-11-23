@@ -89,13 +89,13 @@ function EnlaceActivacion({ url }: { url: string }) {
 export const Workflow = ({ legajo }: WorkflowProps) => {
   const {
     data: documentos = [],
-    isPending: cargandoDocumentos,
+    isLoading: cargandoDocumentos,
     isError: errorDocumentos,
   } = useDocumentos(legajo.id);
 
-  const faltanDocs = useFaltanDocs(documentos, legajo.solicita_beca);
+  const faltanDocs = useFaltanDocs(documentos.filter((d) => d.estado !== "FALTANTE" && d.estado !== "OBSERVADO"), legajo.solicita_beca);
   const bloqueado =
-    legajo.estado === "PENDIENTE" &&
+    ["PENDIENTE", "EN_REVISION"].includes(legajo.estado) &&
     (cargandoDocumentos || errorDocumentos || faltanDocs);
   const siguiente = SIGUIENTE_ESTADO[legajo.estado];
   const anterior = ESTADO_ANTERIOR[legajo.estado];
