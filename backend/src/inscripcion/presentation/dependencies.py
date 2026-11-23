@@ -15,6 +15,11 @@ from src.inscripcion.application.service_periodos import PeriodoService
 async def get_periodo_service(db: AsyncSession = Depends(get_db)) -> PeriodoService:
     return PeriodoService(PeriodoRepository(db))
 
+async def get_cohorte_service(
+    db: AsyncSession = Depends(get_db),
+) -> CohorteService:
+    repository = PostgresCohorteRepository(db)
+    return CohorteService(repository)
 
 async def get_legajo_service(
     db: AsyncSession = Depends(get_db),
