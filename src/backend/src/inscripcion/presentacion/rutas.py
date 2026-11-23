@@ -1,4 +1,5 @@
 from pydantic import ValidationError
+import logging
 import hashlib
 import os
 from src.inscripcion.aplicacion.validar_duplicados import (
@@ -63,6 +64,8 @@ from src.usuarios.rutas import administrador_actual, usuario_actual
 from src.alertas.rutas import router as router_alertas
 from src.alertas.servicio import alertar_rol
 from src.tesis.rutas import router as router_tesis
+
+logger = logging.getLogger(__name__)
 
 
 enrutador = APIRouter(
@@ -405,6 +408,11 @@ async def inscribir_aspirante(
         await db.commit()
 
     except IntegrityError as exc:
+        logger.exception(
+            "Error de integridad al crear inscripción: %s",
+            exc.orig,
+        )
+
         await db.rollback()
 
         for ruta in archivos_guardados:

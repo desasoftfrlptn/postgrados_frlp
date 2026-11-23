@@ -49,6 +49,7 @@ services:
       SECRET_KEY: ${SECRET_KEY:-${JWT_SECRET:-dev-secret-change-in-production}}
       STORAGE_PATH: /var/postgrado-storage
       ENVIRONMENT: development
+      ADMIN_EMAIL: Desarrollowebutn2026@gmail.com
     ports:
       - "8000:8000"
     volumes:
