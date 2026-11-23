@@ -1569,7 +1569,16 @@ const enviarFormulario = async () => {
                 />
 
                 {documentos.formularioBeca && (
-                  <p>Archivo: {documentos.formularioBeca.name}</p>
+                  <p>
+                    Archivo: {documentos.formularioBeca.name}
+                    <br />
+                    Tamaño:{" "}
+                    {(
+                      documentos.formularioBeca.size /
+                      (1024 * 1024)
+                    ).toFixed(2)}{" "}
+                    MB
+                  </p>
                 )}
               </div>
               </fieldset>
