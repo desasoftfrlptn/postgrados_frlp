@@ -8,6 +8,7 @@ import type {
   PeriodoInscripcion,
   Rol,
   Semaforo,
+  Seminario,
   TipoBeca,
   TipoCarrera,
   TipoDocumento,
@@ -362,6 +363,8 @@ export interface AsistenciaUpdate {
 const rutaSeminario = (id: string) => `/seminarios/${enc(id)}`;
 
 export const seminariosApi = {
+  listar: (params: { nombre: string; page: number; limit: number }, signal?: AbortSignal) =>
+    api.get<{ data: Seminario[]; has_more: boolean }>("/seminarios", { params, signal }),
   estudiantes: (id: string, signal?: AbortSignal) =>
     api.get<PlanillaSeminario>(`${rutaSeminario(id)}/estudiantes`, { signal }),
   clases: (id: string, signal?: AbortSignal) =>

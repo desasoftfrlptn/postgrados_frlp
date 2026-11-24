@@ -62,6 +62,11 @@ class AsistenciaService:
     def __init__(self, repo: AsistenciaRepository):
         self.repo = repo
 
+    async def listar_seminarios(self, usuario: Usuario, nombre: str, page: int, limit: int) -> dict:
+        email_docente = usuario.email if usuario.rol == "docente" else None
+        seminarios = await self.repo.listar_seminarios(nombre.strip(), email_docente, page, limit)
+        return {"data": seminarios[:limit], "has_more": len(seminarios) > limit}
+
     async def _verificar_seminario(self, seminario_id: uuid.UUID, usuario: Usuario) -> None:
         """Las dos reglas que se repiten en todos los casos de uso."""
         seminario = await self.repo.obtener_seminario(seminario_id)

@@ -6,7 +6,7 @@ Capa INFRASTRUCTURE: el único lugar de este caso de uso que habla con la base.
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,21 @@ class AsistenciaRepository:
         self.db = db
 
     # ---------- Seminario y clases ----------
+
+    async def listar_seminarios(
+        self, nombre: str, email_docente: str | None, page: int, limit: int
+    ) -> list[Seminario]:
+        consulta = select(Seminario)
+        if email_docente is not None:
+            consulta = consulta.where(func.lower(Seminario.email_docente) == email_docente.lower())
+        if nombre:
+            consulta = consulta.where(Seminario.nombre.icontains(nombre, autoescape=True))
+        consulta = (
+            consulta.order_by(func.lower(Seminario.nombre), Seminario.id)
+            .offset((page - 1) * limit)
+            .limit(limit + 1)
+        )
+        return list(await self.db.scalars(consulta))
 
     async def obtener_seminario(self, seminario_id: uuid.UUID) -> Seminario | None:
         """El seminario, o None si no existe (el router lo convierte en 404)."""

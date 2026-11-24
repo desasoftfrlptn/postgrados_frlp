@@ -11,6 +11,23 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 
+class SeminarioResumen(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    nombre: str
+    codigo: str
+    horas_catedra: int
+    es_obligatorio: bool
+    docente: str
+    email_docente: str
+
+
+class PaginaSeminarios(BaseModel):
+    data: list[SeminarioResumen]
+    has_more: bool
+
+
 # ---------- Planilla (US-B-003) ----------
 
 class AlumnoPlanilla(BaseModel):

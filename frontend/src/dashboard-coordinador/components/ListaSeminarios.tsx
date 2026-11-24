@@ -1,38 +1,71 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/shared/components/Button";
-import { patronSeminarioId } from "@/shared/types/types";
+import { Spinner } from "@/shared/components/Spinner";
+import { useSeminarios } from "../hooks/useSeminarios";
 
 export default function ListaSeminarios() {
-  const [id, setId] = useState("");
-  const navigate = useNavigate();
+  const [nombre, setNombre] = useState("");
+  const [page, setPage] = useState(1);
+  const listado = useSeminarios(nombre.trim(), page);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <h1>Seminarios</h1>
-      <form
-        className="max-w-xl space-y-4 rounded-2xl border border-line bg-paper-surface p-4 shadow-card"
-        onSubmit={(event) => {
-          event.preventDefault();
-          navigate(`/seminarios/${id.trim().toLowerCase()}`);
-        }}
-      >
-        <p className="text-sm text-ink-secondary">
-          El catálogo todavía no está disponible. Ingresá el identificador del seminario para abrir su planilla.
-        </p>
-        <label className="block space-y-1 text-sm font-medium">
-          <span>Identificador del seminario (UUID)</span>
+      <div className="space-y-4 rounded-2xl border border-line bg-paper-surface p-4 shadow-card">
+        <label className="block max-w-md space-y-1 text-sm font-medium">
+          <span>Buscar por nombre</span>
           <input
             className="w-full"
-            value={id}
-            onChange={(event) => setId(event.target.value.trim())}
-            required
-            pattern={patronSeminarioId}
-            title="Ingresá un UUID válido"
+            type="search"
+            maxLength={150}
+            value={nombre}
+            onChange={(event) => {
+              setNombre(event.target.value);
+              setPage(1);
+            }}
           />
         </label>
-        <Button type="submit">Abrir seminario</Button>
-      </form>
+        {listado.isPending ? (
+          <p role="status" className="flex items-center gap-2 text-sm text-ink-muted">
+            <Spinner size="sm" /> Cargando seminarios…
+          </p>
+        ) : listado.isError ? (
+          <div className="space-y-2">
+            <p role="alert" className="text-sm text-semaforo-rojo">{listado.error.message}</p>
+            <Button variant="outline" onClick={() => void listado.refetch()}>Reintentar</Button>
+          </div>
+        ) : (
+          <>
+            {listado.data.data.length === 0 ? (
+              <p className="text-sm text-ink-muted">
+                {nombre.trim() ? "No se encontraron seminarios con ese nombre." : "No hay seminarios para mostrar."}
+              </p>
+            ) : (
+              <ul className="divide-y divide-line">
+                {listado.data.data.map((seminario) => (
+                  <li key={seminario.id}>
+                    <Link
+                      to={`/seminarios/${seminario.id}`}
+                      className="block rounded-lg px-3 py-3 hover:bg-paper-elevated focus-visible:outline"
+                    >
+                      <span className="block font-semibold text-brand-500">{seminario.nombre}</span>
+                      <span className="block text-sm text-ink-secondary">{seminario.codigo} · {seminario.docente}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {(page > 1 || listado.data.has_more) && (
+              <nav aria-label="Páginas de seminarios" className="flex flex-wrap items-center gap-3 text-sm">
+                <Button variant="outline" disabled={page === 1} onClick={() => setPage(page - 1)}>Anterior</Button>
+                <span>Página {page}</span>
+                <Button variant="outline" disabled={!listado.data.has_more} onClick={() => setPage(page + 1)}>Siguiente</Button>
+              </nav>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }

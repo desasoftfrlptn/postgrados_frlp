@@ -9,7 +9,7 @@ Los endpoints de US-B-002 siguen el contrato del front
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.carga_academica.application.asistencia_service import (
@@ -32,6 +32,7 @@ from src.carga_academica.presentation.schemas import (
     ClaseCreate,
     ClaseEstadoUpdate,
     ClaseResponse,
+    PaginaSeminarios,
     PlanillaResponse,
 )
 from src.shared.auth.dependencies import require_role
@@ -60,6 +61,17 @@ def get_asistencia_service(db: AsyncSession = Depends(get_db)) -> AsistenciaServ
 # Los errores que comparten todos los endpoints del seminario
 NO_ENCONTRADO = HTTPException(status.HTTP_404_NOT_FOUND, "Seminario no encontrado")
 SIN_PERMISO = HTTPException(status.HTTP_403_FORBIDDEN, "Solo podés gestionar tus seminarios")
+
+
+@router.get("", response_model=PaginaSeminarios)
+async def listar_seminarios(
+    nombre: str = Query(default="", max_length=150),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
+    usuario: Usuario = Depends(rol_permitido),
+    service: AsistenciaService = Depends(get_asistencia_service),
+):
+    return await service.listar_seminarios(usuario, nombre, page, limit)
 
 
 # ---------- US-B-003: planilla ----------
