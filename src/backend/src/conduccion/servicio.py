@@ -672,13 +672,40 @@ async def vencer_reservas(db, ahora=None):
     }
 
 async def eliminar_aspirante(db, legajo_id, usuario):
-    """Elimina solo admisiones sin historial académico. Conserva auditoría y numeración personal."""
-    from sqlalchemy import delete, update
+    """Punto de entrada del Coordinador; conserva sus permisos originales."""
     comprobar_coordinador(usuario)
-    legajo = await obtener_legajo(db, legajo_id, bloquear=True)
-    gestion = await obtener_gestion(db, legajo_id)
-    if legajo.estado not in {"PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"} or (gestion and gestion.fecha_matricula is not None):
-        raise HTTPException(409, "No se puede eliminar un legajo con historial de matrícula.")
+    return await _eliminar_admision(db, legajo_id, usuario)
+
+
+ESTADOS_ADMISION_ELIMINABLES = {"PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"}
+
+
+async def eliminar_admisiones_de_usuario(db, documento, administrador):
+    """Elimina admisiones sin historial académico; conserva matrículas vigentes. Sin commit."""
+    from src.compartido.documentos import normalizar_documento
+
+    if not administrador.rol or administrador.rol.nombre != "ADMIN":
+        raise HTTPException(403, "Solo administración puede eliminar las admisiones de un usuario.")
+    dni = normalizar_documento(documento)
+    if not dni:
+        return
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:clave, 0))"),
+                     {"clave": f"inscripcion:dni:{dni}"})
+    resultado = await db.execute(
+        select(LegajoORM).where(LegajoORM.dni_pasaporte == dni,
+                               LegajoORM.estado.in_(ESTADOS_ADMISION_ELIMINABLES))
+        .order_by(LegajoORM.id).with_for_update()
+    )
+    for legajo in resultado.scalars().all():
+        gestion = await obtener_gestion(db, legajo.id)
+        if gestion is not None and gestion.fecha_matricula is not None and legajo.estado != "BAJA":
+            continue
+        if await tiene_actividad_academica(db, legajo.id):
+            continue
+        await _eliminar_admision(db, legajo.id, administrador)
+
+
+async def tiene_actividad_academica(db, legajo_id):
     # Revisar toda relación académica registrada, incluso aquellas con borrado en cascada.
     for tabla in LegajoORM.metadata.tables.values():
         if tabla.name in {"gestion_legajos", "documentos_legajo"}:
@@ -687,15 +714,28 @@ async def eliminar_aspirante(db, legajo_id, usuario):
             if fk.target_fullname == "legajos.id":
                 existe = await db.scalar(select(fk.parent).where(fk.parent == legajo_id).limit(1))
                 if existe is not None:
-                    raise HTTPException(409, "El legajo tiene registros asociados y no se puede eliminar.")
+                    return True
+    return False
+
+
+async def _eliminar_admision(db, legajo_id, usuario):
+    """Regla compartida interna, sin commit; el llamador valida permisos."""
+    from sqlalchemy import delete, update
+    legajo = await obtener_legajo(db, legajo_id, bloquear=True)
+    gestion = await obtener_gestion(db, legajo_id)
+    if legajo.estado not in ESTADOS_ADMISION_ELIMINABLES or (gestion and gestion.fecha_matricula is not None and legajo.estado != "BAJA"):
+        raise HTTPException(409, "No se puede eliminar un legajo con historial de matrícula.")
+    if await tiene_actividad_academica(db, legajo_id):
+        raise HTTPException(409, "El legajo tiene registros asociados y no se puede eliminar.")
     documentos = select(DocumentoLegajoORM.id).where(DocumentoLegajoORM.legajo_id == legajo_id)
     # Cancelar correos pendientes de esta inscripción y preservar los ya enviados.
     await db.execute(delete(NotificacionConduccionORM).where(NotificacionConduccionORM.enviado.is_(False), NotificacionConduccionORM.documento_id.in_(documentos)))
-    await db.execute(delete(NotificacionConduccionORM).where(
-        NotificacionConduccionORM.enviado.is_(False),
-        NotificacionConduccionORM.destinatario == legajo.correo_electronico,
-        NotificacionConduccionORM.contenido.contains(legajo.numero_seguimiento, autoescape=True),
-    ))
+    if legajo.numero_seguimiento:
+        await db.execute(delete(NotificacionConduccionORM).where(
+            NotificacionConduccionORM.enviado.is_(False),
+            NotificacionConduccionORM.destinatario == legajo.correo_electronico,
+            NotificacionConduccionORM.contenido.contains(legajo.numero_seguimiento, autoescape=True),
+        ))
     await db.execute(update(NotificacionConduccionORM).where(NotificacionConduccionORM.documento_id.in_(documentos)).values(documento_id=None))
     registrar_auditoria(db, legajo_id=legajo_id, accion="ELIMINAR_ASPIRANTE", usuario=usuario, anterior={"estado": legajo.estado, "numero_seguimiento": legajo.numero_seguimiento})
     await db.execute(delete(DocumentoLegajoORM).where(DocumentoLegajoORM.legajo_id == legajo_id))

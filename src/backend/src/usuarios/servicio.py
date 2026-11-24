@@ -619,6 +619,9 @@ async def eliminar_usuario(
 
     try:
         from src.seminarios.infraestructura.orm_modelos import SeminarioORM
+        from src.conduccion.servicio import eliminar_admisiones_de_usuario
+
+        await eliminar_admisiones_de_usuario(db, usuario.dni, administrador)
         auditar_usuario(db, administrador, usuario, "ELIMINAR_USUARIO", estado_auditable(usuario))
         # El seminario se conserva, pero no admite nuevas cursadas hasta reasignar docente.
         await db.execute(update(SeminarioORM).where(SeminarioORM.docente_id == usuario_id)
@@ -639,6 +642,10 @@ async def eliminar_usuario(
                 "Verificá que las migraciones estén aplicadas."
             ),
         )
+
+    except Exception:
+        await db.rollback()
+        raise
 
 
 async def cambiar_contrasena_inicial(

@@ -798,7 +798,7 @@ export default function GestionInscripcion({
                   </button>
                 ),
               )}
-              {onEliminado && !gestion.fecha_matricula && ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"].includes(gestion.estado) && <button type="button" className="gestion-accion gestion-accion--dar_baja" disabled={bloqueado} onClick={() => setAccionPendiente("ELIMINAR")}>Eliminar aspirante</button>}
+              {onEliminado && (!gestion.fecha_matricula || gestion.estado === "BAJA") && ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"].includes(gestion.estado) && <button type="button" className="gestion-accion gestion-accion--dar_baja" disabled={bloqueado} onClick={() => setAccionPendiente("ELIMINAR")}>Eliminar aspirante</button>}
             </div>
 
             </section>
