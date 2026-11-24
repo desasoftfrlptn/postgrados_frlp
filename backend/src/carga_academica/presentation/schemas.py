@@ -7,8 +7,19 @@ y para mostrar los ejemplos en Swagger (/docs).
 from datetime import date
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from pydantic.alias_generators import to_camel
+
+
+class SeminarioCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    nombre: str = Field(min_length=1, max_length=150)
+    codigo: str = Field(min_length=1, max_length=20)
+    horas_catedra: int = Field(strict=True, ge=1, le=2_147_483_647)
+    es_obligatorio: bool
+    email_docente: EmailStr = Field(max_length=255)
+    fecha_limite_notas: date | None = None
 
 
 class SeminarioResumen(BaseModel):

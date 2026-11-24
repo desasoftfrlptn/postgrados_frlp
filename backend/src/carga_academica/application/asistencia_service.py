@@ -9,7 +9,7 @@ El % de asistencia lo calcula el front con esos datos.
 """
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
 from src.carga_academica.application.planilla_service import (
@@ -19,6 +19,14 @@ from src.carga_academica.application.planilla_service import (
 from src.carga_academica.domain.asistencia import puede_ver_planilla
 from src.carga_academica.infrastructure.asistencia_repository import AsistenciaRepository
 from src.shared.auth.orm_models import Usuario
+
+
+class CodigoSeminarioDuplicado(Exception):
+    pass
+
+
+class DocenteNoDisponible(Exception):
+    pass
 
 
 class ClaseDuplicada(Exception):
@@ -61,6 +69,28 @@ def armar_clase(clase, inscriptos: list[uuid.UUID], marcas: dict) -> dict:
 class AsistenciaService:
     def __init__(self, repo: AsistenciaRepository):
         self.repo = repo
+
+    async def crear_seminario(
+        self, *, nombre: str, codigo: str, horas_catedra: int, es_obligatorio: bool,
+        email_docente: str, fecha_limite_notas: date | None
+    ):
+        docente = await self.repo.buscar_docente_activo(email_docente)
+        if docente is None:
+            raise DocenteNoDisponible()
+        # El nombre de usuario puede ser más largo que el campo docente del seminario.
+        if len(docente.nombre) > 150:
+            raise DocenteNoDisponible()
+        vencimiento = (
+            datetime.combine(fecha_limite_notas, time(23, 59), ZoneInfo("America/Argentina/Buenos_Aires"))
+            if fecha_limite_notas else None
+        )
+        seminario = await self.repo.crear_seminario(
+            nombre=nombre, codigo=codigo, horas_catedra=horas_catedra,
+            es_obligatorio=es_obligatorio, docente=docente, fecha_limite_notas=vencimiento,
+        )
+        if seminario is None:
+            raise CodigoSeminarioDuplicado()
+        return seminario
 
     async def listar_seminarios(self, usuario: Usuario, nombre: str, page: int, limit: int) -> dict:
         email_docente = usuario.email if usuario.rol == "docente" else None

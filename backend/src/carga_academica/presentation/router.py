@@ -19,6 +19,8 @@ from src.carga_academica.application.asistencia_service import (
     ClaseFutura,
     ClaseNoDictada,
     ClaseNoEncontrada,
+    CodigoSeminarioDuplicado,
+    DocenteNoDisponible,
 )
 from src.carga_academica.application.planilla_service import (
     PlanillaService,
@@ -34,6 +36,8 @@ from src.carga_academica.presentation.schemas import (
     ClaseResponse,
     PaginaSeminarios,
     PlanillaResponse,
+    SeminarioCreate,
+    SeminarioResumen,
 )
 from src.shared.auth.dependencies import require_role
 from src.shared.auth.orm_models import Usuario
@@ -72,6 +76,22 @@ async def listar_seminarios(
     service: AsistenciaService = Depends(get_asistencia_service),
 ):
     return await service.listar_seminarios(usuario, nombre, page, limit)
+
+
+@router.post("", response_model=SeminarioResumen, status_code=status.HTTP_201_CREATED)
+async def crear_seminario(
+    datos: SeminarioCreate,
+    _: Usuario = Depends(require_role("coordinador", "admin")),
+    service: AsistenciaService = Depends(get_asistencia_service),
+):
+    try:
+        return await service.crear_seminario(**datos.model_dump())
+    except CodigoSeminarioDuplicado:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ya existe un seminario con ese código")
+    except DocenteNoDisponible:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Ingresá el correo de una cuenta docente activa con un nombre de hasta 150 caracteres"
+        )
 
 
 # ---------- US-B-003: planilla ----------

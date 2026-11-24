@@ -4,7 +4,7 @@ Capa INFRASTRUCTURE: el único lugar de este caso de uso que habla con la base.
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -18,12 +18,42 @@ from src.carga_academica.infrastructure.orm_models import (
 )
 
 
+from src.shared.auth.orm_models import Usuario
+
+
 class AsistenciaRepository:
     def __init__(self, db: AsyncSession):
         # La sesión llega desde afuera (inyección de dependencias), igual que en la planilla.
         self.db = db
 
     # ---------- Seminario y clases ----------
+
+    async def buscar_docente_activo(self, email: str) -> Usuario | None:
+        consulta = (
+            select(Usuario)
+            .where(func.lower(Usuario.email) == email.lower(), Usuario.rol == "docente", Usuario.activo.is_(True))
+            .limit(2)
+        )
+        docentes = (await self.db.scalars(consulta)).all()
+        return docentes[0] if len(docentes) == 1 else None
+
+    async def crear_seminario(
+        self, *, nombre: str, codigo: str, horas_catedra: int, es_obligatorio: bool,
+        docente: Usuario, fecha_limite_notas: datetime | None
+    ) -> Seminario | None:
+        consulta = (
+            pg_insert(Seminario)
+            .values(
+                nombre=nombre, codigo=codigo, horas_catedra=horas_catedra,
+                es_obligatorio=es_obligatorio, docente=docente.nombre,
+                email_docente=docente.email, fecha_limite_notas=fecha_limite_notas,
+            )
+            .on_conflict_do_nothing(index_elements=[Seminario.codigo])
+            .returning(Seminario)
+        )
+        seminario = await self.db.scalar(consulta)
+        await self.db.commit()
+        return seminario
 
     async def listar_seminarios(
         self, nombre: str, email_docente: str | None, page: int, limit: int
