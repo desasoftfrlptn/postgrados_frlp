@@ -80,6 +80,7 @@ async def procesar_notificaciones():
                     notificacion.asunto,
                     notificacion.contenido,
                     ruta_pdf=ruta_pdf,
+                    responder_a=notificacion.responder_a
                 )
 
                 notificacion.enviado = True

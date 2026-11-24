@@ -416,6 +416,14 @@ export default function FormularioInscripcion() {
       }
     }
 
+    if (!/\p{L}/u.test(datos.titulo_anterior.trim())) {
+      return "El título anterior debe contener al menos una letra.";
+    }
+
+    if (!/\p{L}/u.test(datos.universidad_anterior.trim())) {
+      return "La universidad anterior debe contener al menos una letra.";
+    }
+
     if (!validarNombrePersonal(datos.nombre)) {
       return "Ingresá un nombre válido.";
     }
@@ -1306,7 +1314,16 @@ const enviarFormulario = async () => {
                 />
 
                 {documentos.dniPasaporte && (
-                  <p>Archivo: {documentos.dniPasaporte.name}</p>
+                  <p>
+                    Archivo: {documentos.dniPasaporte.name}
+                    <br />
+                    Tamaño:{" "}
+                    {(
+                      documentos.dniPasaporte.size /
+                      (1024 * 1024)
+                    ).toFixed(2)}{" "}
+                    MB
+                  </p>
                 )}
               </div>
 
@@ -1560,7 +1577,16 @@ const enviarFormulario = async () => {
                 />
 
                 {documentos.formularioBeca && (
-                  <p>Archivo: {documentos.formularioBeca.name}</p>
+                  <p>
+                    Archivo: {documentos.formularioBeca.name}
+                    <br />
+                    Tamaño:{" "}
+                    {(
+                      documentos.formularioBeca.size /
+                      (1024 * 1024)
+                    ).toFixed(2)}{" "}
+                    MB
+                  </p>
                 )}
               </div>
               </fieldset>

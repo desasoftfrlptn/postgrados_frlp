@@ -231,3 +231,8 @@ class NotificacionConduccionORM(Base):
         ),
         nullable=True,
     )
+    
+    responder_a = Column (
+        String(255),
+        nullable=True,
+    )

@@ -1,8 +1,5 @@
 from pydantic import ValidationError
-from src.inscripcion.aplicacion.notificaciones import (
-    encolar_confirmacion_inscripcion,
-)
-
+import logging
 import hashlib
 import json
 import os
@@ -74,6 +71,8 @@ from src.alertas.rutas import router as router_alertas
 from src.alertas.servicio import alertar_rol
 from src.tesis.rutas import router as router_tesis
 from src.trabajos_practicos.rutas import router as router_trabajos_practicos
+
+logger = logging.getLogger(__name__)
 
 
 enrutador = APIRouter(
@@ -409,16 +408,18 @@ async def inscribir_aspirante(
                     documento_id=documento.id,
                 )
 
-        # Registrar la notificacion en la misma transaccion.
-        encolar_confirmacion_inscripcion(db, nuevo_legajo)
         await alertar_rol(db, "COORDINADOR", "Nueva inscripción",
             f"Inscripción {nuevo_legajo.numero_seguimiento} pendiente de revisión.",
             f"/dashboard/conduccion/legajos/{nuevo_legajo.id}")
 
-        # Confirmar legajo, documentos y notificacion juntos.
         await db.commit()
 
     except IntegrityError as exc:
+        logger.exception(
+            "Error de integridad al crear inscripción: %s",
+            exc.orig,
+        )
+
         await db.rollback()
 
         for ruta in archivos_guardados:
