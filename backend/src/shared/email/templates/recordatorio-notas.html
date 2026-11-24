@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    .container { background: #fff; max-width: 600px; margin: auto; border-radius: 8px; overflow: hidden; }
+    .header { background: #003366; padding: 20px; text-align: center; }
+    .header img { height: 50px; }
+    .content { padding: 24px; color: #333; line-height: 1.5; }
+    .aviso { background: #fff8e1; border-left: 4px solid #ffa000; padding: 12px 16px; margin: 16px 0; }
+    .boton { display: inline-block; background: #003366; color: #fff; text-decoration: none;
+             padding: 12px 24px; border-radius: 4px; margin: 16px 0; }
+    .footer { font-size: 12px; color: #888; text-align: center; padding: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logo_url}}" alt="UTN FRLP">
+    </div>
+    <div class="content">
+      <h2>Recordatorio: notas pendientes de carga</h2>
+      <p>Hola {{nombre_docente}},</p>
+      <div class="aviso">
+        <p>Quedan <strong>{{alumnos_sin_nota}} alumnos sin nota</strong> en el seminario
+        <strong>{{nombre_seminario}}</strong>.</p>
+        <p>Fecha límite de cierre de actas: <strong>{{fecha_limite}}</strong></p>
+      </div>
+      <a href="{{link_planilla}}" class="boton">Cargar notas ahora</a>
+      <p>Si ya completaste la carga, ignorá este mensaje.</p>
+    </div>
+    <div class="footer">
+      Secretaría de Posgrado · UTN FRLP · Aviso automático del sistema
+    </div>
+  </div>
+</body>
+</html>
