@@ -15,10 +15,16 @@ from src.inscripcion.presentation.cohortes_controller import router as cohortes_
 from src.inscripcion.presentation.estadisticas_controller import router as estadisticas_router
 
 from src.config import CORS_ORIGINS
+from src.shared.tareas.programador import crear_programador
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Tareas diarias (US-CORE-010, US-B-005): arrancan con la app y se apagan con ella
+    programador = crear_programador()
+    programador.start()
     yield
+    programador.shutdown()
 
 app = FastAPI(title="Fenix Postgrado", version="0.1.0", lifespan=lifespan)
 

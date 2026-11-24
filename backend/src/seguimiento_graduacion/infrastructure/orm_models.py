@@ -31,5 +31,5 @@ class TrabajoFinal(Base):
     creado_por: Mapped[str] = mapped_column(String(255))  # email del CPR que lo cargó (auditoría)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
-        default=datetime.now(timezone.utc),
+        default=lambda: datetime.now(timezone.utc),
     )
