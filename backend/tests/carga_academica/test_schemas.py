@@ -23,10 +23,11 @@ def test_la_clase_sale_en_camel_case():
         id=uuid.uuid4(),
         seminario_id=uuid.uuid4(),
         fecha=date(2026, 3, 3),
+        dictada=None,
         asistencias=[{"legajo_id": uuid.uuid4(), "presente": True}],
     )
     # Act: FastAPI la convierte a JSON con by_alias=True
     json = clase.model_dump(mode="json", by_alias=True)
     # Assert: mismos nombres que el tipo `Clase` del front
-    assert set(json) == {"id", "seminarioId", "fecha", "asistencias"}
+    assert set(json) == {"id", "seminarioId", "fecha", "dictada", "asistencias"}
     assert set(json["asistencias"][0]) == {"legajoId", "presente"}

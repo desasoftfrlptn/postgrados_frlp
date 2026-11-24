@@ -11,7 +11,9 @@ import {
   BookOpen,
   Bell,
 } from "lucide-react";
-import type { MenuItem } from "@/shared/types/types";
+import type { MenuItem, Rol } from "@/shared/types/types";
+
+export const rolesSeminarios: Rol[] = ["docente", "coordinador", "admin"];
 
 export const menuItems: MenuItem[] = [
   {
@@ -53,7 +55,7 @@ export const menuItems: MenuItem[] = [
     label: "Seminarios",
     href: "/seminarios",
     icon: BookOpen,
-    roles: ["coordinador", "admin"],
+    roles: rolesSeminarios,
   },
   {
     id: "consultas",

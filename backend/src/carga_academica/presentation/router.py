@@ -16,6 +16,8 @@ from src.carga_academica.application.asistencia_service import (
     AlumnoNoInscripto,
     AsistenciaService,
     ClaseDuplicada,
+    ClaseFutura,
+    ClaseNoDictada,
     ClaseNoEncontrada,
 )
 from src.carga_academica.application.planilla_service import (
@@ -28,6 +30,7 @@ from src.carga_academica.infrastructure.planilla_repository import PlanillaRepos
 from src.carga_academica.presentation.schemas import (
     AsistenciaUpdate,
     ClaseCreate,
+    ClaseEstadoUpdate,
     ClaseResponse,
     PlanillaResponse,
 )
@@ -105,7 +108,7 @@ async def listar_clases(
 async def crear_clase(
     seminario_id: UUID,
     datos: ClaseCreate,
-    usuario: Usuario = Depends(rol_permitido),
+    usuario: Usuario = Depends(require_role("coordinador", "admin")),
     service: AsistenciaService = Depends(get_asistencia_service),
 ):
     """Botón "Nueva clase": agrega una columna con esa fecha (US-B-002)."""
@@ -119,6 +122,26 @@ async def crear_clase(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Ya hay una clase de este seminario en esa fecha"
         )
+
+
+@router.patch("/{seminario_id}/clases/{clase_id}", response_model=ClaseResponse)
+async def confirmar_clase(
+    seminario_id: UUID,
+    clase_id: UUID,
+    datos: ClaseEstadoUpdate,
+    usuario: Usuario = Depends(rol_permitido),
+    service: AsistenciaService = Depends(get_asistencia_service),
+):
+    try:
+        return await service.confirmar_clase(seminario_id, clase_id, datos.dictada, usuario)
+    except SeminarioNoEncontrado:
+        raise NO_ENCONTRADO
+    except SinPermisoPlanilla:
+        raise SIN_PERMISO
+    except ClaseNoEncontrada:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "La clase no es de este seminario")
+    except ClaseFutura:
+        raise HTTPException(status.HTTP_409_CONFLICT, "La fecha de la clase todavía no llegó")
 
 
 # ---------- US-B-002: asistencia (autosave) ----------
@@ -141,6 +164,8 @@ async def cargar_asistencia(
         raise SIN_PERMISO
     except ClaseNoEncontrada:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "La clase no es de este seminario")
+    except ClaseNoDictada:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Confirmá que la clase se dictó antes de cargar asistencia")
     except AlumnoNoInscripto:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "El alumno no está inscripto al seminario"

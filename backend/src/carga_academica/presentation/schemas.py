@@ -51,6 +51,10 @@ class ClaseCreate(CamelModel):
     fecha: date              # por defecto el front manda la de hoy
 
 
+class ClaseEstadoUpdate(CamelModel):
+    dictada: bool
+
+
 class RegistroAsistencia(CamelModel):
     """Una celda de la planilla: un alumno en una clase."""
 
@@ -64,6 +68,7 @@ class ClaseResponse(CamelModel):
     id: UUID
     seminario_id: UUID
     fecha: date
+    dictada: bool | None
     asistencias: list[RegistroAsistencia]
 
 

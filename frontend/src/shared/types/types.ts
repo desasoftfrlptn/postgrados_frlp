@@ -67,6 +67,8 @@ export interface PeriodoInscripcion {
   fecha_cierra: string | null;
 }
 
+export const patronSeminarioId = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}";
+
 export interface Seminario {
   id: string;
   nombre: string;
@@ -329,6 +331,7 @@ export interface Clase {
   id: string;
   seminarioId: string;
   fecha: string; // ISO date
+  dictada: boolean | null;
   asistencias: RegistroAsistenciaAlumno[];
 }
 
@@ -344,7 +347,7 @@ export function calcularPorcentaje(
   totalClases: number
 ): number {
   if (totalClases === 0) return 0;
-  return Math.round((clasesPresente / totalClases) * 100);
+  return Math.round((clasesPresente / totalClases) * 1000) / 10;
 }
 export type TipoTrabajoFinal = "TFI" | "Maestria" | "Doctorado";
 

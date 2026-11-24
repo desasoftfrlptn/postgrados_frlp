@@ -40,6 +40,8 @@ class AsistenciaRepository:
 
     async def existe_clase_en_fecha(self, seminario_id: uuid.UUID, fecha: date) -> bool:
         """¿Ya hay una clase de este seminario en esa fecha? Evita columnas duplicadas."""
+        # Serializa el alta de fechas del mismo seminario.
+        await self.db.execute(select(Seminario.id).where(Seminario.id == seminario_id).with_for_update())
         consulta = select(Clase.id).where(
             Clase.seminario_id == seminario_id,
             Clase.fecha == fecha,
@@ -56,7 +58,11 @@ class AsistenciaRepository:
         return clase
 
     async def obtener_clase(self, clase_id: uuid.UUID) -> Clase | None:
-        return await self.db.get(Clase, clase_id)
+        return await self.db.get(Clase, clase_id, with_for_update=True)
+
+    async def guardar_estado_clase(self, clase: Clase, dictada: bool) -> None:
+        clase.dictada = dictada
+        await self.db.commit()
 
     # ---------- Alumnos y asistencias ----------
 

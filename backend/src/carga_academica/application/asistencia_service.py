@@ -9,7 +9,8 @@ El % de asistencia lo calcula el front con esos datos.
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
 
 from src.carga_academica.application.planilla_service import (
     SeminarioNoEncontrado,
@@ -32,6 +33,14 @@ class AlumnoNoInscripto(Exception):
     """El legajo no está inscripto al seminario. El router lo traduce a 422."""
 
 
+class ClaseNoDictada(Exception):
+    pass
+
+
+class ClaseFutura(Exception):
+    pass
+
+
 def armar_clase(clase, inscriptos: list[uuid.UUID], marcas: dict) -> dict:
     """Junta una clase con la asistencia de cada inscripto.
 
@@ -41,6 +50,7 @@ def armar_clase(clase, inscriptos: list[uuid.UUID], marcas: dict) -> dict:
         "id": clase.id,
         "seminario_id": clase.seminario_id,
         "fecha": clase.fecha,
+        "dictada": clase.dictada,
         "asistencias": [
             {"legajo_id": legajo_id, "presente": marcas.get((clase.id, legajo_id), False)}
             for legajo_id in inscriptos
@@ -74,6 +84,8 @@ class AsistenciaService:
         self, seminario_id: uuid.UUID, fecha: date, usuario: Usuario
     ) -> dict:
         """Botón "Nueva clase": crea la columna con esa fecha, con todos ausentes."""
+        if usuario.rol not in ("coordinador", "admin"):
+            raise SinPermisoPlanilla()
         await self._verificar_seminario(seminario_id, usuario)
 
         if await self.repo.existe_clase_en_fecha(seminario_id, fecha):
@@ -83,6 +95,21 @@ class AsistenciaService:
         inscriptos = await self.repo.inscriptos_del_seminario(seminario_id)
         # Clase recién creada: no tiene ninguna marca todavía
         return armar_clase(clase, inscriptos, {})
+
+    async def confirmar_clase(
+        self, seminario_id: uuid.UUID, clase_id: uuid.UUID, dictada: bool, usuario: Usuario
+    ) -> dict:
+        await self._verificar_seminario(seminario_id, usuario)
+        clase = await self.repo.obtener_clase(clase_id)
+        if clase is None or clase.seminario_id != seminario_id:
+            raise ClaseNoEncontrada()
+        hoy = datetime.now(ZoneInfo("America/Argentina/Buenos_Aires")).date()
+        if clase.fecha > hoy:
+            raise ClaseFutura()
+        await self.repo.guardar_estado_clase(clase, dictada)
+        inscriptos = await self.repo.inscriptos_del_seminario(seminario_id)
+        marcas = await self.repo.asistencias_del_seminario(seminario_id)
+        return armar_clase(clase, inscriptos, marcas)
 
     async def cargar_asistencia(
         self,
@@ -100,6 +127,9 @@ class AsistenciaService:
         clase = await self.repo.obtener_clase(clase_id)
         if clase is None or clase.seminario_id != seminario_id:
             raise ClaseNoEncontrada()
+
+        if clase.dictada is not True:
+            raise ClaseNoDictada()
 
         # El alumno tiene que estar inscripto a este seminario.
         if not await self.repo.legajos_inscriptos(seminario_id, [legajo_id]):

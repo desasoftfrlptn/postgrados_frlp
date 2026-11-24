@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate, useParams } from "react-router-dom";
 import { Sidebar } from "@/shared/components/Sidebar";
 import { menuItems } from "@/shared/menuConfig";
 import ListaInscriptos from "../components/ListaInscriptos";
 import DetalleLegajo from "../components/DetalleLegajo";
 import Panel from "./Panel";
 import ListaSeminarios from "../components/ListaSeminarios";
+import { patronSeminarioId } from "@/shared/types/types";
+import { RegistroAsistencia } from "@/modulo-docente/pages/RegistroAsistencia";
+import { Button } from "@/shared/components/Button";
 import EstudiantesEnRiesgoPage from "./EstudiantesEnRiesgoPage";
 import Alerta from "@/AlertasNotificaciones/pages/Alerta";
 import type { Notificacion } from "@/AlertasNotificaciones/types/notificacion.types";
@@ -17,6 +20,8 @@ import { useAuth } from "@/shared/auth/authContext";
 
 export function Dashboard({ path }: { path: string }) {
   const navigate = useNavigate();
+  const { seminarioId } = useParams();
+  const [menuAbierto, setMenuAbierto] = useState(false);
   const {user: user} = useAuth();
 
   const puedeInscribir =
@@ -52,14 +57,27 @@ export function Dashboard({ path }: { path: string }) {
 
   return (
     <div className="flex h-screen w-full bg-paper text-ink">
-      <Sidebar
-        user={user}
-        items={menuItems}
-        currentPath={path}
-        onNavigate={navigate}
-      />
-
-      <main className="scroll-fade flex-1 overflow-y-auto px-8 py-6 transition-colors">
+      <div id="menu-panel" className={menuAbierto ? "absolute inset-y-0 left-0 z-30 md:static" : "hidden md:block"}>
+        <Sidebar
+          user={user}
+          items={menuItems}
+          currentPath={path}
+          onNavigate={(href) => {
+            navigate(href);
+            setMenuAbierto(false);
+          }}
+        />
+      </div>
+      <main className="scroll-fade min-w-0 flex-1 overflow-y-auto px-4 py-6 transition-colors md:px-8">
+        <Button
+          variant="outline"
+          className="relative z-40 mb-4 md:hidden"
+          aria-expanded={menuAbierto}
+          aria-controls="menu-panel"
+          onClick={() => setMenuAbierto((abierto) => !abierto)}
+        >
+          {menuAbierto ? "Cerrar menú" : "Menú"}
+        </Button>
         {path !== "/notificaciones" && (
           <NotificationsButton
             notifications={notificaciones}
@@ -99,7 +117,13 @@ export function Dashboard({ path }: { path: string }) {
 
         {path === "/:id" && <DetalleLegajo />}
 
-        {path === "/seminarios" && <ListaSeminarios />}
+        {path === "/seminarios" && (
+          seminarioId
+            ? new RegExp(`^${patronSeminarioId}$`).test(seminarioId)
+              ? <RegistroAsistencia key={seminarioId} id={seminarioId} />
+              : <Navigate to="/seminarios" replace />
+            : <ListaSeminarios />
+        )}
 
         {path === "/riesgo" && <EstudiantesEnRiesgoPage />}
 

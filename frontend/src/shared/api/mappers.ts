@@ -19,7 +19,6 @@ import type {
   FiltrosLegajo,
   Legajo,
   LegajosPaginados,
-  SeminariosPaginados,
   TipoDocumento,
 } from "@/shared/types/types";
 import { isApiError } from "./client";
@@ -29,7 +28,6 @@ import type {
   LegajoFiltros,
   LegajoPagina,
   ListarLegajosParams,
-  SeminarioPaginaApi,
 } from "./endpoints";
 
 /* ───────────── Respuestas ───────────── */
@@ -71,16 +69,6 @@ export function fromApiLegajo(l: LegajoApi): Legajo {
 export function fromApiPagina(p: LegajoPagina): LegajosPaginados {
   return {
     legajos: p.data.map(fromApiLegajo),
-    total: p.total,
-    page: p.page,
-    limit: p.limit,
-    totalPages: p.pages,
-  };
-}
-
-export function fromApiPaginaSeminarios(p: SeminarioPaginaApi): SeminariosPaginados {
-  return {
-    seminarios: p.data,
     total: p.total,
     page: p.page,
     limit: p.limit,
