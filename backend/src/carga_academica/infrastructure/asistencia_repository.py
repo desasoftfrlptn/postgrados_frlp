@@ -6,7 +6,7 @@ Capa INFRASTRUCTURE: el único lugar de este caso de uso que habla con la base.
 import uuid
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +25,21 @@ class AsistenciaRepository:
 
     # ---------- Seminario y clases ----------
 
+    async def listar_seminarios(
+        self, nombre: str, email_docente: str | None, page: int, limit: int
+    ) -> list[Seminario]:
+        consulta = select(Seminario)
+        if email_docente is not None:
+            consulta = consulta.where(func.lower(Seminario.email_docente) == email_docente.lower())
+        if nombre:
+            consulta = consulta.where(Seminario.nombre.icontains(nombre, autoescape=True))
+        consulta = (
+            consulta.order_by(func.lower(Seminario.nombre), Seminario.id)
+            .offset((page - 1) * limit)
+            .limit(limit + 1)
+        )
+        return list(await self.db.scalars(consulta))
+
     async def obtener_seminario(self, seminario_id: uuid.UUID) -> Seminario | None:
         """El seminario, o None si no existe (el router lo convierte en 404)."""
         return await self.db.get(Seminario, seminario_id)
@@ -40,6 +55,8 @@ class AsistenciaRepository:
 
     async def existe_clase_en_fecha(self, seminario_id: uuid.UUID, fecha: date) -> bool:
         """¿Ya hay una clase de este seminario en esa fecha? Evita columnas duplicadas."""
+        # Serializa el alta de fechas del mismo seminario.
+        await self.db.execute(select(Seminario.id).where(Seminario.id == seminario_id).with_for_update())
         consulta = select(Clase.id).where(
             Clase.seminario_id == seminario_id,
             Clase.fecha == fecha,
@@ -56,7 +73,11 @@ class AsistenciaRepository:
         return clase
 
     async def obtener_clase(self, clase_id: uuid.UUID) -> Clase | None:
-        return await self.db.get(Clase, clase_id)
+        return await self.db.get(Clase, clase_id, with_for_update=True)
+
+    async def guardar_estado_clase(self, clase: Clase, dictada: bool) -> None:
+        clase.dictada = dictada
+        await self.db.commit()
 
     # ---------- Alumnos y asistencias ----------
 

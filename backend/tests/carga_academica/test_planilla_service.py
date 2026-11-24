@@ -16,8 +16,10 @@ from src.carga_academica.application.planilla_service import (
 # SimpleNamespace arma objetos "de mentira" con los atributos que necesitamos,
 # sin crear filas reales en la base.
 SEMINARIO_ID = uuid.uuid4()
-CLASE_1 = SimpleNamespace(id=uuid.uuid4(), fecha=date(2026, 3, 3))
-CLASE_2 = SimpleNamespace(id=uuid.uuid4(), fecha=date(2026, 3, 10))
+CLASE_1 = SimpleNamespace(id=uuid.uuid4(), fecha=date(2026, 3, 3), dictada=True)
+CLASE_2 = SimpleNamespace(id=uuid.uuid4(), fecha=date(2026, 3, 10), dictada=True)
+PROGRAMADA = SimpleNamespace(id=uuid.uuid4(), fecha=date(2026, 3, 17), dictada=None)
+NO_DICTADA = SimpleNamespace(id=uuid.uuid4(), fecha=date(2026, 3, 24), dictada=False)
 ANA = SimpleNamespace(
     id=uuid.uuid4(), apellido="Pérez", nombre="Ana",
     email="ana@mail.com", titulo_grado="Ing. en Sistemas",
@@ -38,7 +40,7 @@ class RepositorioFalso:
         return [ANA]
 
     async def listar_clases(self, seminario_id):
-        return [CLASE_1, CLASE_2]
+        return [CLASE_1, CLASE_2, PROGRAMADA, NO_DICTADA]
 
     async def asistencias_del_seminario(self, seminario_id):
         # Ana vino a la clase 1 y faltó a la clase 2

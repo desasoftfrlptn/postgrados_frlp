@@ -4,7 +4,7 @@ import type {
   DocumentoConEstado,
   EstadisticasCohorte,
   EstadoLegajo,
-  FiltrosSeminario,
+  Clase,
   PeriodoInscripcion,
   Rol,
   Semaforo,
@@ -338,29 +338,43 @@ export const cohortesApi = {
     api.get<EstadisticasCohorte[]>("/estadisticas/cohortes", { params: { tipo_carrera: tipoCarrera } }),
 };
 
-// Se asume la misma convención de paginado que /legajos ({data, page, limit, total, pages}).
-// Si el backend devuelve directamente la forma del front, borrar fromApiPaginaSeminarios.
-export interface SeminarioPaginaApi {
-  data: Seminario[];
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
+export interface AlumnoPlanilla {
+  legajo_id: string;
+  apellido: string;
+  nombre: string;
+  email: string;
+  carrera_grado: string;
+  asistencias: ("P" | "A")[];
+  porcentaje: number;
 }
 
+export interface PlanillaSeminario {
+  seminario: string;
+  fechas: string[];
+  alumnos: AlumnoPlanilla[];
+}
+
+export interface AsistenciaUpdate {
+  claseId: string;
+  legajoId: string;
+  presente: boolean;
+}
+
+const rutaSeminario = (id: string) => `/seminarios/${enc(id)}`;
+
 export const seminariosApi = {
-  listar: (f: FiltrosSeminario = {}) =>
-    api.get<SeminarioPaginaApi>("/seminarios", {
-      params: {
-        nombre: f.nombre,
-        docente: f.docente,
-        es_obligatorio: f.es_obligatorio,
-        horas_catedra: f.horas_catedra,
-        page: f.page ?? 1,
-        limit: f.limit ?? 10,
-      },
-    }),
-  detalle: (id: string) => api.get<Seminario>(`/seminarios/${enc(id)}`),
+  listar: (params: { nombre: string; page: number; limit: number }, signal?: AbortSignal) =>
+    api.get<{ data: Seminario[]; has_more: boolean }>("/seminarios", { params, signal }),
+  estudiantes: (id: string, signal?: AbortSignal) =>
+    api.get<PlanillaSeminario>(`${rutaSeminario(id)}/estudiantes`, { signal }),
+  clases: (id: string, signal?: AbortSignal) =>
+    api.get<Clase[]>(`${rutaSeminario(id)}/clases`, { signal }),
+  crearClase: (id: string, fecha: string) =>
+    api.post<Clase>(`${rutaSeminario(id)}/clases`, { fecha }),
+  confirmarClase: (id: string, claseId: string, dictada: boolean) =>
+    api.patch<Clase>(`${rutaSeminario(id)}/clases/${enc(claseId)}`, { dictada }),
+  actualizarAsistencia: (id: string, datos: AsistenciaUpdate) =>
+    api.patch<Clase>(`${rutaSeminario(id)}/asistencias`, datos),
 };
 
 export interface DocumentoSubido {

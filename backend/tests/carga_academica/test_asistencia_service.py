@@ -11,6 +11,8 @@ from src.carga_academica.application.asistencia_service import (
     AlumnoNoInscripto,
     AsistenciaService,
     ClaseDuplicada,
+    ClaseFutura,
+    ClaseNoDictada,
     ClaseNoEncontrada,
 )
 from src.carga_academica.application.planilla_service import SinPermisoPlanilla
@@ -18,7 +20,7 @@ from src.carga_academica.application.planilla_service import SinPermisoPlanilla
 SEMINARIO_ID = uuid.uuid4()
 OTRO_SEMINARIO_ID = uuid.uuid4()
 SEMINARIO = SimpleNamespace(nombre="Metodología", email_docente="juan@utn.edu.ar")
-CLASE = SimpleNamespace(id=uuid.uuid4(), seminario_id=SEMINARIO_ID, fecha=date(2026, 3, 3))
+CLASE = SimpleNamespace(id=uuid.uuid4(), seminario_id=SEMINARIO_ID, fecha=date(2026, 3, 3), dictada=True)
 ANA = uuid.uuid4()
 LUIS = uuid.uuid4()
 
@@ -41,12 +43,15 @@ class RepositorioFalso:
         return any(clase.fecha == fecha for clase in self.clases)
 
     async def crear_clase(self, seminario_id, fecha):
-        clase = SimpleNamespace(id=uuid.uuid4(), seminario_id=seminario_id, fecha=fecha)
+        clase = SimpleNamespace(id=uuid.uuid4(), seminario_id=seminario_id, fecha=fecha, dictada=None)
         self.clases.append(clase)
         return clase
 
     async def obtener_clase(self, clase_id):
         return next((clase for clase in self.clases if clase.id == clase_id), None)
+
+    async def guardar_estado_clase(self, clase, dictada):
+        clase.dictada = dictada
 
     async def inscriptos_del_seminario(self, seminario_id):
         return self.inscriptos
@@ -80,6 +85,7 @@ def test_listar_clases_trae_la_asistencia_de_cada_inscripto():
             "id": CLASE.id,
             "seminario_id": SEMINARIO_ID,
             "fecha": date(2026, 3, 3),
+            "dictada": True,
             "asistencias": [
                 {"legajo_id": ANA, "presente": True},
                 {"legajo_id": LUIS, "presente": False},
@@ -99,13 +105,14 @@ def test_otro_docente_no_puede_ver_las_clases():
 
 # ---------- Crear clase ----------
 
-def test_nueva_clase_arranca_con_todos_ausentes():
+def test_nueva_clase_arranca_programada_con_todos_ausentes():
     # Arrange
     service = AsistenciaService(RepositorioFalso())
     # Act
-    clase = asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 24), usuario()))
+    clase = asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 24), usuario("coordinador")))
     # Assert
     assert clase["fecha"] == date(2026, 3, 24)
+    assert clase["dictada"] is None
     assert clase["asistencias"] == [
         {"legajo_id": ANA, "presente": False},
         {"legajo_id": LUIS, "presente": False},
@@ -117,16 +124,38 @@ def test_no_se_puede_crear_dos_clases_en_la_misma_fecha():
     service = AsistenciaService(RepositorioFalso())
     # Act + Assert
     with pytest.raises(ClaseDuplicada):
-        asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 3), usuario()))
+        asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 3), usuario("coordinador")))
 
 
-def test_otro_docente_no_puede_crear_clases():
+def test_docente_asignado_no_puede_crear_clases():
     # Arrange
     service = AsistenciaService(RepositorioFalso())
-    otro = usuario(email="ana.docente@utn.edu.ar")
-    # Act + Assert
     with pytest.raises(SinPermisoPlanilla):
-        asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 24), otro))
+        asyncio.run(service.crear_clase(SEMINARIO_ID, date(2026, 3, 24), usuario()))
+
+
+def test_docente_confirma_clase_y_registra_asistencia():
+    clase = SimpleNamespace(id=uuid.uuid4(), seminario_id=SEMINARIO_ID, fecha=date(2026, 3, 3), dictada=None)
+    service = AsistenciaService(RepositorioFalso(clases=[clase]))
+
+    with pytest.raises(ClaseNoDictada):
+        asyncio.run(service.cargar_asistencia(SEMINARIO_ID, clase.id, ANA, True, usuario()))
+
+    resultado = asyncio.run(service.confirmar_clase(SEMINARIO_ID, clase.id, True, usuario()))
+    assert resultado["dictada"] is True
+    asyncio.run(service.cargar_asistencia(SEMINARIO_ID, clase.id, ANA, True, usuario()))
+
+    resultado = asyncio.run(service.confirmar_clase(SEMINARIO_ID, clase.id, False, usuario()))
+    assert resultado["dictada"] is False
+    with pytest.raises(ClaseNoDictada):
+        asyncio.run(service.cargar_asistencia(SEMINARIO_ID, clase.id, ANA, False, usuario()))
+
+
+def test_no_se_puede_confirmar_una_fecha_futura():
+    clase = SimpleNamespace(id=uuid.uuid4(), seminario_id=SEMINARIO_ID, fecha=date.max, dictada=None)
+    service = AsistenciaService(RepositorioFalso(clases=[clase]))
+    with pytest.raises(ClaseFutura):
+        asyncio.run(service.confirmar_clase(SEMINARIO_ID, clase.id, True, usuario()))
 
 
 # ---------- Cargar asistencia ----------

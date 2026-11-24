@@ -9,13 +9,15 @@ Los endpoints de US-B-002 siguen el contrato del front
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.carga_academica.application.asistencia_service import (
     AlumnoNoInscripto,
     AsistenciaService,
     ClaseDuplicada,
+    ClaseFutura,
+    ClaseNoDictada,
     ClaseNoEncontrada,
 )
 from src.carga_academica.application.planilla_service import (
@@ -28,7 +30,9 @@ from src.carga_academica.infrastructure.planilla_repository import PlanillaRepos
 from src.carga_academica.presentation.schemas import (
     AsistenciaUpdate,
     ClaseCreate,
+    ClaseEstadoUpdate,
     ClaseResponse,
+    PaginaSeminarios,
     PlanillaResponse,
 )
 from src.shared.auth.dependencies import require_role
@@ -57,6 +61,17 @@ def get_asistencia_service(db: AsyncSession = Depends(get_db)) -> AsistenciaServ
 # Los errores que comparten todos los endpoints del seminario
 NO_ENCONTRADO = HTTPException(status.HTTP_404_NOT_FOUND, "Seminario no encontrado")
 SIN_PERMISO = HTTPException(status.HTTP_403_FORBIDDEN, "Solo podés gestionar tus seminarios")
+
+
+@router.get("", response_model=PaginaSeminarios)
+async def listar_seminarios(
+    nombre: str = Query(default="", max_length=150),
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=10, ge=1, le=100),
+    usuario: Usuario = Depends(rol_permitido),
+    service: AsistenciaService = Depends(get_asistencia_service),
+):
+    return await service.listar_seminarios(usuario, nombre, page, limit)
 
 
 # ---------- US-B-003: planilla ----------
@@ -105,7 +120,7 @@ async def listar_clases(
 async def crear_clase(
     seminario_id: UUID,
     datos: ClaseCreate,
-    usuario: Usuario = Depends(rol_permitido),
+    usuario: Usuario = Depends(require_role("coordinador", "admin")),
     service: AsistenciaService = Depends(get_asistencia_service),
 ):
     """Botón "Nueva clase": agrega una columna con esa fecha (US-B-002)."""
@@ -119,6 +134,26 @@ async def crear_clase(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Ya hay una clase de este seminario en esa fecha"
         )
+
+
+@router.patch("/{seminario_id}/clases/{clase_id}", response_model=ClaseResponse)
+async def confirmar_clase(
+    seminario_id: UUID,
+    clase_id: UUID,
+    datos: ClaseEstadoUpdate,
+    usuario: Usuario = Depends(rol_permitido),
+    service: AsistenciaService = Depends(get_asistencia_service),
+):
+    try:
+        return await service.confirmar_clase(seminario_id, clase_id, datos.dictada, usuario)
+    except SeminarioNoEncontrado:
+        raise NO_ENCONTRADO
+    except SinPermisoPlanilla:
+        raise SIN_PERMISO
+    except ClaseNoEncontrada:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "La clase no es de este seminario")
+    except ClaseFutura:
+        raise HTTPException(status.HTTP_409_CONFLICT, "La fecha de la clase todavía no llegó")
 
 
 # ---------- US-B-002: asistencia (autosave) ----------
@@ -141,6 +176,8 @@ async def cargar_asistencia(
         raise SIN_PERMISO
     except ClaseNoEncontrada:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "La clase no es de este seminario")
+    except ClaseNoDictada:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Confirmá que la clase se dictó antes de cargar asistencia")
     except AlumnoNoInscripto:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "El alumno no está inscripto al seminario"

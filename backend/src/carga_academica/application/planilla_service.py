@@ -44,7 +44,7 @@ class PlanillaService:
 
         # 3. Traemos todo de una vez: 3 consultas, sin importar cuántos alumnos haya.
         alumnos = await self.repo.listar_alumnos(seminario_id)
-        clases = await self.repo.listar_clases(seminario_id)
+        clases = [clase for clase in await self.repo.listar_clases(seminario_id) if clase.dictada is True]
         asistencias = await self.repo.asistencias_del_seminario(seminario_id)
 
         # 4. Armamos una fila por alumno.

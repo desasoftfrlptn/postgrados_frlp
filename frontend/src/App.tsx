@@ -1,9 +1,8 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import LoginScreen from "./Login/pages/Login";
 import WelcomeScreen from "./Login/pages/WelcomeScreen";
 import { ConsultarEstado } from "./inscripcion-aspirante/pages/ConsultarEstado";
 import NotFound from "./shared/pages/NotFound";
-import RegistroAsistencia from './modulo-docente/pages/RegistroAsistencia';
 import InscripcionWizard from "./inscripcion-aspirante/pages/InscripcionWizard";
 import Dashboard from "./dashboard-coordinador/pages/Dashboard";
 import { ActivarCuenta } from "./inscripcion-aspirante/pages/ActivarCuenta";
@@ -11,6 +10,7 @@ import { MiLegajo } from "./estudiante/pages/MiLegajo";
 
 import { RequireAcceso, RequireAuth } from "./shared/auth/RequireAuth";
 import type { Rol } from "./shared/types/types";
+import { rolesSeminarios } from "./shared/menuConfig";
 
 // Roles por sección. roleHome (types.ts) manda a coordinador, docente, cpr y admin a /panel, así que
 // todos entran al dashboard; las pantallas que el backend limita a "coordinador" (listar/exportar
@@ -18,7 +18,6 @@ import type { Rol } from "./shared/types/types";
 // mantienen en sintonía con los `roles` de cada MenuItem del Sidebar.
 const ROLES_PERSONAL: readonly Rol[] = ["coordinador", "docente", "cpr", "admin"];
 const ROLES_COORDINACION: readonly Rol[] = ["coordinador"];
-const ROLES_DOCENTE: readonly Rol[] = ["docente"];
 const ROLES_ESTUDIANTE: readonly Rol[] = ["estudiante"];
 
 export default function App() {
@@ -61,11 +60,6 @@ export default function App() {
               />
 
               <Route
-                path="seminarios"
-                element={<Dashboard path="/seminarios" />}
-              />
-
-              <Route
                 path="notificaciones"
                 element={<Dashboard path="/notificaciones" />}
               />
@@ -90,9 +84,12 @@ export default function App() {
               />
             </Route>
 
-            {/* ── Docente ── */}
-            <Route element={<RequireAuth roles={ROLES_DOCENTE} />}>
-              <Route path="asistencia" element={<RegistroAsistencia />} />
+            {/* ── Seminarios y asistencia ── */}
+            <Route element={<RequireAuth roles={rolesSeminarios} />}>
+              <Route path="seminarios" element={<Dashboard path="/seminarios" />} />
+              <Route path="seminarios/:seminarioId" element={<Dashboard path="/seminarios" />} />
+              <Route path="seminarios/:seminarioId/planilla" element={<Dashboard path="/seminarios" />} />
+              <Route path="asistencia" element={<Navigate to="/seminarios" replace />} />
             </Route>
 
             {/* ── Aspirantes (enlace temporal con cookie, sin login) ── */}

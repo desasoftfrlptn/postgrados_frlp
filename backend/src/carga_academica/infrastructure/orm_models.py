@@ -50,6 +50,7 @@ class Clase(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
     seminario_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("seminarios.id"), index=True)
     fecha: Mapped[date]
+    dictada: Mapped[bool | None]
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),  # ← mapea a TIMESTAMPTZ
         default=lambda: datetime.now(timezone.utc),

@@ -498,6 +498,7 @@ http.get("/api/v1/estadisticas/cohortes", async ({ request }) => {
     const seminarioId = params.seminarioId as string;
 
     const nuevaClase: Clase = {
+      dictada: null,
       id: `clase-${Date.now()}`,
       seminarioId,
       fecha: body.fecha,
