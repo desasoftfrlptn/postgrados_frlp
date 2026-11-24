@@ -1,17 +1,45 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/shared/components/Button";
+import { useAuth } from "@/shared/auth/authContext";
+import type { Seminario } from "@/shared/types/types";
+import { FormularioSeminario } from "./FormularioSeminario";
 import { Spinner } from "@/shared/components/Spinner";
 import { useSeminarios } from "../hooks/useSeminarios";
 
 export default function ListaSeminarios() {
+  const { user } = useAuth();
+  const puedeCrear = user?.rol === "coordinador" || user?.rol === "admin";
+  const [formularioAbierto, setFormularioAbierto] = useState(false);
+  const [creado, setCreado] = useState<Seminario | null>(null);
   const [nombre, setNombre] = useState("");
   const [page, setPage] = useState(1);
   const listado = useSeminarios(nombre.trim(), page);
 
   return (
     <section className="space-y-4">
-      <h1>Seminarios</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1>Seminarios</h1>
+        {puedeCrear && !formularioAbierto && (
+          <Button onClick={() => { setCreado(null); setFormularioAbierto(true); }}>Crear seminario</Button>
+        )}
+      </div>
+      {puedeCrear && formularioAbierto && (
+        <FormularioSeminario
+          onCancelar={() => setFormularioAbierto(false)}
+          onCreado={(seminario) => {
+            setCreado(seminario);
+            setFormularioAbierto(false);
+            setNombre("");
+            setPage(1);
+          }}
+        />
+      )}
+      {creado && (
+        <p role="status" className="text-sm text-ink-secondary">
+          Se creó <Link className="font-semibold text-brand-500 underline" to={`/seminarios/${creado.id}`}>{creado.nombre}</Link>.
+        </p>
+      )}
       <div className="space-y-4 rounded-2xl border border-line bg-paper-surface p-4 shadow-card">
         <label className="block max-w-md space-y-1 text-sm font-medium">
           <span>Buscar por nombre</span>
