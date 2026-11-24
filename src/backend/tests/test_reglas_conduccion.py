@@ -143,8 +143,6 @@ def test_cambio_rechaza_usuario_inactivo():
         ("BORRADOR", AccionLegajo.REVISAR),
         ("PENDIENTE", AccionLegajo.APROBAR),
         ("RECHAZADO", AccionLegajo.MATRICULAR),
-        ("COMPLETADO", AccionLegajo.DAR_BAJA),
-        ("BAJA", AccionLegajo.REVISAR),
     ],
 )
 def test_transiciones_invalidas(estado, accion):
@@ -550,3 +548,7 @@ def test_cpr_inactivo_no_modifica_tesis():
 def test_reabrir_inscripcion(estado):
     cambio = validar_cambio_estado(**argumentos_cambio(estado_actual=estado))
     assert cambio.estado_nuevo == "EN_REVISION"
+
+@pytest.mark.parametrize("estado", ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO"])
+def test_baja_desde_admision(estado):
+    assert validar_cambio_estado(**argumentos_cambio(estado_actual=estado, accion=AccionLegajo.DAR_BAJA, comentario="Solicitud de baja")).estado_nuevo == "BAJA"

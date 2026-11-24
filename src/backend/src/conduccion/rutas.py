@@ -105,8 +105,17 @@ async def procesar_vencimientos(
     db: AsyncSession = Depends(get_db),
     usuario=Depends(coordinador_actual),
 ):
-    
+
     return await servicio.ejecutar_transaccion(
         db,
         lambda: servicio.vencer_reservas(db),
     )
+
+@enrutador.delete("/legajos/{legajo_id}")
+async def eliminar_aspirante(legajo_id: UUID, db: AsyncSession = Depends(get_db), usuario=Depends(coordinador_actual)):
+    return await servicio.ejecutar_transaccion(db, lambda: servicio.eliminar_aspirante(db, legajo_id, usuario))
+
+
+@enrutador.get("/perfiles-academicos")
+async def consultar_personas_academicas(db: AsyncSession = Depends(get_db), usuario=Depends(coordinador_actual)):
+    return await servicio.consultar_personas_academicas(db, usuario)

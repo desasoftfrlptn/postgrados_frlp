@@ -47,7 +47,7 @@ export default function AsistenciasEstudiantePage() {
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
         <h1>Asistencias</h1>
-        <p>Consultá tu registro de presentismo y el porcentaje acumulado por seminario (mínimo 75% según BR-002).</p>
+        <p>Consultá tu registro de presentismo y el porcentaje acumulado por seminario (mínimo requerido: 75%).</p>
       </header>
 
       {error && (

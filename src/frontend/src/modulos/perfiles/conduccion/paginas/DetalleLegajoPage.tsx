@@ -1,6 +1,6 @@
 import { mostrarEstadoLegajo } from "../../../../shared/utils/estadosLegajo";
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -105,6 +105,7 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: string | null | u
 }
 
 function ContenidoDetalle({ id, token, soloLectura = false }: { id: string; token: string; soloLectura?: boolean }) {
+  const navigate = useNavigate();
   const [seccionActiva, setSeccionActiva] =
     useState<"gestion" | "datos" | "documentos">(soloLectura ? "datos" : "gestion");
 
@@ -322,6 +323,7 @@ function ContenidoDetalle({ id, token, soloLectura = false }: { id: string; toke
             <GestionInscripcion
               legajoId={legajo.id}
               onEstadoActualizado={actualizarEstado}
+              onEliminado={() => navigate("/dashboard/conduccion/aspirantes")}
               onDocumentacionActualizada={actualizarDocumentacion}
             />
           </div>}
@@ -448,4 +450,3 @@ export default function DetalleLegajoPage() {
   }
   return <ContenidoDetalle key={`${id}:${user.token}`} id={id} token={user.token} soloLectura={user.rol === "ADMIN"} />;
 }
-

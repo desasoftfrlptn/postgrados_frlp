@@ -19,11 +19,6 @@ export const menuConduccion: OpcionMenuPerfil[] = [
     ruta: "/dashboard/conduccion/periodos-inscripcion",
   },
   {
-    texto: "Exportaciones",
-    icono: "📤",
-    ruta: "/dashboard/conduccion/exportaciones",
-  },
-  {
     texto: "Perfiles académicos",
     icono: "🎓",
     ruta: "/dashboard/conduccion/perfiles-academicos",

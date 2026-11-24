@@ -1,0 +1,55 @@
+/* Complementos visuales exclusivos del perfil CPR. */
+.cpr-inicio, .cpr-consulta, .cpr-gestion, .cpr-tesis { min-width: 0; }
+.cpr-inicio .cpr-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr));
+  gap: 16px;
+}
+.cpr-inicio .perfil-tarjeta-resumen { min-height: 112px; }
+.cpr-inicio .perfil-tarjeta-contenido strong { font-size: 2rem; }
+.cpr-inicio .cpr-paneles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.cpr-distribucion { display: grid; gap: 10px; }
+.cpr-distribucion > div { display: flex; justify-content: space-between; gap: 12px; }
+.cpr-distribucion progress { width: 100%; height: 14px; accent-color: #2563eb; }
+.cpr-consulta { display: grid; gap: 20px; }
+.cpr-consulta .perfil-panel { min-width: 0; }
+.cpr-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 16px; margin-bottom: 16px; }
+.cpr-filtros label { display: grid; align-content: start; gap: 6px; font-size: 14px; font-weight: 600; color: #334155; }
+.cpr-filtros input, .cpr-filtros select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 12px; background: white; color: #172033; font: inherit; font-weight: 400; }
+.cpr-boton { border: 1px solid #cbd5e1; border-radius: 8px; padding: 9px 14px; background: white; color: #1e40af; font-weight: 600; cursor: pointer; justify-self: start; }
+.cpr-boton:hover { background: #eff6ff; }
+.cpr-listado-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cpr-listado-cabecera span, .cpr-conteo { font-size: 14px; color: #475569; }
+.cpr-conteo { margin-top: 16px; }
+.cpr-tabla, .cpr-gestion .tutorias-tabla { overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; }
+.cpr-tabla table { width: 100%; min-width: 580px; border-collapse: collapse; text-align: left; }
+.cpr-tabla th, .cpr-tabla td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+.cpr-tabla th, .cpr-gestion .tutorias-tabla th { background: #f8fafc; color: #475569; font-size: 13px; }
+.cpr-tabla tbody tr:hover { background: #f8fafc; }
+.cpr-tabla tbody tr:last-child td { border-bottom: 0; }
+.cpr-estado { display: inline-block; padding: 5px 10px; border-radius: 8px; background: #f1f5f9; color: #334155; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.cpr-activo { background: #dcfce7; color: #166534; }
+.cpr-riesgo { background: #fef3c7; color: #92400e; }
+.cpr-vacio { padding: 26px 16px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc; color: #475569; text-align: center; }
+.cpr-vacio h3 { margin: 0 0 8px; color: #334155; font-size: 16px; font-weight: 600; }
+.cpr-vacio p { margin: 0; }
+.cpr-gestion .tutorias-cabecera { align-items: center; }
+.cpr-gestion .tutorias-cabecera p { color: #64748b; margin-top: 5px; }
+.cpr-gestion .tutorias-panel { border-color: #e2e8f0; border-radius: 12px; box-shadow: 0 1px 2px #0000000d; padding: 20px; }
+.cpr-gestion .tutorias input, .cpr-gestion .tutorias select, .cpr-gestion .tutorias textarea,
+.cpr-gestion.tutorias input, .cpr-gestion.tutorias select, .cpr-gestion.tutorias textarea { box-sizing: border-box; border-color: #cbd5e1; border-radius: 8px; }
+.cpr-gestion .tutorias-primario { background: #2563eb; border-radius: 8px; }
+.cpr-gestion .tutorias-primario:hover:not(:disabled) { background: #1d4ed8; }
+.cpr-gestion .tutorias-secundario { border-color: #cbd5e1; border-radius: 8px; }
+.cpr-tesis .tesis-aviso { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px 16px; border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; border-radius: 12px; padding: 20px; }
+.cpr-tesis .tesis-aviso > :not(.tesis-btn) { grid-column: 1; }
+.cpr-tesis .tesis-aviso p { color: #475569; line-height: 1.6; margin: 0; }
+.cpr-tesis .tesis-aviso .tesis-btn { grid-column: 2; grid-row: 1 / span 2; margin: 0; align-self: center; }
+.cpr-tesis .tesis-vacio { padding: 32px 20px; background: #f8fafc; border-color: #e2e8f0; }
+.cpr-consulta :focus-visible, .cpr-gestion :focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+@media (max-width: 760px) {
+  .cpr-inicio .cpr-paneles { grid-template-columns: 1fr; }
+  .cpr-tesis .tesis-aviso { grid-template-columns: 1fr; }
+  .cpr-tesis .tesis-aviso .tesis-btn { grid-column: 1; grid-row: auto; justify-self: start; }
+  .cpr-gestion .tutorias-panel { padding: 16px; }
+}

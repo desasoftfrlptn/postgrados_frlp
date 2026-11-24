@@ -28,6 +28,7 @@ beforeEach(() => {
   vi.mocked(api.get).mockImplementation(async <T,>(ruta: string): Promise<T> => {
     if (ruta === "/inscripcion/tesis/registros" || ruta === "/tutorias") return [] as T;
     if (ruta === "/seminarios/consulta-conduccion?cohorte_id=cohorte-1") return [{id:"cursada-1",seminario:"Bases de datos",docente:"García, Luis",estudiante:"Pérez, Ana",documento:"123",estado:"CURSANDO",nota:null,asistencias:0,total_clases:0}] as T;
+    if (ruta === "/conduccion/perfiles-academicos") return [{id:"doc-1",nombre:"Luis",apellido:"García",correo_electronico:"doc@example.com",rol:"DOCENTE",activo:true}] as T;
     if (ruta === "/cohortes") return cohortes as T;
     if (ruta === "/carreras") return carreras as T;
     if (ruta === "/inscripcion/?cohorte_id=cohorte-1") return legajos as T;
@@ -36,18 +37,18 @@ beforeEach(() => {
 });
 
 describe("Navegación completa de Conducción", () => {
-  it("tiene las 10 opciones con rutas sin alertas duplicadas", () => {
-    expect(menuConduccion).toHaveLength(10);
+  it("tiene las 9 opciones con rutas sin alertas duplicadas", () => {
+    expect(menuConduccion).toHaveLength(9);
     expect(menuConduccion.some(item => item.ruta?.endsWith("/alertas"))).toBe(false);
     expect(menuConduccion.every((item) => !!item.ruta)).toBe(true);
   });
   it("el panel enlaza a estadísticas sin duplicar accesos de gestión", () => {
     montar(<PanelConduccionPage />);
-    expect(screen.getByRole("heading", { name: /Panel del Equipo de Conducción/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Hola, Coordinador!/i })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Accesos de gestión" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Ingresar al módulo" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Ver estadísticas" })).toHaveAttribute("href", "/dashboard/conduccion/estadisticas");
-    expect(screen.queryByText("Cohortes registradas")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Ver detalle →" }).find(enlace => enlace.getAttribute("href") === "/dashboard/conduccion/estadisticas")).toHaveAttribute("href", "/dashboard/conduccion/estadisticas");
+    expect(screen.getByText("Cohortes registradas")).toBeInTheDocument();
   });
   it("muestra seguimiento de la cohorte sin duplicar indicadores", async () => {
     montar(<PanelConduccionPage />);
@@ -55,7 +56,7 @@ describe("Navegación completa de Conducción", () => {
     expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/inscripcion/?"), expect.anything());
     fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
     expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
-    expect(screen.queryByText("Pendientes de revisión")).not.toBeInTheDocument();
+    expect(screen.queryByText("Legajos en seguimiento")).not.toBeInTheDocument();
   });
   it("exportaciones no consulta legajos hasta elegir cohorte", async () => {
     montar(<ExportacionesConduccionPage />);
@@ -65,13 +66,20 @@ describe("Navegación completa de Conducción", () => {
     fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
     expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
   });
-  it("muestra la ficha de perfiles cuando elige estudiante", async () => {
+  it("muestra la ficha de aspirantes en modo lectura", async () => {
     montar(<PerfilesAcademicosConduccionPage />);
+    fireEvent.click(screen.getByRole("button", {name:"Aspirantes"}));
     await screen.findByRole("option", {name:/Cohorte 2026/});
     fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
-    await screen.findByRole("option", {name:/Pérez, Ana/});
-    fireEvent.change(screen.getByLabelText("Estudiante o aspirante"), {target:{value:"legajo-1"}});
+    fireEvent.click(await screen.findByRole("button", {name:"Consultar Pérez, Ana"}));
     expect(screen.getByRole("heading", {name:"Pérez, Ana"})).toBeInTheDocument();
+  });
+  it("consulta docentes sin acciones de edición", async () => {
+    montar(<PerfilesAcademicosConduccionPage />);
+    fireEvent.click(screen.getByRole("button", {name:"Docentes"}));
+    fireEvent.click(await screen.findByRole("button", {name:"Consultar García, Luis"}));
+    expect(screen.getByRole("heading", {name:"García, Luis"})).toBeInTheDocument();
+    expect(screen.queryByRole("button", {name:"Eliminar"})).not.toBeInTheDocument();
   });
   it("muestra alertas basadas en estados reales", async () => {
     montar(<AlertasConduccionPage />);
@@ -88,7 +96,7 @@ describe("Navegación completa de Conducción", () => {
     expect(within(filaEstado).getByText("100 %")).toBeInTheDocument();
     const filaBeca = screen.getByText("Sin solicitud").closest("li")!;
     expect(within(filaBeca).getByText("0 %")).toBeInTheDocument();
-    expect(screen.getByText("Pendientes de revisión").parentElement).toHaveTextContent("1");
+    expect(screen.getByText("Legajos en seguimiento").parentElement).toHaveTextContent("1");
   });
   it("consulta tesis reales sin acciones de escritura", async () => {
     montar(<TrabajosFinalesConduccionPage />);

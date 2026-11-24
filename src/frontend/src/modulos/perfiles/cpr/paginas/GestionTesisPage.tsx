@@ -1,2 +1,6 @@
 import ConsultaTesis from "../../shared/componentes/ConsultaTesis";
-export default function GestionTesisPage() { return <ConsultaTesis editable />; }
+import "../estilos/CPR.css";
+
+export default function GestionTesisPage() {
+  return <div className="cpr-tesis"><ConsultaTesis editable /></div>;
+}

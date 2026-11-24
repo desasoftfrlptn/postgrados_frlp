@@ -252,8 +252,8 @@ export default function PeriodosInscripcionPage() {
         </p>
       </header>
 
-      <section className="conduccion-tarjeta" aria-labelledby="titulo-gestion-cohortes">
-        <div className="conduccion-tarjeta-cuerpo">
+      <section className="perfil-panel" aria-labelledby="titulo-gestion-cohortes">
+        <div className="perfil-panel-interior">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 id="titulo-gestion-cohortes" className="text-lg font-bold">Administración de cohortes</h2>
@@ -298,9 +298,9 @@ export default function PeriodosInscripcionPage() {
           </form>}
         </div>
       </section>
-      
-      <section className="conduccion-tarjeta" aria-label="Resumen de inscripciones">
-        <div className="conduccion-tarjeta-cuerpo">
+
+      <section className="perfil-panel" aria-label="Resumen de inscripciones">
+        <div className="perfil-panel-interior">
           <p className="font-semibold">
             {cohortes.length} cohortes registradas · {cantidadAbiertas} con
             inscripción abierta · {cohortes.length - cantidadAbiertas} cerradas
@@ -308,12 +308,12 @@ export default function PeriodosInscripcionPage() {
         </div>
       </section>
 
-      <section className="conduccion-tarjeta" aria-labelledby="titulo-listado-periodos">
-        <header className="conduccion-tarjeta-encabezado">
+      <section className="perfil-panel" aria-labelledby="titulo-listado-periodos">
+        <header >
           <h2 id="titulo-listado-periodos">Inscripciones por carrera y cohorte</h2>
         </header>
 
-        <div className="conduccion-tarjeta-cuerpo">
+        <div className="perfil-panel-interior">
           <div className="periodos-filtros">
             <div>
               <label htmlFor="periodos-carrera" className="mb-2 block font-semibold">
@@ -415,7 +415,7 @@ export default function PeriodosInscripcionPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3">
-                        <div className="periodos-acciones"><button type="button" className=" rounded-md border px-3 py-2 text-sm font-semibold" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
+                        <div className="periodos-acciones"><button type="button" className="periodos-btn-secundario" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
                         <button
                           type="button"
                           disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}
@@ -428,11 +428,7 @@ export default function PeriodosInscripcionPage() {
                             });
                           }}
                           aria-label={`${cohorte.abierta ? "Cerrar" : "Abrir"} inscripciones de ${cohorte.nombre}`}
-                          className={`rounded-md px-3 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 ${
-                            cohorte.abierta
-                              ? "bg-red-700 hover:bg-red-800"
-                              : "bg-green-700 hover:bg-green-800"
-                          }`}
+                          className={cohorte.abierta ? "periodos-btn-peligro" : "periodos-btn-primario"}
                         >
                           {procesandoId === cohorte.id
                             ? "Guardando…"
@@ -498,4 +494,3 @@ export default function PeriodosInscripcionPage() {
     </section>
   );
 }
-

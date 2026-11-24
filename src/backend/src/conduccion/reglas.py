@@ -53,6 +53,7 @@ TRANSICIONES = {
         "RECHAZADO": "EN_REVISION",
         "COMPLETADO": "EN_REVISION",
         "VENCIDO": "EN_REVISION",
+        "BAJA": "EN_REVISION",
     },
     AccionLegajo.OBSERVAR: {
         "EN_REVISION": "OBSERVADO",
@@ -69,6 +70,7 @@ TRANSICIONES = {
     AccionLegajo.DAR_BAJA: {
         "ACTIVO": "BAJA",
         "EN_RIESGO": "BAJA",
+        **{estado: "BAJA" for estado in ("PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO")},
     },
 }
 
@@ -130,14 +132,14 @@ def exigir_coordinador(rol: str, activo: bool) -> None:
         activo=activo,
         roles_permitidos={"COORDINADOR"},
     )
-    
+
 def exigir_cpr(rol: str, activo: bool) -> None:
     exigir_rol(
         rol=rol,
         activo=activo,
         roles_permitidos={"CPR"},
     )
-    
+
 def validar_cambio_estado(
     *,
     estado_actual: str,

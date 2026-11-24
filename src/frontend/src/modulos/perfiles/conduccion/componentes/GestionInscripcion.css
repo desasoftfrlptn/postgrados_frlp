@@ -382,3 +382,7 @@
 .gestion-inscripcion .gestion-formulario-unificado .gestion-boton-guardar { min-height: 44px; background: #fff; border: 1px solid #2563eb; color: #1d4ed8; }
 .gestion-inscripcion .gestion-formulario-unificado .gestion-boton-guardar:hover:not(:disabled) { background: #eff6ff; }
 @media (max-width: 680px) { .gestion-inscripcion .gestion-formulario-unificado { padding: 14px; } .gestion-formulario-unificado .gestion-boton-guardar { width: 100%; } }
+
+.gestion-inscripcion .gestion-accion { background: #fff; border-color: #cbd5e1; color: #1d4ed8; }
+.gestion-inscripcion .gestion-accion--aprobar, .gestion-inscripcion .gestion-accion--matricular { background: #2563eb; border-color: #2563eb; color: white; }
+.gestion-inscripcion .gestion-accion--dar_baja, .gestion-inscripcion .gestion-accion--rechazar { color: #b91c1c; border-color: #b91c1c; }

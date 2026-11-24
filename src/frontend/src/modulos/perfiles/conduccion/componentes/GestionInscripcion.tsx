@@ -55,6 +55,7 @@ const accionesPorEstado: Record<
   string,
   { accion: Accion; texto: string }[]
 > = {
+  BAJA: [{ accion: "REVISAR", texto: "Reabrir revisión" }],
   PENDIENTE: [
     { accion: "REVISAR", texto: "Iniciar revisión" },
   ],
@@ -78,6 +79,10 @@ const accionesPorEstado: Record<
   ],
 };
 
+for (const estado of ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO"]) {
+  accionesPorEstado[estado].push({ accion: "DAR_BAJA", texto: "Dar de baja" });
+}
+
 const documentosDisponibles = [
   { valor: "FORMULARIO_PREINSCRIPCION", texto: "Formulario de preinscripción" },
   { valor: "FORMULARIO_INSCRIPCION", texto: "Formulario de inscripción" },
@@ -93,6 +98,7 @@ interface Props {
   legajoId: string;
   onEstadoActualizado?: (estado: string) => void;
   onDocumentacionActualizada?: () => void;
+  onEliminado?: () => void;
 }
 
 function mensajeError(error: unknown, alternativa: string) {
@@ -103,6 +109,7 @@ export default function GestionInscripcion({
   legajoId,
   onEstadoActualizado,
   onDocumentacionActualizada,
+  onEliminado,
 }: Props) {
   const { user } = useAuth();
   const token = user?.token;
@@ -122,7 +129,7 @@ export default function GestionInscripcion({
   const [consultaValida, setConsultaValida] = useState(false);
 
   const [accionPendiente, setAccionPendiente] =
-    useState<Accion | "VERIFICAR" | null>(null);
+    useState<Accion | "VERIFICAR" | "ELIMINAR" | null>(null);
 
   const solicitudActual = useRef(0);
   const operacionEnCurso = useRef(false);
@@ -403,7 +410,14 @@ export default function GestionInscripcion({
     if (!accionPendiente || operacionEnCurso.current) return;
 
     try {
-      if (accionPendiente === "VERIFICAR") {
+      if (accionPendiente === "ELIMINAR") {
+        if (!token || !consultaValida) return;
+        operacionEnCurso.current = true;
+        setGuardando(true);
+        try { await api.delete(base, token); onEliminado?.(); }
+        catch (err) { setError(mensajeError(err, "No se pudo eliminar la inscripción.")); }
+        finally { operacionEnCurso.current = false; setGuardando(false); }
+      } else if (accionPendiente === "VERIFICAR") {
         await guardarVerificacion();
       } else {
         await ejecutarAccion(accionPendiente);
@@ -424,6 +438,7 @@ export default function GestionInscripcion({
   const bloqueado = guardando || cargando || !consultaValida;
 
   const titulosConfirmacion = {
+    ELIMINAR: "¿Eliminar aspirante?",
     VERIFICAR: "¿Guardar verificación?",
     REVISAR: "¿Iniciar revisión?",
     OBSERVAR: "¿Solicitar correcciones?",
@@ -434,6 +449,7 @@ export default function GestionInscripcion({
   };
 
   const descripcionesConfirmacion = {
+    ELIMINAR: "Se eliminará la inscripción. Esta acción no se puede deshacer.",
     VERIFICAR: "Se guardarán los datos de verificación del legajo.",
     REVISAR: "La inscripción pasará a estar en revisión.",
     OBSERVAR: "Se registrarán las correcciones solicitadas al aspirante.",
@@ -595,9 +611,7 @@ export default function GestionInscripcion({
               </fieldset>
             )}
 
-            {["EN_REVISION", "ACTIVO", "EN_RIESGO"].includes(
-              gestion.estado
-            ) && (
+            {(accionesPorEstado[gestion.estado] ?? []).some(a => ["OBSERVAR", "RECHAZAR", "DAR_BAJA"].includes(a.accion)) && (
             <div className="gestion-observaciones">
               <label htmlFor="observaciones-inscripcion">
                 Observaciones para el aspirante
@@ -784,6 +798,7 @@ export default function GestionInscripcion({
                   </button>
                 ),
               )}
+              {onEliminado && !gestion.fecha_matricula && ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"].includes(gestion.estado) && <button type="button" className="gestion-accion gestion-accion--dar_baja" disabled={bloqueado} onClick={() => setAccionPendiente("ELIMINAR")}>Eliminar aspirante</button>}
             </div>
 
             </section>
@@ -832,7 +847,7 @@ export default function GestionInscripcion({
           textoCancelar="Cancelar"
           confirmando={guardando}
           peligroso={
-            accionPendiente === "RECHAZAR" ||
+            accionPendiente === "ELIMINAR" || accionPendiente === "RECHAZAR" ||
             accionPendiente === "DAR_BAJA"
           }
           alConfirmar={confirmarOperacion}

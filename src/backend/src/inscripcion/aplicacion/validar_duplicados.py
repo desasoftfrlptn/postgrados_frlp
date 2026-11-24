@@ -29,6 +29,7 @@ async def validar_inscripcion_no_duplicada(
     correo_electronico: str,
     dni_pasaporte: str,
     cohorte_id: UUID,
+    excluir_legajo_id: UUID | None = None,
 ) -> None:
     dni = normalizar_documento(dni_pasaporte)
     correo = correo_electronico.strip().lower()
@@ -60,6 +61,8 @@ async def validar_inscripcion_no_duplicada(
             detail="La cohorte seleccionada no existe.",
         )
 
+    excluir = (LegajoORM.id != excluir_legajo_id,) if excluir_legajo_id is not None else ()
+
     correo_de_otro_aspirante = await db.scalar(
         select(LegajoORM.id)
         .where(
@@ -83,6 +86,7 @@ async def validar_inscripcion_no_duplicada(
     inscripcion_misma_cohorte = await db.scalar(
         select(LegajoORM.id)
         .where(
+            *excluir,
             LegajoORM.dni_pasaporte == dni,
             LegajoORM.cohorte_id == cohorte_id,
             LegajoORM.estado != "BAJA",
@@ -103,6 +107,7 @@ async def validar_inscripcion_no_duplicada(
             LegajoORM.cohorte_id == CohorteORM.id,
         )
         .where(
+            *excluir,
             LegajoORM.dni_pasaporte == dni,
             CohorteORM.anio == cohorte.anio,
             CohorteORM.carrera_id == cohorte.carrera_id,
@@ -127,6 +132,7 @@ async def validar_inscripcion_no_duplicada(
             LegajoORM.cohorte_id == CohorteORM.id,
         )
         .where(
+            *excluir,
             LegajoORM.dni_pasaporte == dni,
             CohorteORM.anio == cohorte.anio,
             LegajoORM.estado.notin_(ESTADOS_NO_VIGENTES),

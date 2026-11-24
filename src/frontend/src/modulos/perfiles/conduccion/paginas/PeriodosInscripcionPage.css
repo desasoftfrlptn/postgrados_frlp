@@ -15,3 +15,16 @@
 .periodos-inscripcion .conduccion-tarjeta-cuerpo { min-width: 0; }
 @media (max-width: 1000px) { .periodos-filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 540px) { .periodos-filtros { grid-template-columns: minmax(0, 1fr); } .periodos-filtros .periodos-limpiar { justify-self: stretch; } }
+
+.periodos-inscripcion { display: grid; gap: 20px; }
+.periodos-inscripcion .perfil-pagina-encabezado { margin-bottom: 0; }
+.periodos-inscripcion .perfil-panel-interior { padding: 24px; min-width: 0; }
+.periodos-inscripcion th { background: #f8fafc; color: #475569; }
+.periodos-btn-secundario, .periodos-btn-primario, .periodos-btn-peligro { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 14px; font-size: 14px; font-weight: 600; background: white; color: #2563eb; }
+.periodos-btn-primario { background: #2563eb; color: white; border-color: #2563eb; }
+.periodos-btn-peligro { color: #b91c1c; border-color: #fecaca; }
+.periodos-btn-secundario:hover:not(:disabled) { background: #eff6ff; }
+.periodos-btn-peligro:hover:not(:disabled) { background: #fef2f2; }
+.periodos-btn-primario:hover:not(:disabled) { background: #1d4ed8; }
+.periodos-acciones button:disabled { opacity: .55; cursor: not-allowed; }
+.periodos-inscripcion button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

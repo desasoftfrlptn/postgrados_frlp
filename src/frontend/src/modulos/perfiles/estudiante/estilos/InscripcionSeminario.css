@@ -1,0 +1,15 @@
+.inscripcion-seminario-acciones { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-bottom: 1rem; }
+.inscripcion-seminario-primario, .inscripcion-seminario-secundario { border-radius: .5rem; padding: .65rem 1rem; font-weight: 600; cursor: pointer; }
+.inscripcion-seminario-primario { background: #2563eb; color: white; border: 1px solid #2563eb; }
+.inscripcion-seminario-primario:hover:not(:disabled) { background: #1d4ed8; }
+.inscripcion-seminario-secundario { background: white; color: #334155; border: 1px solid #cbd5e1; }
+.inscripcion-seminario-acciones button:disabled { opacity: .55; cursor: not-allowed; }
+.inscripcion-seminario-formulario { background: white; border: 1px solid #e2e8f0; border-radius: .75rem; padding: 1.25rem; margin-bottom: 1.5rem; display: grid; gap: .85rem; }
+.inscripcion-seminario-formulario h2 { font-size: 1.125rem; font-weight: 700; color: #1e293b; }
+.inscripcion-seminario-formulario label { font-weight: 600; color: #334155; }
+.inscripcion-seminario-formulario select { width: 100%; border: 1px solid #94a3b8; border-radius: .5rem; padding: .65rem; background: white; color: #1e293b; }
+.inscripcion-seminario-detalle { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: .5rem 1rem; padding: 1rem; background: #f8fafc; border-radius: .5rem; }
+.inscripcion-seminario-detalle dt { font-weight: 600; color: #475569; }
+.inscripcion-seminario-detalle dd { margin: 0; overflow-wrap: anywhere; }
+.inscripcion-seminario-formulario .inscripcion-seminario-acciones { margin-bottom: 0; }
+.inscripcion-seminario-formulario :focus-visible, .inscripcion-seminario-acciones button:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 3px; }

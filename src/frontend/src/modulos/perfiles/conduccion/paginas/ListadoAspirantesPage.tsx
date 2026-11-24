@@ -517,6 +517,7 @@ export default function ListadoAspirantesPage() {
             key={legajoGestionando.id}
             legajoId={legajoGestionando.id}
             onEstadoActualizado={actualizarEstadoGestion}
+            onEliminado={() => { setLegajoGestionandoId(null); setReintento(v => v + 1); }}
           />
         </section>
       )}

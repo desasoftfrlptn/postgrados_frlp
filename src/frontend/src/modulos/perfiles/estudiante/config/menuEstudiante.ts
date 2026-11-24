@@ -1,4 +1,3 @@
-
 import type { OpcionMenuPerfil } from "../../shared/componentes/BarraNavegacionPerfil";
 
 // Navegación del perfil Estudiante.
@@ -16,7 +15,7 @@ export const menuEstudiante: OpcionMenuPerfil[] = [
   {
     texto: "Seminarios",
     icono: "📖",
-    ruta: "/dashboard/estado-academico?vista=seminarios",
+    ruta: "/dashboard/seminarios",
   },
   {
     texto: "Trabajo final / Tesis",

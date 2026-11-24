@@ -81,6 +81,8 @@ export const router = createBrowserRouter([
               { path: "dashboard/cpr/estudiantes", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/EstudiantesCPRPage")) },
               { path: "dashboard/cpr/docentes", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/DocentesCPRPage")) },
               { path: "dashboard/cpr/tesis", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/GestionTesisPage")) },
+              { path: "dashboard/cpr/trabajos-practicos", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/TrabajosPracticosCPRPage")) },
+              { path: "dashboard/cpr/tutorias", lazy: cargarPagina(() => import("../../modulos/perfiles/cpr/paginas/TutoriasCPRPage")) },
             ],
           },
           {
@@ -105,6 +107,10 @@ export const router = createBrowserRouter([
               {
                 path: "dashboard/estado-academico",
                 lazy: cargarPagina(() => import("../../modulos/perfiles/estudiante/paginas/EstadoAcademicoPage")),
+              },
+              {
+                path: "dashboard/seminarios",
+                lazy: cargarPagina(() => import("../../modulos/perfiles/estudiante/paginas/SeminariosEstudiantePage")),
               },
               {
                 path: "dashboard/trabajo-final",

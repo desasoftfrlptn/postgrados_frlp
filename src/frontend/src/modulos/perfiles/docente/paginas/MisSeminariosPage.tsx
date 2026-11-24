@@ -1,4 +1,6 @@
 // Página responsable de mostrar al docente los seminarios que tiene asignados en el ciclo lectivo actual.
+import "../../shared/estilos/PerfilesCompartidos.css";
+import "../estilos/Docente.css";
 import { useEffect, useState } from "react";
 import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
@@ -23,7 +25,7 @@ export default function MisSeminariosPage() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-      async function cargarSeminarios() {   
+      async function cargarSeminarios() {
     if (!user?.token) {
       setCargando(false);
       return;
@@ -47,12 +49,12 @@ export default function MisSeminariosPage() {
   }
     cargarSeminarios();
 }, [user?.token]);
- 
+
     return (
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
         <h1>Mis Seminarios</h1>
-        <p>Consultá el detalle de los seminarios que tenés asignados para dictar este ciclo.</p>
+        <p>Consultá tus seminarios asignados y gestioná su cursada. El alta, la modificación y la baja de seminarios corresponden a Administración.</p>
       </header>
 
    {cargando && (
@@ -77,14 +79,14 @@ export default function MisSeminariosPage() {
    )}
 
       {/* Uso de CSS Grid para distribuir las tarjetas de forma responsiva */}
-      <ul className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+      <ul className="docente-seminarios">
         {seminarios.map((seminario) => (
           <li key={seminario.id}>
-            
+
             {/* Artículo semántico para cada seminario (tarjeta) */}
-            <article className="bg-white rounded-xl shadow-sm border border-slate-200 h-full flex flex-col hover:shadow-md transition-shadow">
-              
-              <header className="bg-blue-50 border-b border-slate-200 p-5 rounded-t-xl">
+            <article className="perfil-panel docente-seminario">
+
+              <header className="docente-seminario-cabecera">
                 <div className="flex justify-end items-start mb-2">
                   <span className="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-1 rounded">
                     {seminario.activo ? "Activo" : "Inactivo"}
@@ -97,10 +99,10 @@ export default function MisSeminariosPage() {
                   {seminario.carrera_nombre}
                 </p>
               </header>
-              
+
               {/* Contenido flexible que empuja el footer hacia abajo */}
               <div className="p-5 flex-grow flex flex-col justify-between">
-                
+
                 {/* Lista de definición para las fechas */}
                 <dl className="mb-6">
                   <div className="flex flex-col mb-3">
@@ -111,17 +113,18 @@ export default function MisSeminariosPage() {
                     </dd>
                   </div>
                 </dl>
-                
+
                 {/* Footer semántico con las acciones (Navegación con React Router) */}
-                <footer className="grid grid-cols-2 gap-3 mt-auto">
-                  <Link 
-                    to="/dashboard/docente/asistencia" 
+                <footer className="docente-seminario-acciones">
+                  <Link to={`/dashboard/docente/estudiantes?seminario=${encodeURIComponent(seminario.id)}`} className="docente-boton docente-boton-secundario">Gestionar estudiantes</Link>
+                  <Link
+                    to="/dashboard/docente/asistencia"
                     className="text-center py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg transition-colors text-sm"
                   >
                     Pasar Asistencia
                   </Link>
-                  <Link 
-                    to="/dashboard/docente/calificaciones" 
+                  <Link
+                    to="/dashboard/docente/calificaciones"
                     className="text-center py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors text-sm"
                   >
                     Cargar Notas
@@ -130,7 +133,7 @@ export default function MisSeminariosPage() {
 
               </div>
             </article>
-            
+
           </li>
         ))}
       </ul>

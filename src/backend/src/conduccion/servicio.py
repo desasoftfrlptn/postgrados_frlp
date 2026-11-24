@@ -203,7 +203,7 @@ def resumen_gestion(legajo, gestion):
         ),
         "fecha_baja": gestion.fecha_baja if gestion else None,
         "observaciones": gestion.observaciones if gestion else None,
-    
+
         "documentacion_a_corregir": (
             gestion.documentacion_a_corregir if gestion else []
             ),
@@ -404,6 +404,13 @@ async def aplicar_accion(
         legajo_id,
         crear=True,
     )
+
+    if datos.accion == AccionLegajo.REVISAR and legajo.estado in {"BAJA", "RECHAZADO", "VENCIDO"}:
+        if gestion.fecha_matricula is not None:
+            raise HTTPException(409, "Un legajo matriculado requiere una regularización académica, no una nueva admisión.")
+        from src.inscripcion.aplicacion.validar_duplicados import validar_inscripcion_no_duplicada
+        await validar_inscripcion_no_duplicada(db, legajo.correo_electronico, legajo.dni_pasaporte, legajo.cohorte_id, excluir_legajo_id=legajo.id)
+        gestion.fecha_baja = None
 
     documentacion_completa = False
 
@@ -663,3 +670,43 @@ async def vencer_reservas(db, ahora=None):
         "cantidad": len(vencidos),
         "legajos": vencidos,
     }
+
+async def eliminar_aspirante(db, legajo_id, usuario):
+    """Elimina solo admisiones sin historial académico. Conserva auditoría y numeración personal."""
+    from sqlalchemy import delete, update
+    comprobar_coordinador(usuario)
+    legajo = await obtener_legajo(db, legajo_id, bloquear=True)
+    gestion = await obtener_gestion(db, legajo_id)
+    if legajo.estado not in {"PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"} or (gestion and gestion.fecha_matricula is not None):
+        raise HTTPException(409, "No se puede eliminar un legajo con historial de matrícula.")
+    # Revisar toda relación académica registrada, incluso aquellas con borrado en cascada.
+    for tabla in LegajoORM.metadata.tables.values():
+        if tabla.name in {"gestion_legajos", "documentos_legajo"}:
+            continue
+        for fk in tabla.foreign_keys:
+            if fk.target_fullname == "legajos.id":
+                existe = await db.scalar(select(fk.parent).where(fk.parent == legajo_id).limit(1))
+                if existe is not None:
+                    raise HTTPException(409, "El legajo tiene registros asociados y no se puede eliminar.")
+    documentos = select(DocumentoLegajoORM.id).where(DocumentoLegajoORM.legajo_id == legajo_id)
+    # Cancelar correos pendientes de esta inscripción y preservar los ya enviados.
+    await db.execute(delete(NotificacionConduccionORM).where(NotificacionConduccionORM.enviado.is_(False), NotificacionConduccionORM.documento_id.in_(documentos)))
+    await db.execute(delete(NotificacionConduccionORM).where(
+        NotificacionConduccionORM.enviado.is_(False),
+        NotificacionConduccionORM.destinatario == legajo.correo_electronico,
+        NotificacionConduccionORM.contenido.contains(legajo.numero_seguimiento, autoescape=True),
+    ))
+    await db.execute(update(NotificacionConduccionORM).where(NotificacionConduccionORM.documento_id.in_(documentos)).values(documento_id=None))
+    registrar_auditoria(db, legajo_id=legajo_id, accion="ELIMINAR_ASPIRANTE", usuario=usuario, anterior={"estado": legajo.estado, "numero_seguimiento": legajo.numero_seguimiento})
+    await db.execute(delete(DocumentoLegajoORM).where(DocumentoLegajoORM.legajo_id == legajo_id))
+    if gestion is not None:
+        await db.delete(gestion)
+        await db.flush()
+    await db.delete(legajo)
+    return {"mensaje": "Inscripción eliminada."}
+
+
+async def consultar_personas_academicas(db, usuario):
+    comprobar_coordinador(usuario)
+    filas = (await db.execute(select(UsuarioORM, RolORM.nombre).join(RolORM, UsuarioORM.rol_id == RolORM.id).where(RolORM.nombre.in_(["DOCENTE", "CPR"])).order_by(UsuarioORM.apellido, UsuarioORM.nombre))).all()
+    return [{"id": str(u.id), "nombre": u.nombre, "apellido": u.apellido, "correo_electronico": u.correo_electronico, "rol": rol, "activo": u.activo} for u, rol in filas]
