@@ -1,0 +1,17 @@
+/* Distribución de filtros y acciones del perfil docente. */
+.docente-asociacion { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; padding:1.25rem; align-items:start; }
+.docente-campo { min-width:0; display:flex; flex-direction:column; gap:.35rem; }
+.docente-campo label { color:#334155; font-size:.875rem; font-weight:600; }
+.docente-campo input,.docente-campo select { width:100%; min-width:0; min-height:42px; box-sizing:border-box; border:1px solid #cbd5e1; border-radius:6px; padding:.55rem .75rem; background:white; color:#1e293b; font-size:.875rem; }
+.docente-boton { display:inline-flex; justify-content:center; align-items:center; min-height:42px; padding:.55rem 1rem; border:1px solid #2563eb; border-radius:6px; background:#2563eb; color:white; font-size:.875rem; font-weight:600; text-decoration:none; cursor:pointer; }
+.docente-asociacion > .docente-boton { grid-column:1/-1; justify-self:end; }
+.docente-boton:hover:not(:disabled) { background:#1d4ed8; }
+.docente-boton:disabled { opacity:.55; cursor:not-allowed; }
+.docente-boton:focus-visible,.docente-campo :focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+.docente-boton-secundario { background:white; color:#2563eb; }
+.docente-boton-secundario:hover { background:#eff6ff!important; }
+.docente-seminarios { list-style:none; padding:0; margin:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
+.docente-seminario { height:100%; display:flex; flex-direction:column; }
+.docente-seminario-acciones { display:flex; flex-wrap:wrap; gap:.75rem; }
+@media(max-width:850px) { .docente-asociacion { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px) { .docente-asociacion,.docente-seminarios { grid-template-columns:minmax(0,1fr); } .docente-asociacion > .docente-boton { justify-self:stretch; } }

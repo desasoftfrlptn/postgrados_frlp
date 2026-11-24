@@ -1,0 +1,22 @@
+/* Indicadores y gráficos adaptables para los reportes. */
+.indicadores-dashboard { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,420px),1fr)); gap: 16px; margin-block: 16px; align-items: stretch; }
+.indicadores-grafico { min-width: 0; padding: 18px; background: var(--color-surface,#fff); border: 1px solid var(--color-border,#dbe2ea); border-radius: 12px; }
+.indicadores-grafico h2 { margin: 0 0 16px; font-size: 1.05rem; }
+.indicadores-barras { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.indicadores-barras li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 5px 12px; align-items: center; }
+.indicadores-barras li > span:first-child { overflow-wrap: anywhere; }
+.indicadores-pista { grid-column: 1 / -1; height: 10px; background: #e6ebf2; border-radius: 8px; overflow: hidden; }
+.indicadores-pista > span { display: block; height: 100%; border-radius: inherit; }
+.indicadores-anillo { width: min(124px,100%); aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; }
+.indicadores-anillo > span { border-radius: 50%; width: 68%; aspect-ratio: 1; background: var(--color-surface,#fff); display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 1.4rem; font-weight: 700; }
+.indicadores-anillo small { font-size: .75rem; font-weight: 400; }
+.indicadores-tarjetas { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,155px),1fr)); gap: 12px; margin-block: 16px; }
+.indicadores-tarjetas article { min-width: 0; border: 1px solid var(--color-border,#dbe2ea); background: var(--color-surface,#fff); border-radius: 10px; padding: 16px; display: grid; gap: 6px; }
+.indicadores-tarjetas strong { font-size: 1.75rem; color: var(--color-secondary,#375a9e); }
+
+.indicadores-contenido { display: grid; gap: 18px; align-items: center; }
+.indicadores-grafico-distribucion .indicadores-contenido:has(.indicadores-anillo) { grid-template-columns: 124px minmax(0,1fr); }
+.indicadores-grafico { display: flex; flex-direction: column; }
+.indicadores-grafico .indicadores-contenido { flex: 1; }
+.indicadores-dashboard:has(> :only-child) { grid-template-columns: minmax(0,1fr); }
+@media (max-width: 520px) { .indicadores-grafico-distribucion .indicadores-contenido:has(.indicadores-anillo) { grid-template-columns: minmax(0,1fr); } }
