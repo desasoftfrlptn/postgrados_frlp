@@ -63,8 +63,12 @@ const accionesPorEstado: Record<
     { accion: "APROBAR", texto: "Aprobar inscripción" },
     { accion: "RECHAZAR", texto: "Rechazar inscripción" },
   ],
+  OBSERVADO: [{ accion: "REVISAR", texto: "Reabrir revisión" }],
+  RECHAZADO: [{ accion: "REVISAR", texto: "Reabrir revisión" }],
+  VENCIDO: [{ accion: "REVISAR", texto: "Reabrir revisión" }],
   COMPLETADO: [
     { accion: "MATRICULAR", texto: "Autorizar matrícula" },
+    { accion: "REVISAR", texto: "Reabrir revisión" },
   ],
   ACTIVO: [
     { accion: "DAR_BAJA", texto: "Dar de baja" },

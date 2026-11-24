@@ -7,6 +7,7 @@ import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 import "../estilos/Conduccion.css";
 import "../estilos/ConduccionModulos.css";
+import "./PeriodosInscripcionPage.css";
 
 interface Carrera {
   id: string;
@@ -242,7 +243,7 @@ export default function PeriodosInscripcionPage() {
   }} />;
 
   return (
-    <section className="perfil-pagina" aria-labelledby="titulo-periodos">
+    <section className="perfil-pagina periodos-inscripcion" aria-labelledby="titulo-periodos">
       <header className="perfil-pagina-encabezado">
         <h1 id="titulo-periodos">Períodos de inscripción</h1>
         <p>
@@ -313,7 +314,7 @@ export default function PeriodosInscripcionPage() {
         </header>
 
         <div className="conduccion-tarjeta-cuerpo">
-          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="periodos-filtros">
             <div>
               <label htmlFor="periodos-carrera" className="mb-2 block font-semibold">
                 Carrera
@@ -352,8 +353,8 @@ export default function PeriodosInscripcionPage() {
             </div>
             <div><label htmlFor="periodos-nombre" className="mb-2 block font-semibold">Buscar cohorte</label><input id="periodos-nombre" type="search" className="w-full rounded-md border border-gray-300 p-2" value={filtroNombre} onChange={e => setFiltroNombre(e.target.value)} /></div>
             <div><label htmlFor="periodos-anio" className="mb-2 block font-semibold">Año</label><select id="periodos-anio" className="w-full rounded-md border border-gray-300 p-2" value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)}><option value="">Todos</option>{Array.from(new Set(cohortes.map(c => c.anio))).sort((a,b) => b-a).map(a => <option key={a} value={a}>{a}</option>)}</select></div>
+          <button type="button" className="periodos-limpiar rounded-md border px-3 py-2" onClick={() => {setFiltroNombre("");setFiltroAnio("");setFiltroCarrera("");setFiltroEstado("TODAS");}}>Limpiar filtros</button>
           </div>
-          <button type="button" className="mb-4 rounded-md border px-3 py-2" onClick={() => {setFiltroNombre("");setFiltroAnio("");setFiltroCarrera("");setFiltroEstado("TODAS");}}>Limpiar filtros</button>
 
           {error && (
             <MensajeSistema
@@ -414,7 +415,7 @@ export default function PeriodosInscripcionPage() {
                         </span>
                       </td>
                       <td className="px-3 py-3">
-                        <button type="button" className="mr-2 rounded-md border px-3 py-2 text-sm font-semibold" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
+                        <div className="periodos-acciones"><button type="button" className=" rounded-md border px-3 py-2 text-sm font-semibold" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
                         <button
                           type="button"
                           disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}
@@ -438,7 +439,7 @@ export default function PeriodosInscripcionPage() {
                             : cohorte.abierta
                               ? "Cerrar inscripción"
                               : "Abrir inscripción"}
-                        </button>
+                        </button></div>
                       </td>
                     </tr>
                   ))}

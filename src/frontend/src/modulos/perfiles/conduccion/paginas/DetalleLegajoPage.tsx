@@ -104,10 +104,11 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: string | null | u
   );
 }
 
-function ContenidoDetalle({ id, token }: { id: string; token: string }) {
+function ContenidoDetalle({ id, token, soloLectura = false }: { id: string; token: string; soloLectura?: boolean }) {
   const [seccionActiva, setSeccionActiva] =
-    useState<"gestion" | "datos" | "documentos">("gestion");
+    useState<"gestion" | "datos" | "documentos">(soloLectura ? "datos" : "gestion");
 
+  const [numeroLegajo, setNumeroLegajo] = useState<string | null>(null);
   const [legajo, setLegajo] = useState<LegajoDetalle | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
@@ -133,11 +134,12 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
 
     async function cargarLegajo() {
       try {
-        const resultado = await api.get<LegajoDetalle>(
-          `/inscripcion/${encodeURIComponent(id)}`,
-          token,
-        );
-        if (activo) setLegajo(resultado);
+        const ruta = soloLectura ? `/autenticacion/usuarios/legajo/${encodeURIComponent(id)}` : `/inscripcion/${encodeURIComponent(id)}`;
+        const resultado = await api.get<LegajoDetalle & { numero_legajo?: string | null }>(ruta, token);
+        if (activo) {
+          setLegajo(resultado);
+          setNumeroLegajo(resultado.numero_legajo ?? null);
+        }
       } catch (err) {
         if (activo) {
           setError(err instanceof Error ? err.message : "No se pudo consultar el legajo.");
@@ -152,11 +154,12 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
     return () => {
       activo = false;
     };
-  }, [id, token]);
+  }, [id, token, soloLectura]);
 
   useEffect(() => {
     let activo = true;
 
+    if (soloLectura) return;
     async function cargarDocumentacion() {
       try {
         const resultado = await api.get<DocumentacionLegajo>(
@@ -187,7 +190,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
     return () => {
       activo = false;
     };
-  }, [id, token, revisionDocumental]);
+  }, [id, token, revisionDocumental, soloLectura]);
 
   const actualizarEstado = useCallback((estado: string) => {
     setLegajo((actual) => actual ? { ...actual, estado } : actual);
@@ -253,14 +256,14 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
 
   return (
     <section className="perfil-pagina conduccion-detalle" aria-labelledby="titulo-detalle-legajo">
-      <Link to="/dashboard/conduccion/aspirantes" className="conduccion-volver">
-        <span aria-hidden="true">←</span> Volver a aspirantes
+      <Link to={soloLectura ? "/dashboard/administrador/usuarios" : "/dashboard/conduccion/aspirantes"} className="conduccion-volver">
+        <span aria-hidden="true">←</span> {soloLectura ? "Volver a usuarios" : "Volver a aspirantes"}
       </Link>
 
       <header className="conduccion-detalle-encabezado">
-        <p className="conduccion-etiqueta">EQUIPO DE CONDUCCIÓN / INSCRIPCIONES</p>
-        <h1 id="titulo-detalle-legajo">Gestión del aspirante</h1>
-        <p>Revisá la inscripción y resolvé la solicitud de admisión.</p>
+        <p className="conduccion-etiqueta">{soloLectura ? "ADMINISTRACIÓN / USUARIOS" : "EQUIPO DE CONDUCCIÓN / INSCRIPCIONES"}</p>
+        <h1 id="titulo-detalle-legajo">{soloLectura ? "Detalle del legajo" : "Gestión del aspirante"}</h1>
+        <p>{soloLectura ? "Consultá los datos personales y académicos." : "Revisá la inscripción y resolvé la solicitud de admisión."}</p>
       </header>
 
       {cargando && <p role="status">Cargando información del legajo…</p>}
@@ -271,7 +274,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
           <section className="conduccion-resumen" aria-label="Resumen del aspirante">
             <div className="conduccion-resumen-superior">
               <div>
-                <p className="conduccion-resumen-etiqueta">ASPIRANTE</p>
+                <p className="conduccion-resumen-etiqueta">{soloLectura ? "LEGAJO" : "ASPIRANTE"}</p>
                 <h2 className="conduccion-nombre">{legajo.nombre} {legajo.apellido}</h2>
                 <p className="conduccion-subtitulo">{legajo.carrera_elegida}</p>
               </div>
@@ -280,6 +283,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
               </span>
             </div>
             <dl className="conduccion-resumen-datos">
+              {soloLectura && <Campo etiqueta="Número de legajo" valor={numeroLegajo} />}
               <Campo etiqueta="N.º de seguimiento" valor={legajo.numero_seguimiento} />
               <Campo etiqueta="DNI / Pasaporte" valor={legajo.dni_pasaporte} />
               <Campo
@@ -297,7 +301,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
               ["gestion", "Gestión de inscripción"],
               ["datos", "Datos del aspirante"],
               ["documentos", "Documentación"],
-            ] as const).map(([seccion, texto]) => (
+            ] as const).filter(([seccion]) => !soloLectura || seccion === "datos").map(([seccion, texto]) => (
               <button
                 key={seccion}
                 type="button"
@@ -314,16 +318,16 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
             ))}
           </nav>
 
-          <div hidden={seccionActiva !== "gestion"} className="legajo-panel">
+          {!soloLectura && <div hidden={seccionActiva !== "gestion"} className="legajo-panel">
             <GestionInscripcion
               legajoId={legajo.id}
               onEstadoActualizado={actualizarEstado}
               onDocumentacionActualizada={actualizarDocumentacion}
             />
-          </div>
+          </div>}
 
           <div hidden={seccionActiva !== "datos"} className="legajo-panel">
-          <div className="conduccion-grid">
+          <div className="conduccion-grid legajo-datos-grid">
             {legajo.nacionalidad?.trim() && (
               <section className="conduccion-tarjeta">
                 <header className="conduccion-tarjeta-encabezado"><h2>Identificación</h2></header>
@@ -333,7 +337,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
               </section>
             )}
 
-            <section className="conduccion-tarjeta">
+            <section className="conduccion-tarjeta legajo-contacto">
               <header className="conduccion-tarjeta-encabezado"><h2>Contacto y domicilio</h2></header>
               <dl className="conduccion-datos conduccion-tarjeta-cuerpo">
                 <Campo etiqueta="Correo electrónico" valor={legajo.correo_electronico} />
@@ -362,7 +366,7 @@ function ContenidoDetalle({ id, token }: { id: string; token: string }) {
 
           </div>
 
-          <div hidden={seccionActiva !== "documentos"} className="legajo-panel">
+          <div hidden={soloLectura || seccionActiva !== "documentos"} className="legajo-panel">
           <section className="conduccion-tarjeta conduccion-seccion-documental" aria-labelledby="titulo-documentacion">
             <header className="conduccion-tarjeta-encabezado">
               <h2 id="titulo-documentacion">Estado de la documentación</h2>
@@ -442,6 +446,6 @@ export default function DetalleLegajoPage() {
   if (!id || !user?.token) {
     return <p role="alert">No se pudo identificar el legajo o la sesión.</p>;
   }
-  return <ContenidoDetalle key={`${id}:${user.token}`} id={id} token={user.token} />;
+  return <ContenidoDetalle key={`${id}:${user.token}`} id={id} token={user.token} soloLectura={user.rol === "ADMIN"} />;
 }
 

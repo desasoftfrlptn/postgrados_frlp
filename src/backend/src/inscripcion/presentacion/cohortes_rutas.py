@@ -11,7 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.usuarios.modelos import UsuarioORM
-from src.usuarios.rutas import usuario_actual
+from src.usuarios.rutas import usuario_actual, administrador_actual
+from fastapi import Response
 
 from src.carreras.modelos import CarreraORM
 from src.compartido.conexion import get_db
@@ -183,3 +184,17 @@ async def editar_cohorte_controller(
     except IntegrityError as exc:
         await db.rollback()
         raise HTTPException(409, "No se pudo guardar: nombre duplicado o datos relacionados.") from exc
+
+
+@enrutador.delete("/{cohorte_id}", status_code=204)
+async def eliminar_cohorte(cohorte_id: UUID, db: AsyncSession = Depends(get_db), _admin=Depends(administrador_actual)):
+    registro = await db.get(CohorteORM, cohorte_id)
+    if registro is None:
+        raise HTTPException(404, "Registro no encontrado.")
+    try:
+        await db.delete(registro)
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(409, "No se puede eliminar porque existen registros académicos relacionados. Cerrá o desactivá el registro para conservar el historial.") from exc
+    return Response(status_code=204)

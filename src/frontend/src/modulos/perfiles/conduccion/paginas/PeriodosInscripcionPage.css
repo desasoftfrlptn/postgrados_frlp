@@ -1,0 +1,17 @@
+/* Distribución adaptable de filtros y acciones de cohortes. */
+.periodos-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 1rem; align-items: end; margin-bottom: 1rem; }
+.periodos-filtros > div { min-width: 0; }
+.periodos-filtros input, .periodos-filtros select { width: 100%; min-width: 0; min-height: 42px; }
+.periodos-limpiar { margin-bottom: 1rem; }
+.periodos-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.periodos-acciones button { min-height: 40px; white-space: nowrap; }
+.periodos-inscripcion .overflow-x-auto { max-width: 100%; }
+.periodos-inscripcion th, .periodos-inscripcion td { vertical-align: middle; }
+
+.periodos-filtros { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
+.periodos-filtros label { line-height: 1.4; }
+.periodos-filtros .periodos-limpiar { grid-column: 1 / -1; justify-self: end; margin: 0; min-height: 42px; }
+.periodos-acciones { justify-content: flex-start; }
+.periodos-inscripcion .conduccion-tarjeta-cuerpo { min-width: 0; }
+@media (max-width: 1000px) { .periodos-filtros { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .periodos-filtros { grid-template-columns: minmax(0, 1fr); } .periodos-filtros .periodos-limpiar { justify-self: stretch; } }

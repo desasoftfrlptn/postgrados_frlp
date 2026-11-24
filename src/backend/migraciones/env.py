@@ -41,6 +41,7 @@ from src.conduccion import modelos as _conduccion
 from src.tesis import modelos as _tesis
 from src.alertas import modelos as _alertas
 from src.tutorias import modelos as _tutorias
+from src.trabajos_practicos import modelos as _trabajos_practicos
 
 
 config = context.config

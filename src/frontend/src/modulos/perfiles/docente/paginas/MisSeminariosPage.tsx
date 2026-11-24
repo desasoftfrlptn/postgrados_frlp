@@ -17,25 +17,6 @@ interface SeminarioDocente {
 }
 
 export default function MisSeminariosPage() {
-  // Datos simulados (Mock) de los seminarios asignados al docente
-  // const seminarios = [
-  //   { 
-  //     id: "SEM-401", 
-  //     nombre: "Metodología de la Investigación", 
-  //     carrera: "Maestría en Ingeniería en Sistemas de Información", 
-  //     cohorte: "2026", 
-  //     fechaInicio: "2026-03-01", 
-  //     fechaFin: "2026-07-15" 
-  //   },
-  //   { 
-  //     id: "SEM-405", 
-  //     nombre: "Gestión de Proyectos IT", 
-  //     carrera: "Especialización en Gestión de TIC", 
-  //     cohorte: "2026", 
-  //     fechaInicio: "2026-08-01", 
-  //     fechaFin: "2026-11-30" 
-  //   }
-  // ];
     const { user } = useAuth();
     const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
     const [cargando, setCargando] = useState(true);
@@ -104,10 +85,7 @@ export default function MisSeminariosPage() {
             <article className="bg-white rounded-xl shadow-sm border border-slate-200 h-full flex flex-col hover:shadow-md transition-shadow">
               
               <header className="bg-blue-50 border-b border-slate-200 p-5 rounded-t-xl">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                    {seminario.id}
-                  </span>
+                <div className="flex justify-end items-start mb-2">
                   <span className="bg-slate-200 text-slate-700 text-xs font-bold px-2 py-1 rounded">
                     {seminario.activo ? "Activo" : "Inactivo"}
                   </span>
@@ -128,8 +106,8 @@ export default function MisSeminariosPage() {
                   <div className="flex flex-col mb-3">
                     <dt className="text-xs font-bold text-slate-500 uppercase">Período de dictado</dt>
                     <dd className="text-sm font-medium text-slate-800 mt-1">
-                      Desde <time dateTime={seminario.fecha_inicio}>{new Date(seminario.fecha_inicio).toLocaleDateString('es-AR')}</time> 
-                      {" "}hasta <time dateTime={seminario.fecha_fin}>{new Date(seminario.fecha_fin).toLocaleDateString('es-AR')}</time>
+                      Desde <time dateTime={seminario.fecha_inicio}>{seminario.fecha_inicio.split("-").reverse().join("/")}</time>
+                      {" "}hasta <time dateTime={seminario.fecha_fin}>{seminario.fecha_fin.split("-").reverse().join("/")}</time>
                     </dd>
                   </div>
                 </dl>

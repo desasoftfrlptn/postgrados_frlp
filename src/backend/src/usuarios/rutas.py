@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from src.usuarios.acceso import activar_cuenta, obtener_usuario_enlace, FINALIDAD
 from src.usuarios.cuentas_academicas import (
     candidatos_cuenta, obtener_legajo_matriculado, validar_identidad_alumno, consultar_destino_cuenta,
-    nueva_clave_interna, enviar_acceso,
+    nueva_clave_interna, enviar_acceso, asegurar_numero_legajo, asegurar_legajos_usuario, numeros_legajo_usuario, numeros_legajos_usuarios,
 )
 from src.usuarios.servicio import buscar_usuario_con_rol
 
@@ -173,10 +173,13 @@ async def obtener_usuarios(
 ):
     usuarios = await listar_usuarios(db)
 
-    return [
-        respuesta_usuario(usuario)
-        for usuario in usuarios
-    ]
+    numeros = await numeros_legajos_usuarios(db, usuarios)
+    respuestas = []
+    for usuario in usuarios:
+        respuesta = respuesta_usuario(usuario)
+        respuesta.numeros_legajo = numeros.get(usuario.id, [])
+        respuestas.append(respuesta)
+    return respuestas
 
 @enrutador.get("/usuarios/candidatos")
 async def listar_candidatos_cuenta(db: AsyncSession = Depends(get_db), administrador=Depends(administrador_actual)):
@@ -239,7 +242,11 @@ async def reenviar_acceso(usuario_id: UUID, db: AsyncSession = Depends(get_db), 
         raise HTTPException(409, "La cuenta no está habilitada para recibir acceso.")
     if usuario.rol.nombre == "ALUMNO":
         await validar_identidad_alumno(db, usuario.dni, usuario.correo_electronico)
-    if not await enviar_acceso(usuario):
+    numeros = await asegurar_legajos_usuario(db, usuario)
+    if numeros:
+        await db.commit()
+        usuario = await buscar_usuario_con_rol(usuario_id, db)
+    if not await enviar_acceso(usuario, await numeros_legajo_usuario(db, usuario)):
         raise HTTPException(503, "No se pudo enviar el correo. Verificá la configuración e intentá nuevamente.")
     return {"message": "Correo de acceso enviado."}
 
@@ -258,6 +265,7 @@ async def registrar_usuario(
         administrador_actual
     ),
 ):
+    numero = None
     if datos.tipo_usuario == "ALUMNO":
         if datos.legajo_id is None:
             raise HTTPException(422, "Seleccioná un alumno matriculado.")
@@ -267,6 +275,8 @@ async def registrar_usuario(
         nombre, apellido, dni, correo = datos.nombre, datos.apellido, datos.dni, datos.correo_electronico
     if len(correo) > 200:
         raise HTTPException(422, "El correo supera la longitud admitida por las cuentas." )
+    if datos.tipo_usuario == "ALUMNO":
+        numero = await asegurar_numero_legajo(db, legajo)
     usuario = await crear_usuario(
         nombre=nombre,
         apellido=apellido,
@@ -281,7 +291,8 @@ async def registrar_usuario(
     )
 
     respuesta = respuesta_usuario(usuario)
-    respuesta.correo_acceso_enviado = await enviar_acceso(usuario)
+    respuesta.numeros_legajo = sorted(set([numero, *await numeros_legajo_usuario(db, usuario)])) if numero else []
+    respuesta.correo_acceso_enviado = await enviar_acceso(usuario, respuesta.numeros_legajo)
     return respuesta
 
 

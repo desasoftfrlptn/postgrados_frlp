@@ -17,7 +17,7 @@ class SeminarioCrear(BaseModel):
 class SeminarioModificar(BaseModel):
     nombre: str
     carrera_id: UUID
-    docente_id: UUID
+    docente_id: UUID | None
     fecha_inicio: date
     fecha_fin: date
 
@@ -33,7 +33,7 @@ class SeminarioRespuesta(BaseModel):
     carrera_id: UUID
     carrera_nombre: str
 
-    docente_id: UUID
+    docente_id: UUID | None
     docente_nombre: str
 
     fecha_inicio: date

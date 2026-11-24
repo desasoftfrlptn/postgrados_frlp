@@ -246,8 +246,8 @@ export const router = createBrowserRouter([
             lazy: cargarPagina(() => import("../../modulos/perfiles/administrador/paginas/UsuariosPage")),
           },
           {
-            path: "dashboard/administrador/usuarios/legajo/:legajoId",
-            lazy: cargarPagina(() => import("../../modulos/perfiles/administrador/paginas/UsuariosPage")),
+            path: "dashboard/administrador/usuarios/legajo/:id",
+            lazy: cargarPagina(() => import("../../modulos/perfiles/conduccion/paginas/DetalleLegajoPage")),
           },
           {
             path: "dashboard/administrador/docentes",

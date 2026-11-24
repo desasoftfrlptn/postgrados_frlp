@@ -1,3 +1,4 @@
+import "../estilos/Administrador.css";
 import EditarCohorte from "../../shared/componentes/EditarCohorte";
 // Permite administrar los ciclos y cohortes de las carreras.
 
@@ -61,7 +62,7 @@ export default function CohortesPage() {
 
   const { user } = useAuth();
 
-  const [editando, setEditando] = useState<Cohorte | null>(null);
+  const [gestionId, setGestionId] = useState<string | null>(null);
   const [cohortes, setCohortes] =
     useState<Cohorte[]>([]);
 
@@ -242,6 +243,16 @@ export default function CohortesPage() {
   };
 
 
+  const eliminar = (cohorte: Cohorte) => {
+    if (!user?.token) return;
+    const token = user.token;
+    confirmacion.solicitar({ titulo: "Eliminar cohorte", descripcion: `¿Eliminar ${cohorte.nombre}? Si tiene registros académicos asociados, se conservará.`, textoConfirmar: "Eliminar", peligroso: true, ejecutar: async () => {
+      setError(""); setMensaje("");
+      try { await api.delete<void>(`/cohortes/${cohorte.id}`, token); setMensaje("Registro eliminado correctamente."); await cargarCohortes(); }
+      catch (e) { setError(e instanceof Error ? e.message : "No se pudo eliminar el registro."); }
+    } });
+  };
+
   const cambiarEstado = async (cohorte: Cohorte) => {
     if (!user) {
       return;
@@ -310,12 +321,7 @@ export default function CohortesPage() {
     `${cohorte.nombre} ${obtenerNombreCarrera(cohorte.carrera_id)}`.toLowerCase().includes(busqueda.trim().toLowerCase())
   );
 
-  if (editando && user?.token) return <EditarCohorte cohorte={editando} carreras={carreras} token={user?.token} cancelar={() => { setEditando(null); void cargarCohortes(); }} guardada={actualizada => {
-    setCohortes(actuales => actuales.map(c => c.id === actualizada.id ? actualizada : c));
-    setEditando(null);
-    setMensaje("La cohorte fue modificada correctamente.");
-  }} />;
-
+  const gestion = cohortes.find(c => c.id === gestionId);
   return (
     <section>
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -329,13 +335,13 @@ export default function CohortesPage() {
           </p>
         </div>
 
-        <button
+        {!gestion && <button
           type="button"
-          onClick={abrirNuevaCohorte}
+          onClick={() => { setGestionId(null); abrirNuevaCohorte(); }}
           className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
         >
           + Nueva cohorte
-        </button>
+        </button>}
       </header>
 
 
@@ -357,6 +363,11 @@ export default function CohortesPage() {
       )}
 
 
+      {gestion && user?.token && <EditarCohorte key={gestion.id} modoGestion cohorte={gestion} carreras={carreras} token={user.token} cancelar={() => setGestionId(null)} guardada={actualizada => {
+        setCohortes(actuales => actuales.map(c => c.id === actualizada.id ? actualizada : c));
+        setGestionId(null);
+        setMensaje("La cohorte fue modificada correctamente.");
+      }} cambiarEstado={() => cambiarEstado(gestion)} />}
       {mostrarFormulario && (
         <form
           onSubmit={guardarCohorte}
@@ -510,6 +521,7 @@ export default function CohortesPage() {
       )}
 
 
+      {!gestion && <>
       <article className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-bold text-gray-900">
           Listado de cohortes
@@ -580,20 +592,8 @@ export default function CohortesPage() {
                         : "Cerrada"}
                     </td>
                     <td className="px-3 py-3">
-                      <button type="button" className="mr-2 rounded-md border px-3 py-2 text-sm font-semibold" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={confirmacion.abierto}>Editar</button>
-                        <button
-                        type="button"
-                        onClick={() => cambiarEstado(cohorte)}
-                        className={
-                          cohorte.abierta
-                            ? "rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white hover:bg-red-700"
-                            : "rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
-                        }
-                      >
-                        {cohorte.abierta
-                          ? "Cerrar cohorte"
-                          : "Abrir cohorte"}
-                      </button>
+                      <button type="button" className="admin-accion-gestionar" onClick={() => setGestionId(cohorte.id)}>Gestionar cohorte</button>
+                          <button type="button" className="admin-accion-eliminar" onClick={() => eliminar(cohorte)}>Eliminar</button>
                     </td>
                   </tr>
                 ))}
@@ -602,6 +602,7 @@ export default function CohortesPage() {
           </div>
         )}
       </article>
+      </>}
       <ConfirmacionModal
         abierto={confirmacion.abierto}
         titulo={confirmacion.titulo}

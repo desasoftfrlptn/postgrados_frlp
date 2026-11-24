@@ -19,3 +19,24 @@
 .tutorias table { width: 100%; border-collapse: collapse; text-align: left; }
 .tutorias th, .tutorias td { padding: .75rem; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
 .tutorias td:last-child { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 180px; }
+
+/* Variante de administración; no modifica las vistas de los otros roles. */
+.tutorias-admin h1 { font-size: 1.875rem; font-weight: 800; color: #111827; }
+.tutorias-admin .tutorias-cabecera p { color: #6b7280; margin-top: .25rem; }
+.tutorias-admin .tutorias-panel { border-color: #e5e7eb; padding: 1.5rem; box-shadow: 0 1px 2px #0000000d; }
+.tutorias-admin .tutorias-primario { background: #2563eb; }
+.tutorias-admin .tutorias-primario:hover { background: #1d4ed8; }
+.tutorias-admin .tutorias-secundario { border-color: #d1d5db; color: #2563eb; }
+.tutorias-admin th { background: #f9fafb; color: #374151; }
+.tutorias-admin input, .tutorias-admin select, .tutorias-admin textarea { border-color: #d1d5db; box-sizing: border-box; }
+
+.tutorias-admin {display:block;box-sizing:border-box;min-width:0;}
+.tutorias-admin .tutorias-panel {margin-bottom:1.5rem;border-radius:.75rem;background:#fff;}
+.tutorias-admin .tutorias-cabecera {align-items:center;}
+.tutorias-admin .tutorias-cabecera h1 {font-weight:800;line-height:1.2;}
+.tutorias-admin .tutorias-campos {grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:1.25rem;}
+.tutorias-admin .tutorias-tabla {border:1px solid #e5e7eb;border-radius:.5rem;}
+.tutorias-admin .tutorias-primario,.tutorias-admin .tutorias-secundario {border-radius:.375rem;padding:.5rem 1rem;}
+.tutorias-admin .tutorias-secundario {color:#374151;}
+.tutorias-admin .tutorias-cabecera p {font-size:.95rem;}
+@media(max-width:640px){.tutorias-admin {padding:1rem;}.tutorias-admin .tutorias-panel {padding:1rem;}}

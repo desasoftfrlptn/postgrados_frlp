@@ -285,3 +285,67 @@
 .admin-reporte p { margin-top: 10px; color: #475569; font-size: 14px; }
 .admin-configuracion-acceso { padding: 20px 22px; }
 .admin-configuracion-acceso a { color: #2563eb; text-decoration: underline; }
+
+/* Dashboard accesible de indicadores: sin librería de gráficos externa. */
+.admin-grafico-barras { list-style: none; padding: 0; margin: 1.25rem 0 0; display: grid; gap: .9rem; }
+.admin-grafico-fila { display: grid; grid-template-columns: minmax(145px, 2fr) minmax(100px, 4fr) minmax(40px, 45px); align-items: center; gap: .85rem; }
+.admin-grafico-nombre { color: #334155; font-size: .9rem; }
+.admin-grafico-pista { height: 16px; border-radius: 6px; background: #e2e8f0; overflow: hidden; }
+.admin-grafico-barra { display: block; height: 100%; min-width: 0; border-radius: 6px; background: #2563eb; }
+.admin-grafico-cantidad { text-align: right; color: #0f172a; font-variant-numeric: tabular-nums; }
+.admin-reportes-selector { margin-bottom: 1rem; }
+.admin-reportes-selector label { display: block; margin-bottom: .5rem; }
+@media (max-width: 620px) {
+  .admin-grafico-fila { grid-template-columns: 1fr 54px; gap: .3rem .8rem; }
+  .admin-grafico-pista { grid-row: 2; grid-column: 1 / -1; }
+  .admin-grafico-cantidad { grid-column: 2; grid-row: 1; }
+}
+
+.admin-reportes-cabecera { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.admin-reportes-cabecera button { background: #375a9e; color: white; font-weight: 600; }
+.admin-reportes-cabecera button:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Reportes: una franja de indicadores y un gráfico amplio, sin tarjetas repetidas. */
+.admin-reporte-metricas { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-block:1px solid #dce3eb; padding:1.2rem 0; margin:1.25rem 0; gap:1rem; }
+.admin-reporte-metricas > div { min-width:0; display:flex; flex-direction:column; gap:.3rem; padding-inline:1rem; border-inline-end:1px solid #dce3eb; }
+.admin-reporte-metricas > div:last-child { border:0; }
+.admin-reporte-metricas strong { font-size:2rem; color:#375a9e; line-height:1.2; }
+.admin-reporte-metricas span { font-size:.9rem; color:#475569; }
+.admin-reporte-analisis { background:white; border:1px solid #dce3eb; border-radius:12px; padding:1.25rem; }
+.admin-reporte-control { display:flex; flex-wrap:wrap; align-items:center; gap:.75rem; margin-bottom:1rem; }
+.admin-reporte-control h2 { font-size:1.15rem; font-weight:600; margin-right:auto; }
+.admin-reporte-control select { max-width:100%; border:1px solid #cbd5e1; padding:.5rem; border-radius:6px; }
+.admin-reporte-analisis .indicadores-grafico { border:0; box-shadow:none; padding:.5rem 0; min-height:0; }
+@media(max-width:700px) { .admin-reporte-metricas {grid-template-columns:repeat(2,minmax(0,1fr));} }
+
+.admin-gestion-ficha { background:#fff; border:1px solid #e5e7eb; border-radius:.75rem; padding:1.5rem; margin-bottom:1.5rem; box-shadow:0 1px 2px #0000000d; min-width:0; }
+.admin-gestion-cabecera { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
+.admin-gestion-cabecera h2 {font-size:1.25rem;font-weight:700;color:#111827;}
+.admin-gestion-cabecera p,.admin-gestion-resumen { color:#4b5563; margin:.5rem 0; }
+.admin-gestion-acciones {display:flex;flex-wrap:wrap;gap:.75rem;margin:1rem 0;}
+.admin-gestion-boton,.admin-gestion-cabecera > button {border:1px solid #d1d5db;border-radius:.375rem;padding:.6rem 1rem;font-weight:600;color:#2563eb;background:white;text-decoration:none;}
+.admin-gestion-boton:hover,.admin-gestion-cabecera > button:hover {background:#eff6ff;}
+.admin-accion-gestionar,.admin-accion-eliminar {font-weight:600;display:inline-block;white-space:nowrap;padding:.25rem .4rem;}
+.admin-accion-gestionar {color:#2563eb;} .admin-accion-eliminar {color:#dc2626;}
+.admin-accion-gestionar:hover,.admin-accion-eliminar:hover {text-decoration:underline;}
+.admin-asociaciones {min-width:0;} .admin-asociaciones-filtro {max-width:36rem;margin-block:1rem;}
+.admin-asociaciones-tabla {width:100%;border-collapse:collapse;text-align:left;font-size:.9rem;}
+.admin-asociaciones-tabla th {background:#f9fafb;color:#374151;} .admin-asociaciones-tabla td {border-bottom:1px solid #e5e7eb;}
+.admin-reportes-filtros h2 {font-size:1rem;font-weight:700;}
+.admin-reportes-filtros .admin-filtros-academicos {grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem 1rem;}
+.admin-reportes-filtros .admin-limpiar-filtros {justify-self:start;}
+.admin-reportes-graficos {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-top:1rem;align-items:stretch;}
+.admin-reportes-graficos .indicadores-grafico {min-height:200px;}
+@media(max-width:850px){.admin-reportes-filtros .admin-filtros-academicos{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:580px){.admin-reportes-filtros .admin-filtros-academicos,.admin-reportes-graficos{grid-template-columns:minmax(0,1fr);}.admin-gestion-ficha{padding:1rem;}}
+
+.admin-gestion-datos {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1.25rem;margin:1rem 0;}
+.admin-gestion-datos dt,.admin-gestion-datos label {display:block;color:#475569;font-weight:600;margin-bottom:.35rem;}
+.admin-gestion-datos dd {margin:0;color:#111827;overflow-wrap:anywhere;}
+.admin-gestion-datos select {width:100%;border:1px solid #d1d5db;border-radius:.375rem;padding:.65rem;background:white;}
+.admin-panel.admin-reportes-filtros {box-sizing:border-box;width:100%;padding:clamp(1.25rem,3vw,2rem);margin-bottom:1.5rem;min-width:0;}
+.admin-reportes-filtros .admin-filtros-academicos {margin:1rem 0 0;gap:1.25rem;padding:0;}
+.admin-reportes-filtros .admin-filtro-campo {min-width:0;}
+.admin-asociaciones > .admin-gestion-cabecera {padding:0 .25rem;}
+
+.admin-reportes-filtros > p {margin-top:1.25rem;line-height:1.55;}

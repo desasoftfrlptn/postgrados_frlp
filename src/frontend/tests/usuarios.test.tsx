@@ -16,6 +16,7 @@ import {
   vi,
 } from "vitest";
 
+import DetalleLegajoPage from "../src/modulos/perfiles/conduccion/paginas/DetalleLegajoPage";
 import UsuariosPage from "../src/modulos/perfiles/administrador/paginas/UsuariosPage";
 import { api } from "../src/shared/api/client";
 
@@ -32,6 +33,7 @@ vi.mock("../src/shared/api/client", () => ({
 vi.mock("../src/modulos/manejo-sesion/useAuth", () => ({
   useAuth: () => ({
     user: {
+      id: "admin-prueba",
       token: "token-admin-prueba",
       rol: "ADMIN",
       nombre: "Administrador",
@@ -60,6 +62,8 @@ beforeEach(() => {
         tipo_usuario: "ALUMNO",
         activo: true,
         debe_cambiar_contrasena: true,
+        numeros_legajo: ["26-001-001"],
+        correo_acceso_enviado: true,
       } as T;
     },
   );
@@ -176,6 +180,13 @@ describe("UsuariosPage - Alta de usuarios", () => {
         "token-admin-prueba",
       );
     });
+  });
+
+  it("muestra el legajo asignado en el listado", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([{id:"usuario-1", nombre:"Ana", apellido:"Pérez", dni:"12345678", correo_electronico:"ana@example.com", tipo_usuario:"ALUMNO", activo:true, debe_cambiar_contrasena:false, numeros_legajo:["26-001-001"]}]);
+    render(<UsuariosPage />);
+    expect(await screen.findByText("26-001-001")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", {name:"Legajo"})).toBeInTheDocument();
   });
 
   it("muestra el error cuando el correo está duplicado", async () => {
@@ -449,10 +460,21 @@ describe("Confirmaciones compartidas de usuarios", () => {
 
 it("abre el legajo indicado por la notificación administrativa", async () => {
   const candidato = {id:"legajo-1", nombre:"Ana", apellido:"Perez", dni:"12345678", correo_electronico:"ana@example.com", carrera:"Maestría", numero_seguimiento:"INS-2026-1"};
-  vi.mocked(api.get).mockImplementation(async <T,>(ruta:string):Promise<T> => (ruta.endsWith("/legajo/legajo-1") ? {...candidato, estado:"ACTIVO", usuario_id:null, conflicto:false, habilitado:true} : ruta.endsWith("/candidatos") ? [candidato] : []) as T);
-  render(<MemoryRouter initialEntries={["/dashboard/administrador/usuarios/legajo/legajo-1"]}><Routes><Route path="/dashboard/administrador/usuarios/legajo/:legajoId" element={<UsuariosPage/>}/></Routes></MemoryRouter>);
-  fireEvent.click(await screen.findByRole("button", {name:"Crear cuenta del estudiante"}));
-  await waitFor(() => expect(screen.getByLabelText("Alumno matriculado")).toHaveValue("legajo-1"));
-  expect(screen.getByLabelText("Correo electrónico")).toHaveValue("ana@example.com");
+  vi.mocked(api.get).mockImplementation(async <T,>(ruta:string):Promise<T> => (ruta.endsWith("/legajo/legajo-1") ? {...candidato, dni_pasaporte:candidato.dni, carrera_elegida:candidato.carrera, numero_legajo:"26-001-001", estado:"ACTIVO", usuario_id:null, conflicto:false, habilitado:true} : ruta.endsWith("/candidatos") ? [candidato] : []) as T);
+  render(<MemoryRouter initialEntries={["/dashboard/administrador/usuarios/legajo/legajo-1"]}><Routes><Route path="/dashboard/administrador/usuarios/legajo/:id" element={<DetalleLegajoPage/>}/></Routes></MemoryRouter>);
+  expect(await screen.findByText("26-001-001")).toBeInTheDocument();
+  expect(screen.getByRole("heading", {name:"Detalle del legajo"})).toBeInTheDocument();
+  expect(screen.getByText("Ana Perez")).toBeInTheDocument();
+  expect(api.get).toHaveBeenCalledWith("/autenticacion/usuarios/legajo/legajo-1", "token-admin-prueba");
+  expect(screen.queryByRole("button", {name:"Gestión de inscripción"})).not.toBeInTheDocument();
   expect(api.post).not.toHaveBeenCalled();
+});
+
+
+it("no permite eliminar la propia cuenta del administrador", async () => {
+  vi.mocked(api.get).mockResolvedValue([{id:"admin-prueba", nombre:"Administrador", apellido:"Prueba", dni:"12345678", correo_electronico:"admin@example.com", tipo_usuario:"ADMIN", activo:true, debe_cambiar_contrasena:false}]);
+  render(<UsuariosPage />);
+  expect(await screen.findByText("Administrador Prueba")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument();
+  expect(api.delete).not.toHaveBeenCalled();
 });

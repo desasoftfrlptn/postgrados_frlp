@@ -182,11 +182,15 @@ async def test_aprobar_asigna_numero_y_fecha(
         ),
     )
 
-    numerar = AsyncMock(return_value="26-001-001")
+    async def asignar(db, legajo, gestion):
+        gestion.numero_legajo = "26-001-001"
+        return gestion.numero_legajo
+
+    numerar = AsyncMock(side_effect=asignar)
 
     monkeypatch.setattr(
         s,
-        "generar_numero_legajo",
+        "asignar_legajo_personal",
         numerar,
     )
 
@@ -211,7 +215,7 @@ async def test_aprobar_asigna_numero_y_fecha(
 
     numerar.assert_awaited_once_with(
         sesion,
-        legajo.cohorte_id,
+        legajo, gestion,
     )
 
 
@@ -511,3 +515,20 @@ async def test_vencimiento_modifica_y_audita(sesion):
     assert {n.destinatario for n in notificaciones} == {
         "aspirante@example.com", "coordinador@example.com"
     }
+
+async def test_legajo_personal_se_reutiliza_entre_cohortes(sesion, monkeypatch):
+    from src.conduccion.modelos import LegajoPersonalORM
+    numerar = AsyncMock(return_value="26-001-001")
+    monkeypatch.setattr(s, "generar_numero_legajo", numerar)
+    primera = SimpleNamespace(dni_pasaporte="12.345.678", cohorte_id=uuid4())
+    segunda = SimpleNamespace(dni_pasaporte="12345678", cohorte_id=uuid4())
+    g1 = SimpleNamespace(numero_legajo=None)
+    g2 = SimpleNamespace(numero_legajo=None)
+    sesion.get.return_value = None
+    await s.asignar_legajo_personal(sesion, primera, g1)
+    personal = eventos_agregados(sesion, LegajoPersonalORM)[0]
+    sesion.get.return_value = personal
+    await s.asignar_legajo_personal(sesion, segunda, g2)
+    assert personal.documento == "12345678"
+    assert g1.numero_legajo == g2.numero_legajo == "26-001-001"
+    numerar.assert_awaited_once_with(sesion, primera.cohorte_id)

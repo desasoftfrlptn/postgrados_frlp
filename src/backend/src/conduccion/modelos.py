@@ -32,7 +32,6 @@ class GestionLegajoORM(Base):
     numero_legajo = Column(
         String(50),
         nullable=True,
-        unique=True,
     )
 
     datos_verificados = Column(
@@ -73,6 +72,12 @@ class GestionLegajoORM(Base):
         default=list,
         server_default="[]",
     )
+
+
+class LegajoPersonalORM(Base):
+    __tablename__ = "legajos_personales"
+    documento = Column(String(100), primary_key=True)
+    numero = Column(String(50), nullable=False, unique=True)
 
 
 class NumeracionCohorteORM(Base):

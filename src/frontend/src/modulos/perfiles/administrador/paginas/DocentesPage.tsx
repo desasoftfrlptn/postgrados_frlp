@@ -35,6 +35,7 @@ interface Docente {
   tipo_usuario: Rol;
   activo: boolean;
   debe_cambiar_contrasena: boolean;
+  correo_acceso_enviado?: boolean;
 }
 
 
@@ -43,7 +44,6 @@ interface FormularioDocente {
   apellido: string;
   dni: string;
   correo_electronico: string;
-  contrasena: string;
 }
 
 
@@ -53,7 +53,6 @@ const formularioInicial:
     apellido: "",
     dni: "",
     correo_electronico: "",
-    contrasena: "",
   };
 
 
@@ -248,7 +247,6 @@ export default function DocentesPage() {
       correo_electronico:
         docente.correo_electronico,
 
-      contrasena: "",
     });
 
     setError("");
@@ -353,19 +351,9 @@ export default function DocentesPage() {
         );
 
       } else {
-        if (
-          formulario.contrasena.length
-          < 6
-        ) {
-          setError(
-            "La contraseña debe tener al menos 6 caracteres."
-          );
-
-          return;
-        }
 
 
-        await api.post<Docente>(
+        const respuesta = await api.post<Docente>(
           "/autenticacion/usuarios",
           {
             nombre:
@@ -382,8 +370,6 @@ export default function DocentesPage() {
                 .trim()
                 .toLowerCase(),
 
-            contrasena:
-              formulario.contrasena,
 
             tipo_usuario:
               "DOCENTE",
@@ -393,9 +379,7 @@ export default function DocentesPage() {
 
 
         setMensaje(
-          "El docente fue creado correctamente. "
-          + "Deberá cambiar su contraseña "
-          + "cuando ingrese por primera vez."
+          respuesta.correo_acceso_enviado ? "Docente creado. Correo de activación enviado." : "Docente creado. No se pudo confirmar el envío; gestioná el acceso desde Usuarios."
         );
       }
 
@@ -650,11 +634,7 @@ export default function DocentesPage() {
 
             {!docenteEditando && (
               <p className="mt-1 text-sm text-gray-500">
-                La contraseña será
-                temporal. El docente
-                deberá cambiarla al
-                iniciar sesión por
-                primera vez.
+                Se enviará un enlace de activación para que el docente establezca su contraseña.
               </p>
             )}
           </header>
@@ -765,37 +745,7 @@ export default function DocentesPage() {
             </div>
 
 
-            {!docenteEditando && (
-              <div>
-                <label
-                  htmlFor="docente-contrasena"
-                  className="mb-2 block font-semibold text-gray-700"
-                >
-                  Contraseña temporal
-                </label>
 
-                <input
-                  id="docente-contrasena"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={
-                    formulario.contrasena
-                  }
-                  onChange={(event) =>
-                    actualizarFormulario(
-                      "contrasena",
-                      event.target.value
-                    )
-                  }
-                  className="w-full rounded-md border border-gray-300 p-2"
-                />
-
-                <small className="mt-1 block text-gray-500">
-                  Mínimo 6 caracteres.
-                </small>
-              </div>
-            )}
 
 
             <div>

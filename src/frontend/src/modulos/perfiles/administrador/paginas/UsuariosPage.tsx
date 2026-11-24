@@ -6,7 +6,6 @@ import {
   type FormEvent,
 } from "react";
 
-import { Link, useParams } from "react-router-dom";
 
 import {
   api,
@@ -35,6 +34,7 @@ interface Usuario {
   activo: boolean;
   debe_cambiar_contrasena: boolean;
   correo_acceso_enviado?: boolean;
+  numeros_legajo?: string[];
 }
 
 
@@ -68,15 +68,9 @@ const roles: Rol[] = [
 ];
 
 
-interface CandidatoCuenta { id: string; nombre: string; apellido: string; dni: string; correo_electronico: string; carrera: string; numero_seguimiento: string }
-
-interface DestinoCuenta extends CandidatoCuenta { estado: string; usuario_id: string | null; conflicto: boolean; habilitado: boolean }
+interface CandidatoCuenta { id: string; nombre: string; apellido: string; dni: string; correo_electronico: string; carrera: string; numero_seguimiento: string; numero_legajo?: string | null }
 
 export default function UsuariosPage() {
-  const { legajoId } = useParams();
-  const [destino, setDestino] = useState<DestinoCuenta | null>(null);
-  const [errorDestino, setErrorDestino] = useState("");
-  const [revisionDestino, setRevisionDestino] = useState(0);
   const confirmacion = useConfirmacion();
   const [candidatos, setCandidatos] = useState<CandidatoCuenta[]>([]);
   const [estadoCandidatos, setEstadoCandidatos] = useState<"inactivo" | "cargando" | "listo" | "error">("inactivo");
@@ -223,29 +217,16 @@ export default function UsuariosPage() {
 
 
   const token = user?.token;
-  useEffect(() => {
-    if (!token || !legajoId) return;
-    let vigente = true;
-    api.get<DestinoCuenta>(`/autenticacion/usuarios/legajo/${legajoId}`, token)
-      .then(d => { if (vigente) { setDestino(d); setErrorDestino(""); } })
-      .catch(e => { if (vigente) { setDestino(null); setErrorDestino(e instanceof Error ? e.message : "No se pudo consultar el legajo."); } });
-    return () => { vigente = false; };
-  }, [token, legajoId, revisionDestino]);
-  const destinoActual = destino?.id === legajoId ? destino : null;
   const seleccionAlumno = mostrarFormulario && !usuarioEditando && formulario.tipo_usuario === "ALUMNO";
   useEffect(() => {
     if (!token || !seleccionAlumno) return;
     let vigente = true;
     api.get<CandidatoCuenta[]>("/autenticacion/usuarios/candidatos", token)
       .then(datos => { if (vigente) { setCandidatos(datos); setEstadoCandidatos("listo");
-        if (legajoId) {
-          const c = datos.find(d => d.id === legajoId);
-          if (c) setFormulario(f => ({...f, legajo_id: c.id, nombre: c.nombre, apellido: c.apellido, dni: c.dni, correo_electronico: c.correo_electronico}));
-        }
       } })
       .catch(() => { if (vigente) { setCandidatos([]); setEstadoCandidatos("error"); } });
     return () => { vigente = false; };
-  }, [token, seleccionAlumno, intentoCandidatos, legajoId]);
+  }, [token, seleccionAlumno, intentoCandidatos]);
 
   function seleccionarLegajo(id: string) {
     const candidato = candidatos.find(c => c.id === id);
@@ -418,15 +399,14 @@ export default function UsuariosPage() {
             ...(seleccionAlumno ? { legajo_id: formulario.legajo_id } : {}) },
           user.token
         );
-        setMensaje(respuesta.correo_acceso_enviado
+        setMensaje((respuesta.correo_acceso_enviado
           ? "Usuario creado correctamente. Se envió el enlace de activación."
-          : "Usuario creado. El correo de acceso no se pudo enviar. Utilizá Gestionar acceso.");
+          : "Usuario creado. El correo de acceso no se pudo enviar. Utilizá Gestionar acceso.") + (respuesta.numeros_legajo?.length ? ` Legajo: ${respuesta.numeros_legajo.join(", ")}.` : ""));
       }
 
       cerrarFormulario();
 
       await cargarUsuarios();
-      setRevisionDestino(v => v + 1);
 
     } catch (error) {
       setError(
@@ -515,7 +495,7 @@ export default function UsuariosPage() {
   const eliminarUsuario = async (
     usuario: Usuario
   ) => {
-    if (!user?.token) {
+    if (!user?.token || usuario.id === user.id) {
       return;
     }
 
@@ -526,7 +506,7 @@ export default function UsuariosPage() {
         + "definitivamente a "
         + `${usuario.nombre} `
         + `${usuario.apellido}? `
-        + "Esta acción no se puede deshacer.",
+        + "Se eliminará la cuenta de acceso y se conservará el historial académico. Los seminarios y tutorías asignados quedarán sin docente. Esta acción no se puede deshacer.",
       textoConfirmar: "Confirmar",
       peligroso: true,
       ejecutar: async () => {
@@ -571,12 +551,12 @@ export default function UsuariosPage() {
   const usuariosFiltrados =
     usuarios.filter(
       (usuario) => {
-        if (legajoId && usuario.id !== destinoActual?.usuario_id) return false;
         const nombreCompleto =
         `${usuario.nombre} ${usuario.apellido}`
             .toLowerCase();
 
         return (
+          usuario.numeros_legajo?.some(numero => numero.toLowerCase().includes(textoBusqueda)) ||
           nombreCompleto.includes(
             textoBusqueda
           )
@@ -629,15 +609,6 @@ export default function UsuariosPage() {
       </header>
 
 
-      {legajoId && <section className="bg-white border rounded-xl p-6 mb-6">
-        <Link className="text-blue-600" to="/dashboard/administrador/usuarios">← Todos los usuarios</Link>
-        <h2 className="text-xl font-bold mt-3">Cuenta del estudiante</h2>
-        {errorDestino ? <><p role="alert">{errorDestino}</p><button type="button" onClick={() => {setErrorDestino(""); setRevisionDestino(v => v + 1);}}>Reintentar</button></> : !destinoActual ? <p role="status">Consultando legajo…</p> : <>
-          <p>{destinoActual.apellido}, {destinoActual.nombre}</p><p>{destinoActual.carrera} · {destinoActual.numero_seguimiento}</p><p>Estado: {destinoActual.estado}</p>
-          <p>{destinoActual.correo_electronico}</p>
-          {destinoActual.conflicto ? <p role="alert">Hay una cuenta con datos de identidad incompatibles. Revisá los usuarios existentes.</p> : destinoActual.usuario_id ? <p>Cuenta existente: consultá sus acciones debajo.</p> : destinoActual.habilitado ? <button type="button" className="bg-blue-600 text-white rounded px-4 py-2 mt-3" onClick={() => {setUsuarioEditando(null); setEstadoCandidatos("cargando"); setFormulario({...formularioInicial, tipo_usuario:"ALUMNO"}); setMostrarFormulario(true);}}>Crear cuenta del estudiante</button> : <p>El estudiante aún no tiene un legajo matriculado habilitado.</p>}
-        </>}
-      </section>}
       {error && (
         <MensajeSistema
           tipo="error"
@@ -682,7 +653,7 @@ export default function UsuariosPage() {
             <label htmlFor="legajo-cuenta" className="block text-sm font-semibold mb-2">Alumno matriculado</label>
             <select id="legajo-cuenta" required value={formulario.legajo_id} disabled={estadoCandidatos !== "listo"} onChange={e => seleccionarLegajo(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">Seleccioná un legajo</option>
-              {candidatos.filter(c => !legajoId || c.id === legajoId).map(c => <option key={c.id} value={c.id}>{c.apellido}, {c.nombre} · {c.carrera} · {c.numero_seguimiento}</option>)}
+              {candidatos.map(c => <option key={c.id} value={c.id}>{c.apellido}, {c.nombre} · {c.carrera} · {c.numero_legajo ? `Legajo ${c.numero_legajo}` : "Legajo a generar"} · {c.numero_seguimiento}</option>)}
             </select>
             {estadoCandidatos === "cargando" && <p role="status">Cargando alumnos matriculados…</p>}
             {estadoCandidatos === "listo" && !candidatos.length && <p>No hay alumnos matriculados sin cuenta.</p>}
@@ -878,7 +849,7 @@ export default function UsuariosPage() {
           <input
             id="buscar-usuario"
             type="search"
-            placeholder="Buscar por nombre, correo, DNI o rol..."
+            placeholder="Buscar por nombre, correo, DNI, legajo o rol..."
             value={
               busqueda
             }
@@ -909,6 +880,7 @@ export default function UsuariosPage() {
                     DNI
                   </th>
 
+                  <th className="text-left p-4">Legajo</th>
                   <th className="text-left p-4">
                     Rol
                   </th>
@@ -951,6 +923,7 @@ export default function UsuariosPage() {
                       <td className="p-4">
                         {usuario.dni}
                       </td>
+                      <td className="p-4">{usuario.numeros_legajo?.length ? usuario.numeros_legajo.join(", ") : "—"}</td>
 
 
                       <td className="p-4">
@@ -1003,7 +976,7 @@ export default function UsuariosPage() {
 
 
                           <button type="button" disabled={!usuario.activo || usuario.tipo_usuario === "ASPIRANTE"} title={usuario.debe_cambiar_contrasena ? "Enviar enlace de activación" : "Enviar enlace de recuperación"} onClick={() => reenviarAcceso(usuario)} className="text-blue-600 font-semibold hover:underline disabled:text-gray-400 disabled:no-underline disabled:cursor-not-allowed">Gestionar acceso</button>
-                          <button
+                          {usuario.id !== user?.id && <button
                             type="button"
                             onClick={() =>
                               eliminarUsuario(
@@ -1013,7 +986,7 @@ export default function UsuariosPage() {
                             className="text-red-600 font-semibold hover:underline"
                           >
                             Eliminar
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -1025,7 +998,7 @@ export default function UsuariosPage() {
                   === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="p-8 text-center text-gray-500"
                     >
                       No se encontraron usuarios.

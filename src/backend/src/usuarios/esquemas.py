@@ -33,7 +33,6 @@ class UsuarioCrear(BaseModel):
     apellido: str
     dni: str
     correo_electronico: EmailStr
-    contrasena: str | None = Field(default=None, exclude=True)
     tipo_usuario: RolPrivado
     legajo_id: UUID | None = None
 
@@ -60,6 +59,7 @@ class UsuarioRespuesta(BaseModel):
     activo: bool
     debe_cambiar_contrasena: bool
     correo_acceso_enviado: bool | None = None
+    numeros_legajo: list[str] = Field(default_factory=list)
 
 
 class CambiarContrasenaPeticion(BaseModel):

@@ -5,9 +5,10 @@ import { useAuth } from "../../../manejo-sesion/useAuth";
 export interface RegistroAdmin {
   id: string;
   activo: boolean;
+  nombre?: string;
 }
 interface Usuario extends RegistroAdmin { tipo_usuario: string }
-interface Cohorte { id: string; abierta: boolean }
+interface Cohorte { id: string; abierta: boolean; nombre?: string; carrera_id?: string; anio?: number }
 export type ResumenAdmin = {
   usuarios: Usuario[] | null;
   carreras: RegistroAdmin[] | null;

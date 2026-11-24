@@ -85,3 +85,17 @@ def test_enlace_consumido_no_se_puede_validar_ni_reutilizar(recuperacion):
         assert u.contrasena_hash == hash_nuevo
         db.commit.assert_awaited_once()
     asyncio.run(comprobar())
+
+
+@pytest.mark.asyncio
+async def test_correo_de_activacion_contiene_legajo_sin_clave(monkeypatch):
+    from unittest.mock import Mock
+    from src.usuarios import cuentas_academicas
+    u = SimpleNamespace(nombre="Ana", apellido="Pérez", correo_electronico="ana@example.com", debe_cambiar_contrasena=True)
+    correo = Mock()
+    monkeypatch.setattr(cuentas_academicas, "enviar_correo", correo)
+    monkeypatch.setattr(cuentas_academicas, "construir_enlace_activacion", lambda *_: "https://posgrados.example/activar")
+    assert await cuentas_academicas.enviar_acceso(u, ["26-001-001"])
+    cuerpo = correo.call_args.args[2]
+    assert "Número de legajo: 26-001-001" in cuerpo
+    assert "https://posgrados.example/activar" in cuerpo

@@ -29,11 +29,12 @@ vi.mock("../src/shared/api/client", () => ({
   },
 }));
 
+const sesion = vi.hoisted(() => ({ rol: "COORDINADOR" }));
 vi.mock("../src/modulos/manejo-sesion/useAuth", () => ({
   useAuth: () => ({
     user: {
       token: "token-de-prueba",
-      rol: "COORDINADOR",
+      rol: sesion.rol,
     },
   }),
 }));
@@ -106,6 +107,7 @@ function mostrarDetalle() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  sesion.rol = "COORDINADOR";
 
   vi.mocked(api.get).mockImplementation(
     async <T,>(ruta: string): Promise<T> => {
@@ -256,4 +258,16 @@ describe("Equipo de Conducción - Detalle del legajo", () => {
       screen.queryByRole("progressbar")
     ).not.toBeInTheDocument();
   });
+});
+
+
+it("admin consulta el detalle existente sin habilitar las acciones de Conducción", async () => {
+  sesion.rol = "ADMIN";
+  vi.mocked(api.get).mockResolvedValueOnce({...legajo, numero_legajo: "26-001-001"});
+  render(<MemoryRouter initialEntries={["/dashboard/administrador/usuarios/legajo/legajo-1"]}><Routes><Route path="/dashboard/administrador/usuarios/legajo/:id" element={<DetalleLegajoPage />} /></Routes></MemoryRouter>);
+  expect(await screen.findByText("26-001-001")).toBeInTheDocument();
+  expect(screen.getByRole("heading", {name:"Detalle del legajo"})).toBeInTheDocument();
+  expect(screen.queryByRole("button", {name:"Gestión de inscripción"})).not.toBeInTheDocument();
+  expect(api.get).toHaveBeenCalledTimes(1);
+  expect(api.get).toHaveBeenCalledWith("/autenticacion/usuarios/legajo/legajo-1", "token-de-prueba");
 });

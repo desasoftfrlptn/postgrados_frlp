@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,18 +41,21 @@ describe("Navegación completa de Conducción", () => {
     expect(menuConduccion.some(item => item.ruta?.endsWith("/alertas"))).toBe(false);
     expect(menuConduccion.every((item) => !!item.ruta)).toBe(true);
   });
-  it("el panel muestra todos los módulos", () => {
+  it("el panel enlaza a estadísticas sin duplicar accesos de gestión", () => {
     montar(<PanelConduccionPage />);
     expect(screen.getByRole("heading", { name: /Panel del Equipo de Conducción/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("link", {name:"Ingresar al módulo"})).toHaveLength(8);
+    expect(screen.queryByRole("heading", { name: "Accesos de gestión" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ingresar al módulo" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver estadísticas" })).toHaveAttribute("href", "/dashboard/conduccion/estadisticas");
+    expect(screen.queryByText("Cohortes registradas")).not.toBeInTheDocument();
   });
-  it("muestra indicadores de la cohorte seleccionada sin inventar datos", async () => {
+  it("muestra seguimiento de la cohorte sin duplicar indicadores", async () => {
     montar(<PanelConduccionPage />);
     await screen.findByRole("option", {name: /Cohorte 2026/});
     expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/inscripcion/?"), expect.anything());
     fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
     expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
-    expect(screen.getByRole("heading", {name:"Pendientes de revisión"}).parentElement).toHaveTextContent("1");
+    expect(screen.queryByText("Pendientes de revisión")).not.toBeInTheDocument();
   });
   it("exportaciones no consulta legajos hasta elegir cohorte", async () => {
     montar(<ExportacionesConduccionPage />);
@@ -81,7 +84,11 @@ describe("Navegación completa de Conducción", () => {
     await screen.findByRole("option", {name:/Cohorte 2026/});
     fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
     expect(await screen.findByText("Pendiente de revisión")).toBeInTheDocument();
-    expect(screen.getByText("100 %")).toBeInTheDocument();
+    const filaEstado = screen.getByText("Pendiente de revisión").closest("li")!;
+    expect(within(filaEstado).getByText("100 %")).toBeInTheDocument();
+    const filaBeca = screen.getByText("Sin solicitud").closest("li")!;
+    expect(within(filaBeca).getByText("0 %")).toBeInTheDocument();
+    expect(screen.getByText("Pendientes de revisión").parentElement).toHaveTextContent("1");
   });
   it("consulta tesis reales sin acciones de escritura", async () => {
     montar(<TrabajosFinalesConduccionPage />);
@@ -106,4 +113,3 @@ describe("Navegación completa de Conducción", () => {
     expect(api.get).toHaveBeenCalledWith("/seminarios/consulta-conduccion?cohorte_id=cohorte-1", "prueba");
   });
 });
-

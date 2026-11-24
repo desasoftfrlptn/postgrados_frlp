@@ -545,3 +545,8 @@ def test_otros_roles_no_modifican_tesis(rol):
 def test_cpr_inactivo_no_modifica_tesis():
     with pytest.raises(PermisoDenegadoError):
         exigir_cpr("CPR", False)
+
+@pytest.mark.parametrize("estado", ["OBSERVADO", "RECHAZADO", "COMPLETADO", "VENCIDO"])
+def test_reabrir_inscripcion(estado):
+    cambio = validar_cambio_estado(**argumentos_cambio(estado_actual=estado))
+    assert cambio.estado_nuevo == "EN_REVISION"

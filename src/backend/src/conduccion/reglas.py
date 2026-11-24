@@ -49,6 +49,10 @@ class ResultadoSemaforo:
 TRANSICIONES = {
     AccionLegajo.REVISAR: {
         "PENDIENTE": "EN_REVISION",
+        "OBSERVADO": "EN_REVISION",
+        "RECHAZADO": "EN_REVISION",
+        "COMPLETADO": "EN_REVISION",
+        "VENCIDO": "EN_REVISION",
     },
     AccionLegajo.OBSERVAR: {
         "EN_REVISION": "OBSERVADO",

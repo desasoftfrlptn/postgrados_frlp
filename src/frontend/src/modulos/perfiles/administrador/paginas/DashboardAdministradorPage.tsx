@@ -245,8 +245,7 @@ export default function DashboardAdministradorPage() {
               </h3>
 
               <p>
-                Gestión general de usuarios,
-                información y configuración.
+                Gestión de usuarios y reportes institucionales.
               </p>
             </header>
 
@@ -269,14 +268,6 @@ export default function DashboardAdministradorPage() {
                 />
               </li>
 
-              <li>
-                <AccesoAdministrador
-                  ruta="/dashboard/administrador/configuracion"
-                  icono="⚙️"
-                  titulo="Configuración general"
-                  descripcion="Administrar parámetros generales del sistema."
-                />
-              </li>
             </ul>
           </article>
         </div>

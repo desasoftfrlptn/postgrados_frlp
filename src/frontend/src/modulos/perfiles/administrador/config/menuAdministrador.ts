@@ -49,11 +49,6 @@ export const menuAdministrador: OpcionMenuPerfil[] = [
     ruta: "/dashboard/administrador/home",
   },
   {
-    texto: "Configuración",
-    icono: "⚙️",
-    ruta: "/dashboard/administrador/configuracion",
-  },
-  {
     texto: "Mi perfil",
     icono: "👤",
     ruta: "/dashboard/administrador/perfil",

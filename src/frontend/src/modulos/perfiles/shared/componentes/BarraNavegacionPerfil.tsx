@@ -1,6 +1,6 @@
 // Renderiza las opciones de navegación disponibles para cada perfil.
 
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 
 export interface OpcionMenuPerfil {
@@ -20,6 +20,7 @@ export default function BarraNavegacionPerfil({
   rol,
   opciones,
 }: BarraNavegacionPerfilProps) {
+  const { pathname, search } = useLocation();
   const esRutaInicio = (
     ruta: string
   ) =>
@@ -46,10 +47,13 @@ export default function BarraNavegacionPerfil({
                     opcion.ruta
                   )
                 }
+                aria-current={pathname === "/dashboard/estado-academico" && opcion.ruta?.startsWith(pathname) ? (opcion.ruta === pathname + (new URLSearchParams(search).get("vista") === "seminarios" ? "?vista=seminarios" : "") ? "page" : false) : undefined}
                 className={({
                   isActive,
                 }) =>
-                  isActive
+                  (pathname === "/dashboard/estado-academico" && opcion.ruta?.startsWith("/dashboard/estado-academico")
+                    ? opcion.ruta === pathname + (new URLSearchParams(search).get("vista") === "seminarios" ? "?vista=seminarios" : "")
+                    : isActive)
                     ? "perfil-menu-enlace perfil-menu-enlace-activo"
                     : "perfil-menu-enlace"
                 }

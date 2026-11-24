@@ -41,7 +41,7 @@ class Encuentro(BaseModel):
 
 
 def exigir(usuario, *roles):
-    if usuario.rol.nombre not in roles or usuario.debe_cambiar_contrasena:
+    if not usuario.activo or not usuario.rol or usuario.rol.nombre not in roles or usuario.debe_cambiar_contrasena:
         raise HTTPException(403, "No tiene permisos para esta operación.")
 
 
@@ -58,9 +58,11 @@ def resumen(l, c, carrera):
 
 @router.get("/candidatos")
 async def candidatos(usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
-    exigir(usuario, "ADMIN")
-    filas = (await db.execute(legajos().where(LegajoORM.estado.in_(ESTADOS),
-        ~select(TutoriaORM.id).where(TutoriaORM.legajo_id == LegajoORM.id).exists())
+    exigir(usuario, "ADMIN", "CPR")
+    ocupados = select(TutoriaORM.id).where(TutoriaORM.legajo_id == LegajoORM.id)
+    if usuario.rol.nombre == "CPR":
+        ocupados = ocupados.where(TutoriaORM.activa.is_(True))
+    filas = (await db.execute(legajos().where(LegajoORM.estado.in_(ESTADOS), ~ocupados.exists())
         .order_by(LegajoORM.apellido, LegajoORM.nombre))).all()
     docentes = (await db.scalars(select(UsuarioORM).join(RolORM, UsuarioORM.rol_id == RolORM.id)
         .where(RolORM.nombre == "DOCENTE", UsuarioORM.activo.is_(True))
@@ -71,8 +73,8 @@ async def candidatos(usuario=Depends(usuario_actual), db: AsyncSession = Depends
 
 @router.get("")
 async def listar(usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
-    exigir(usuario, "ADMIN", "COORDINADOR", "DOCENTE", "ALUMNO")
-    consulta = legajos().add_columns(TutoriaORM, UsuarioORM).join_from(LegajoORM, TutoriaORM, TutoriaORM.legajo_id == LegajoORM.id).join_from(TutoriaORM, UsuarioORM, UsuarioORM.id == TutoriaORM.tutor_id)
+    exigir(usuario, "ADMIN", "CPR", "COORDINADOR", "DOCENTE", "ALUMNO")
+    consulta = legajos().add_columns(TutoriaORM, UsuarioORM).join_from(LegajoORM, TutoriaORM, TutoriaORM.legajo_id == LegajoORM.id).join_from(TutoriaORM, UsuarioORM, UsuarioORM.id == TutoriaORM.tutor_id, isouter=True)
     if usuario.rol.nombre == "DOCENTE":
         consulta = consulta.where(TutoriaORM.tutor_id == usuario.id)
     if usuario.rol.nombre == "ALUMNO":
@@ -85,14 +87,15 @@ async def listar(usuario=Depends(usuario_actual), db: AsyncSession = Depends(get
         registros = (await db.scalars(select(EncuentroORM).where(EncuentroORM.tutoria_id.in_(ids)).order_by(EncuentroORM.fecha.desc(), EncuentroORM.id))).all()
         for e in registros:
             encuentros.setdefault(e.tutoria_id, []).append({"id": str(e.id), "fecha": e.fecha, "estado": e.estado, "observaciones": e.observaciones, "version": e.version})
-    return [{**resumen(l, c, carrera), "id": str(t.id), "tutor": f"{u.apellido}, {u.nombre}", "activa": t.activa,
-             "editable": t.activa and l.estado in ESTADOS and u.activo,
+    return [{**resumen(l, c, carrera), "id": str(t.id), "tutor": f"{u.apellido}, {u.nombre}" if u else "Sin tutor asignado", "tutor_id": str(t.tutor_id) if t.tutor_id else None, "activa": t.activa,
+             "editable": t.activa and l.estado in ESTADOS and bool(u and u.activo),
              "encuentros": encuentros.get(t.id, [])} for l, c, carrera, t, u in filas]
 
 
 @router.post("", status_code=201)
 async def asignar(datos: Asignacion, usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
-    exigir(usuario, "ADMIN")
+    exigir(usuario, "ADMIN", "CPR")
+    existente = await db.scalar(select(TutoriaORM).where(TutoriaORM.legajo_id == datos.legajo_id).with_for_update())
     legajo = await db.scalar(select(LegajoORM).where(LegajoORM.id == datos.legajo_id).with_for_update())
     if not legajo or legajo.estado not in ESTADOS:
         raise HTTPException(422, "Seleccioná un legajo matriculado y habilitado.")
@@ -100,13 +103,65 @@ async def asignar(datos: Asignacion, usuario=Depends(usuario_actual), db: AsyncS
         .where(UsuarioORM.id == datos.tutor_id, UsuarioORM.activo.is_(True), RolORM.nombre == "DOCENTE"))
     if not tutor:
         raise HTTPException(422, "Seleccioná un docente activo.")
-    tutoria = TutoriaORM(**datos.model_dump())
-    db.add(tutoria)
+    if existente:
+        if existente.activa or usuario.rol.nombre != "CPR":
+            raise HTTPException(409, "El legajo ya tiene una tutoría asignada.")
+        existente.tutor_id = tutor.id
+        existente.activa = True
+        tutoria = existente
+    else:
+        tutoria = TutoriaORM(**datos.model_dump())
+        db.add(tutoria)
     try:
         await db.commit()
     except IntegrityError:
         await db.rollback()
         raise HTTPException(409, "El legajo ya tiene una tutoría asignada.")
+    return {"id": str(tutoria.id)}
+
+
+class ModificarAsignacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tutor_id: UUID
+    tutor_anterior_id: UUID | None
+
+
+@router.put("/{tutoria_id}")
+async def modificar_asignacion(tutoria_id: UUID, datos: ModificarAsignacion,
+                                usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
+    exigir(usuario, "ADMIN", "CPR")
+    tutoria = await db.scalar(select(TutoriaORM).where(TutoriaORM.id == tutoria_id).with_for_update())
+    if not tutoria:
+        raise HTTPException(404, "Tutoría no encontrada.")
+    legajo = await db.scalar(select(LegajoORM).where(LegajoORM.id == tutoria.legajo_id).with_for_update())
+    if not tutoria.activa or not legajo or legajo.estado not in ESTADOS:
+        raise HTTPException(409, "La tutoría ya no admite modificaciones.")
+    if tutoria.tutor_id != datos.tutor_anterior_id:
+        raise HTTPException(409, "La asignación cambió. Actualizá el listado.")
+    tutor = await db.scalar(select(UsuarioORM).join(RolORM, UsuarioORM.rol_id == RolORM.id)
+        .where(UsuarioORM.id == datos.tutor_id, UsuarioORM.activo.is_(True), RolORM.nombre == "DOCENTE"))
+    if not tutor:
+        raise HTTPException(422, "Seleccioná un docente activo.")
+    tutoria.tutor_id = tutor.id
+    await db.commit()
+    return {"id": str(tutoria.id)}
+
+
+class BajaAsignacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tutor_id: UUID | None
+
+
+@router.patch("/{tutoria_id}/baja")
+async def dar_baja(tutoria_id: UUID, datos: BajaAsignacion, usuario=Depends(usuario_actual), db: AsyncSession = Depends(get_db)):
+    exigir(usuario, "CPR")
+    tutoria = await db.scalar(select(TutoriaORM).where(TutoriaORM.id == tutoria_id).with_for_update())
+    if not tutoria:
+        raise HTTPException(404, "Tutoría no encontrada.")
+    if not tutoria.activa or tutoria.tutor_id != datos.tutor_id:
+        raise HTTPException(409, "La tutoría cambió o ya está dada de baja.")
+    tutoria.activa = False
+    await db.commit()
     return {"id": str(tutoria.id)}
 
 

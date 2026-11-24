@@ -3,7 +3,7 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.alertas.servicio import alertar_rol, alertar_alumno
@@ -17,6 +17,7 @@ from src.conduccion.modelos import (
     GestionLegajoORM,
     NotificacionConduccionORM,
     NumeracionCohorteORM,
+    LegajoPersonalORM,
 )
 from src.conduccion.reglas import (
     AccionLegajo,
@@ -354,6 +355,23 @@ async def generar_numero_legajo(db, cohorte_id):
     )
 
 
+async def asignar_legajo_personal(db, legajo, gestion):
+    from src.compartido.documentos import normalizar_documento
+    documento = normalizar_documento(legajo.dni_pasaporte)
+    if not documento:
+        raise HTTPException(422, "El alumno no tiene documento válido.")
+    # Serializa asignaciones de distintas inscripciones de la misma persona.
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:documento))"), {"documento": documento})
+    personal = await db.get(LegajoPersonalORM, documento)
+    if personal is None:
+        numero = gestion.numero_legajo or await generar_numero_legajo(db, legajo.cohorte_id)
+        personal = LegajoPersonalORM(documento=documento, numero=numero)
+        db.add(personal)
+    gestion.numero_legajo = personal.numero
+    await db.flush()
+    return personal.numero
+
+
 async def aplicar_accion(
     db,
     legajo_id,
@@ -446,12 +464,12 @@ async def aplicar_accion(
         ) from exc
 
     if datos.accion == AccionLegajo.APROBAR:
-        if gestion.numero_legajo is None:
-            gestion.numero_legajo = await generar_numero_legajo(
-                db,
-                legajo.cohorte_id,
-            )
+        await asignar_legajo_personal(db, legajo, gestion)
         gestion.fecha_aprobacion = ahora
+
+    elif datos.accion == AccionLegajo.REVISAR and cambio.estado_anterior != "PENDIENTE":
+        gestion.fecha_aprobacion = None
+        gestion.datos_verificados = False
 
     elif datos.accion == AccionLegajo.MATRICULAR:
         gestion.fecha_matricula = ahora
@@ -497,6 +515,8 @@ async def aplicar_accion(
 
     elif cambio.estado_anterior != cambio.estado_nuevo:
         asunto, contenido = generar_correo_estado(legajo, cambio.estado_nuevo, cambio.comentario)
+        if datos.accion in (AccionLegajo.APROBAR, AccionLegajo.MATRICULAR) and gestion.numero_legajo:
+            contenido += f"\nNúmero de legajo: {gestion.numero_legajo}\n"
         encolar_correo(db, destinatario=legajo.correo_electronico, asunto=asunto, contenido=contenido)
 
     if datos.accion in (AccionLegajo.APROBAR, AccionLegajo.MATRICULAR):
@@ -510,6 +530,7 @@ async def aplicar_accion(
             contenido=(f"Estudiante: {legajo.nombre} {legajo.apellido}\n"
                        f"Carrera: {legajo.carrera_elegida}\n"
                        f"Seguimiento: {legajo.numero_seguimiento}\n"
+                       f"Número de legajo: {gestion.numero_legajo}\n"
                        + ("Verificá si ya existe una cuenta ALUMNO y gestioná su acceso." if matriculado
                           else "La inscripción está aprobada. Esperá la matriculación antes de habilitar el acceso.")),
         )

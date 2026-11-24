@@ -16,12 +16,14 @@ from src.usuarios.servicio import (
 from src.compartido.conexion import get_db
 from src.seminarios.aplicacion.servicio import (
     cambiar_estado_seminario,
+    eliminar_seminario,
     crear_seminario,
     listar_seminarios,
     modificar_seminario,
     listar_seminarios_docente,
     inscribir_alumno_seminario,
     listar_alumnos_seminario,
+    listar_candidatos_seminario,
     registrar_calificacion_seminario,
     registrar_asistencia_clase,
     listar_cursada_estudiante,
@@ -224,6 +226,15 @@ async def actualizar_seminario(
     )
 
 
+@enrutador.delete("/{seminario_id}", status_code=204)
+async def borrar_seminario(
+    seminario_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    administrador=Depends(obtener_admin),
+):
+    await eliminar_seminario(seminario_id, db)
+
+
 @enrutador.patch(
     "/{seminario_id}/estado",
     response_model=SeminarioRespuesta,
@@ -256,6 +267,15 @@ async def obtener_estudiantes_seminario(
         docente.id,
         db,
     )
+
+
+@enrutador.get("/{seminario_id}/estudiantes/candidatos")
+async def obtener_candidatos_seminario(
+    seminario_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    docente=Depends(obtener_docente_actual),
+):
+    return await listar_candidatos_seminario(seminario_id, docente.id, db)
 
 
 @enrutador.post(

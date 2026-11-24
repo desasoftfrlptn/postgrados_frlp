@@ -493,3 +493,12 @@
 .perfil-dashboard-seguimiento .perfil-lista li { flex-wrap:wrap; }
 
 .perfil-usuario-foto { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+/* Evita desbordamientos en los paneles compartidos y conserva el espacio útil. */
+.perfil-pagina, .perfil-panel, .perfil-tarjeta-resumen { min-width: 0; }
+.perfil-resumen, .perfil-paneles { gap: clamp(12px, 2vw, 24px); }
+.perfil-tarjeta-contenido { flex-wrap: wrap; }
+.perfil-panel h2, .perfil-tarjeta-resumen h2, .perfil-lista li { overflow-wrap: anywhere; }
+.perfil-pagina :is(input, select, textarea) { max-width: 100%; }
+@media (max-width: 900px) { .perfil-resumen { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .perfil-resumen, .perfil-paneles { grid-template-columns: minmax(0, 1fr); } .perfil-tarjeta-resumen { padding: 16px; } }

@@ -1,5 +1,6 @@
 // Página responsable de mostrar el historial académico, avance e inscripción a seminarios del estudiante.
 import { useEffect, useState } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import { api } from "../../../../shared/api/client";
 import ConfirmacionModal from "../../../../shared/componentes/ConfirmacionModal/ConfirmacionModal";
 import { useConfirmacion } from "../../../../shared/hooks/useConfirmacion";
@@ -28,6 +29,8 @@ interface SeminarioDisponible {
 
 export default function EstadoAcademicoPage() {
   const { user } = useAuth();
+  const [parametros] = useSearchParams();
+  const gestion = parametros.get("vista") === "seminarios";
   const confirmacion = useConfirmacion();
   const [revision, setRevision] = useState(0);
   const [errorCarga, setErrorCarga] = useState(false);
@@ -130,8 +133,9 @@ export default function EstadoAcademicoPage() {
   return (
     <section className="perfil-pagina animate-fade-in">
       <header className="perfil-pagina-encabezado">
-        <h1>Estado Académico</h1>
-        <p>Consultá tus seminarios inscriptos, sus resultados y las opciones disponibles.</p>
+        <h1>{gestion ? "Seminarios" : "Estado Académico"}</h1>
+        <p>{gestion ? "Consultá tus inscripciones y los seminarios disponibles." : "Consultá tu avance y los resultados de tus seminarios."}</p>
+        {!gestion && <Link className="perfil-enlace" to="?vista=seminarios">Gestionar inscripción a seminarios</Link>}
       </header>
 
       {mensaje && (
@@ -154,7 +158,7 @@ export default function EstadoAcademicoPage() {
 
       {errorCarga && <button type="button" onClick={() => setRevision(v => v + 1)}>Reintentar consulta</button>}
       {/* Tarjeta de resumen de avance */}
-      <article className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
+      <article hidden={gestion} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-8">
         <header className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-bold text-slate-800">Aprobación de seminarios inscriptos</h2>
           <span className="text-3xl font-extrabold text-blue-600">
@@ -194,13 +198,13 @@ export default function EstadoAcademicoPage() {
                 <th scope="col" className="p-4 font-bold text-center w-36">Asistencia (BR-002)</th>
                 <th scope="col" className="p-4 font-bold text-center w-36">Condición (BR-003)</th>
                 <th scope="col" className="p-4 font-bold text-center w-32">Nota Final</th>
-                <th scope="col" className="p-4 font-bold text-center w-36">Acción</th>
+                {gestion && <th scope="col" className="p-4 font-bold text-center w-36">Acción</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {cargando && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500">
+                  <td colSpan={gestion ? 5 : 4} className="p-6 text-center text-slate-500">
                     Cargando historial académico...
                   </td>
                 </tr>
@@ -208,7 +212,7 @@ export default function EstadoAcademicoPage() {
 
               {!cargando && !errorCarga && cursada.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-slate-500">
+                  <td colSpan={gestion ? 5 : 4} className="p-6 text-center text-slate-500">
                     Aún no registrás inscripciones a seminarios.
                   </td>
                 </tr>
@@ -257,7 +261,7 @@ export default function EstadoAcademicoPage() {
                         {seminario.nota_final ?? "-"}
                       </td>
 
-                      <td className="p-4 text-center">
+                      {gestion && <td className="p-4 text-center">
                         <button
                           type="button"
                           disabled={!puedeDesinscribir || confirmacion.procesando}
@@ -271,7 +275,7 @@ export default function EstadoAcademicoPage() {
                         >
                           Desinscribirme
                         </button>
-                      </td>
+                      </td>}
                     </tr>
                   );
                 })}
@@ -281,7 +285,7 @@ export default function EstadoAcademicoPage() {
       </section>
 
       {/* Tabla de seminarios disponibles para inscripción (Frontend F39) */}
-      <section className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <section hidden={!gestion} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <header className="bg-slate-50 border-b border-slate-200 p-4">
           <h2 className="text-md font-bold text-slate-800">
             Seminarios Disponibles para Inscripción

@@ -4,7 +4,8 @@ from math import isfinite
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from src.compartido.documentos import normalizar_documento
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,10 +125,7 @@ async def convertir_respuesta(
         db,
     )
 
-    docente = await obtener_docente(
-        seminario.docente_id,
-        db,
-    )
+    docente = await db.get(UsuarioORM, seminario.docente_id) if seminario.docente_id else None
 
     return SeminarioRespuesta(
         id=seminario.id,
@@ -136,8 +134,7 @@ async def convertir_respuesta(
         carrera_nombre=carrera.nombre,
         docente_id=seminario.docente_id,
         docente_nombre=(
-            f"{docente.nombre} "
-            f"{docente.apellido}"
+            f"{docente.nombre} {docente.apellido}" if docente else "Sin docente asignado"
         ),
         fecha_inicio=seminario.fecha_inicio,
         fecha_fin=seminario.fecha_fin,
@@ -267,10 +264,10 @@ async def modificar_seminario(
         db,
     )
 
-    await obtener_docente(
-        datos.docente_id,
-        db,
-    )
+    if datos.docente_id is not None:
+        await obtener_docente(datos.docente_id, db)
+    else:
+        seminario.activo = False
 
     if datos.carrera_id != seminario.carrera_id:
         tiene_cursadas = await db.scalar(select(InscripcionSeminarioORM.id).where(
@@ -316,6 +313,8 @@ async def cambiar_estado_seminario(
             detail="Seminario no encontrado",
         )
 
+    if activo and not seminario.docente_id:
+        raise HTTPException(409, "Asigná un docente antes de activar el seminario.")
     seminario.activo = activo
 
     await db.commit()
@@ -325,6 +324,20 @@ async def cambiar_estado_seminario(
         seminario,
         db,
     )
+
+async def eliminar_seminario(seminario_id: UUID, db: AsyncSession) -> None:
+    seminario = await db.scalar(select(SeminarioORM).where(SeminarioORM.id == seminario_id).with_for_update())
+    if seminario is None:
+        raise HTTPException(404, "Seminario no encontrado")
+    try:
+        for modelo in (InscripcionSeminarioORM, AsistenciaClaseORM):
+            await db.execute(delete(modelo).where(modelo.seminario_id == seminario_id))
+        await db.delete(seminario)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(409, "El seminario tiene registros asociados.")
+
 
 async def listar_seminarios_docente(
     docente_id: UUID,
@@ -466,6 +479,22 @@ async def listar_alumnos_seminario(
         construir_alumno_seminario_respuesta(inscripcion, legajo)
         for inscripcion, legajo in filas
     ]
+
+async def listar_candidatos_seminario(seminario_id: UUID, docente_id: UUID, db: AsyncSession):
+    seminario = await verificar_seminario_docente(seminario_id, docente_id, db)
+    if not seminario.activo:
+        return []
+    inscriptos = select(InscripcionSeminarioORM.legajo_id).where(
+        InscripcionSeminarioORM.seminario_id == seminario_id)
+    consulta = select(LegajoORM).join(CohorteORM, LegajoORM.cohorte_id == CohorteORM.id).where(
+        CohorteORM.carrera_id == seminario.carrera_id,
+        LegajoORM.estado.in_(ESTADOS_HABILITADOS_CURSADA),
+        ~LegajoORM.id.in_(inscriptos),
+    ).order_by(LegajoORM.apellido, LegajoORM.nombre)
+    alumnos = (await db.scalars(consulta)).all()
+    return [{"legajo_id": str(a.id), "nombre": a.nombre, "apellido": a.apellido,
+             "dni_pasaporte": a.dni_pasaporte} for a in alumnos]
+
 
 async def inscribir_alumno_seminario(
     seminario_id: UUID,

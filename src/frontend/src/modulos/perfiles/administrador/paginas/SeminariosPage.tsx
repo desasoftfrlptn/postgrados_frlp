@@ -1,3 +1,4 @@
+import "../estilos/Administrador.css";
 // Permite realizar el ABML de los seminarios.
 
 import {
@@ -49,7 +50,7 @@ interface Seminario {
   carrera_id: string;
   carrera_nombre: string;
 
-  docente_id: string;
+  docente_id: string | null;
   docente_nombre: string;
 
   fecha_inicio: string;
@@ -94,8 +95,6 @@ export default function SeminariosPage() {
   const [docentes, setDocentes] =
     useState<Usuario[]>([]);
 
-  const [busqueda, setBusqueda] =
-    useState("");
 
   const [cargando, setCargando] =
     useState(true);
@@ -254,7 +253,7 @@ export default function SeminariosPage() {
         seminario.carrera_id,
 
       docente_id:
-        seminario.docente_id,
+        seminario.docente_id ?? "",
 
       fecha_inicio:
         seminario.fecha_inicio,
@@ -311,7 +310,7 @@ export default function SeminariosPage() {
 
     confirmacion.solicitar({
       titulo: "Confirmar guardado de seminario",
-      descripcion: "¿Confirmás que deseás guardar los datos ingresados?",
+      descripcion: seminarioEditando && !formulario.docente_id ? "¿Confirmás desasociar al docente? El seminario quedará inactivo hasta que se asigne otro docente y se lo reactive." : "¿Confirmás que deseás guardar los datos ingresados?",
       textoConfirmar: "Confirmar guardado",
       ejecutar: ejecutarGuardado,
     });
@@ -331,7 +330,7 @@ export default function SeminariosPage() {
       if (seminarioEditando) {
         await api.put<Seminario>(
           `/seminarios/${seminarioEditando.id}`,
-          formulario,
+          {...formulario, docente_id: formulario.docente_id || null},
           user.token
         );
 
@@ -418,35 +417,32 @@ export default function SeminariosPage() {
   };
 
 
-  const textoBusqueda =
-    busqueda
-      .trim()
-      .toLowerCase();
-
-
-  const seminariosFiltrados =
-    seminarios.filter(
-      (seminario) => {
-        if (!coincideEstado(seminario.activo, estadoFiltro) || (carreraFiltro !== "" && seminario.carrera_id !== carreraFiltro) || (docenteFiltro !== "" && seminario.docente_id !== docenteFiltro)) return false;
-        if (!textoBusqueda) {
-          return true;
+  const eliminarSeminario = (seminario: Seminario) => {
+    if (!user?.token) return;
+    confirmacion.solicitar({
+      titulo: "Eliminar seminario",
+      descripcion: `¿Querés eliminar el seminario «${seminario.nombre}»? Se eliminarán definitivamente sus inscripciones, calificaciones y asistencias. Las cuentas y legajos de los estudiantes se conservarán. Esta acción es irreversible.`,
+      textoConfirmar: "Eliminar",
+      peligroso: true,
+      ejecutar: async () => {
+        setError("");
+        setMensaje("");
+        try {
+          await api.delete<void>(`/seminarios/${seminario.id}`, user.token);
+          setMensaje("El seminario fue eliminado correctamente.");
+          await cargarSeminarios();
+        } catch (error) {
+          setError(error instanceof Error ? error.message : "No se pudo eliminar el seminario.");
         }
+      },
+    });
+  };
 
-        return (
-          seminario.nombre
-            .toLowerCase()
-            .includes(textoBusqueda) ||
-
-          seminario.carrera_nombre
-            .toLowerCase()
-            .includes(textoBusqueda) ||
-
-          seminario.docente_nombre
-            .toLowerCase()
-            .includes(textoBusqueda)
-        );
-      }
-    );
+  const seminariosFiltrados = seminarios.filter(seminario =>
+    coincideEstado(seminario.activo, estadoFiltro) &&
+    (!carreraFiltro || seminario.carrera_id === carreraFiltro) &&
+    (!docenteFiltro || seminario.docente_id === docenteFiltro)
+  );
 
 
   return (
@@ -462,7 +458,7 @@ export default function SeminariosPage() {
           </p>
         </div>
 
-        <button
+        {!mostrarFormulario && <button
           type="button"
           onClick={
             abrirNuevoSeminario
@@ -470,7 +466,7 @@ export default function SeminariosPage() {
           className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
         >
           + Nuevo seminario
-        </button>
+        </button>}
       </header>
 
 
@@ -502,7 +498,7 @@ export default function SeminariosPage() {
           <header className="mb-6">
             <h2 className="text-xl font-bold text-gray-900">
               {seminarioEditando
-                ? "Editar seminario"
+                ? "Gestionar seminario"
                 : "Nuevo seminario"}
             </h2>
           </header>
@@ -592,7 +588,7 @@ export default function SeminariosPage() {
 
               <select
                 id="seminario-docente"
-                required
+                required={!seminarioEditando}
                 value={
                   formulario.docente_id
                 }
@@ -605,7 +601,7 @@ export default function SeminariosPage() {
                 className="w-full rounded-md border border-gray-300 p-2"
               >
                 <option value="">
-                  Seleccionar docente
+                  {seminarioEditando ? "Sin docente asignado" : "Seleccionar docente"}
                 </option>
 
                 {docentes.map(
@@ -683,7 +679,8 @@ export default function SeminariosPage() {
           </div>
 
 
-          <footer className="mt-6 flex justify-end gap-3">
+          <footer className="mt-6 flex flex-wrap justify-end gap-3">
+            {seminarioEditando && <button type="button" className="rounded-md border px-4 py-2 font-semibold" onClick={() => { const actual = seminarios.find(s => s.id === seminarioEditando.id); if (actual) void cambiarEstado(actual); }}>{seminarios.find(s => s.id === seminarioEditando.id)?.activo ? "Desactivar" : "Activar"}</button>}
             <button
               type="button"
               onClick={
@@ -691,7 +688,7 @@ export default function SeminariosPage() {
               }
               className="rounded-md border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Cancelar
+              {seminarioEditando ? "Volver al listado" : "Cancelar"}
             </button>
 
             <button
@@ -707,34 +704,12 @@ export default function SeminariosPage() {
       )}
 
 
-      <div className="mb-4">
-        <label
-          htmlFor="buscar-seminario"
-          className="sr-only"
-        >
-          Buscar seminario
-        </label>
-
-        <input
-          id="buscar-seminario"
-          type="search"
-          placeholder="Buscar por seminario, carrera o docente..."
-          value={busqueda}
-          onChange={(event) =>
-            setBusqueda(
-              event.target.value
-            )
-          }
-          className="w-full rounded-md border border-gray-300 bg-white p-3 md:max-w-xl"
-        />
-      </div>
-
-
+      {!mostrarFormulario && <>
       <div className="admin-filtros-academicos">
         <FiltroEstado valor={estadoFiltro} alCambiar={setEstadoFiltro} />
         <div className="admin-filtro-campo"><label htmlFor="filtro-carrera-seminario">Carrera</label><select id="filtro-carrera-seminario" value={carreraFiltro} onChange={e => setCarreraFiltro(e.target.value)}><option value="">Todas</option>{carreras.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select></div>
-<div className="admin-filtro-campo"><label htmlFor="filtro-docente-seminario">Docente</label><select id="filtro-docente-seminario" value={docenteFiltro} onChange={e => setDocenteFiltro(e.target.value)}><option value="">Todos</option>{Array.from(new Map(seminarios.map(s => [s.docente_id, s.docente_nombre])).entries()).map(([id,nombre]) => <option key={id} value={id}>{nombre}</option>)}</select></div>
-        <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); setCarreraFiltro(""); setDocenteFiltro(""); }}>Limpiar filtros</button>
+<div className="admin-filtro-campo"><label htmlFor="filtro-docente-seminario">Docente</label><select id="filtro-docente-seminario" value={docenteFiltro} onChange={e => setDocenteFiltro(e.target.value)}><option value="">Todos</option>{Array.from(new Map(seminarios.filter(s => s.docente_id !== null).map(s => [s.docente_id ?? "", s.docente_nombre])).entries()).map(([id,nombre]) => <option key={id} value={id}>{nombre}</option>)}</select></div>
+        <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setCarreraFiltro(""); setDocenteFiltro(""); }}>Limpiar filtros</button>
       </div>
       <p role="status" className="admin-resultado-filtros">{seminariosFiltrados.length} de {seminarios.length} resultados</p>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -866,27 +841,15 @@ export default function SeminariosPage() {
                                 seminario
                               )
                             }
-                            className="font-semibold text-blue-600 hover:underline"
+                            className="admin-accion-gestionar"
                           >
-                            Editar
+                            Gestionar seminario
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              cambiarEstado(
-                                seminario
-                              )
-                            }
-                            className={
-                              seminario.activo
-                                ? "font-semibold text-red-600 hover:underline"
-                                : "font-semibold text-green-700 hover:underline"
-                            }
-                          >
-                            {seminario.activo
-                              ? "Desactivar"
-                              : "Activar"}
+
+                          <button type="button" onClick={() => eliminarSeminario(seminario)}
+                            className="admin-accion-eliminar">
+                            Eliminar
                           </button>
                         </div>
                       </td>
@@ -910,6 +873,7 @@ export default function SeminariosPage() {
           </tbody>
         </table>
       </div>
+      </>}
       <ConfirmacionModal
         abierto={confirmacion.abierto}
         titulo={confirmacion.titulo}

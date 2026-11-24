@@ -11,6 +11,8 @@ interface SeminarioDocente {
   carrera_nombre: string;
 }
 
+interface Candidato { legajo_id: string; nombre: string; apellido: string; dni_pasaporte: string }
+
 interface AlumnoSeminario {
   inscripcion_id: string;
   legajo_id: string;
@@ -34,6 +36,20 @@ const [seminarioId, setSeminarioId] = useState<string>("");
 const [estudiantes, setEstudiantes] = useState<AlumnoSeminario[]>([]);
 const [busqueda, setBusqueda] = useState("");
 const [dniNuevo, setDniNuevo] = useState("");
+const [candidatos, setCandidatos] = useState<Candidato[]>([]);
+const [buscarCandidato, setBuscarCandidato] = useState("");
+const [errorCandidatos, setErrorCandidatos] = useState("");
+const [cargandoCandidatos, setCargandoCandidatos] = useState(true);
+const [revisionCandidatos, setRevisionCandidatos] = useState(0);
+useEffect(() => {
+  if (!user?.token || !seminarioId) return;
+  let vigente = true;
+  api.get<Candidato[]>(`/seminarios/${seminarioId}/estudiantes/candidatos`, user.token)
+    .then(lista => { if (vigente) setCandidatos(lista); })
+    .catch(() => { if (vigente) setErrorCandidatos("No se pudieron consultar los estudiantes habilitados."); })
+    .finally(() => { if (vigente) setCargandoCandidatos(false); });
+  return () => { vigente = false; };
+}, [seminarioId, user?.token, revisionCandidatos]);
 const [cargando, setCargando] = useState(true);
 const [mensaje, setMensaje] = useState<string | null>(null);
 const [error, setError] = useState<string | null>(null);
@@ -99,18 +115,20 @@ useEffect(() => {
       return;
     }
     if (!dniNuevo.trim()) {
-      setError("Ingresá el DNI del estudiante a inscribir.");
+      setError("Seleccioná un estudiante habilitado.");
       return;
     }
 
     try {
       const nuevo = await api.post<AlumnoSeminario>(
         `/seminarios/${seminarioId}/estudiantes`,
-        { dni_pasaporte: dniNuevo.trim() },
+        { legajo_id: dniNuevo },
         user.token
       );
       setEstudiantes((prev) => [...prev, nuevo]);
       setDniNuevo("");
+      setBuscarCandidato("");
+      setCargandoCandidatos(true); setCandidatos([]); setErrorCandidatos(""); setRevisionCandidatos(v => v + 1);
       setMensaje(
         `Estudiante ${nuevo.apellido}, ${nuevo.nombre} asociado al seminario.`
       );
@@ -138,6 +156,7 @@ useEffect(() => {
         prev.filter((e) => e.legajo_id !== estudiante.legajo_id)
       );
       setEstudianteDetalle(null);
+      setCargandoCandidatos(true); setCandidatos([]); setErrorCandidatos(""); setRevisionCandidatos(v => v + 1);
       setMensaje(
         `Estudiante ${estudiante.apellido}, ${estudiante.nombre} desvinculado del seminario.`
       );
@@ -169,10 +188,10 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
         onSubmit={event => {
           event.preventDefault();
           if (!dniNuevo.trim() || !seminarioId) {
-            setError("Seleccioná un seminario e ingresá el documento del alumno.");
+            setError("Seleccioná un seminario y un estudiante.");
             return;
           }
-          confirmacion.solicitar({ titulo: "Inscribir estudiante", descripcion: `¿Confirmás la inscripción del documento ${dniNuevo.trim()}?`, ejecutar: asociarEstudiante });
+          confirmacion.solicitar({ titulo: "Inscribir estudiante", descripcion: `¿Confirmás la inscripción del estudiante seleccionado?`, ejecutar: asociarEstudiante });
         }}
         className="bg-white rounded-xl shadow-sm border border-slate-200 
       p-5 mt-6 flex flex-col sm:flex-row gap-4 items-end"
@@ -185,7 +204,7 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
             <select
               id="seminario-est"
               value={seminarioId}
-              onChange={(e) => { setEstudianteDetalle(null); setEstudiantes([]); setSeminarioId(e.target.value); }}
+              onChange={(e) => { setEstudianteDetalle(null); setEstudiantes([]); setDniNuevo(""); setBuscarCandidato(""); setCandidatos([]); setErrorCandidatos(""); setCargandoCandidatos(Boolean(e.target.value)); setSeminarioId(e.target.value); }}
               disabled={confirmacion.abierto || cargando}
               className="w-full border border-slate-300 rounded-md p-2 
             text-sm text-slate-700 bg-white"
@@ -201,23 +220,20 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
             </select>
           </div>
 
-   <div className="w-full sm:w-64">
-     <label htmlFor="dni-asociar" className="block text-sm font-semibold text-slate-700 mb-1">
-       Asociar alumno por DNI
-     </label>
-     <input
-       id="dni-asociar"
-       type="text"
-       value={dniNuevo}
-       onChange={(e) => setDniNuevo(e.target.value)}
-       placeholder="Ej: 38123456"
-       className="w-full border border-slate-300 rounded-md p-2 text-sm text-slate-700"
-     />
+   <div className="flex-1 w-full min-w-0">
+     <label htmlFor="buscar-candidato" className="block text-sm font-semibold mb-1">Buscar estudiante</label>
+     <input id="buscar-candidato" type="search" value={buscarCandidato} disabled={confirmacion.abierto || cargandoCandidatos} onChange={e => { setBuscarCandidato(e.target.value); setDniNuevo(""); }} placeholder="Nombre, apellido o DNI" className="w-full border rounded-md p-2" />
+     <label htmlFor="dni-asociar" className="block text-sm font-semibold mt-2 mb-1">Estudiante habilitado</label>
+     <select id="dni-asociar" required value={dniNuevo} disabled={confirmacion.abierto || cargandoCandidatos} onChange={e => setDniNuevo(e.target.value)} className="w-full border rounded-md p-2">
+       <option value="">{cargandoCandidatos ? "Cargando…" : "Seleccioná un estudiante"}</option>
+       {candidatos.filter(c => `${c.apellido} ${c.nombre} ${c.dni_pasaporte}`.toLowerCase().includes(buscarCandidato.trim().toLowerCase())).map(c => <option key={c.legajo_id} value={c.legajo_id}>{c.apellido}, {c.nombre} · {c.dni_pasaporte}</option>)}
+     </select>
+     {errorCandidatos && <p role="alert">{errorCandidatos} <button type="button" onClick={() => { setCargandoCandidatos(true); setErrorCandidatos(""); setRevisionCandidatos(v => v + 1); }}>Reintentar</button></p>}
    </div>
 
    <button
      type="submit"
-     disabled={confirmacion.abierto || cargando || !seminarioId}
+     disabled={confirmacion.abierto || cargando || cargandoCandidatos || !seminarioId || !dniNuevo}
      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-md text-sm"
    >
      Inscribir al Seminario

@@ -10,7 +10,7 @@ from uuid import UUID, uuid4
 from dotenv import load_dotenv
 from fastapi import HTTPException
 from jose import JWTError, jwt
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -618,7 +618,11 @@ async def eliminar_usuario(
         )
 
     try:
+        from src.seminarios.infraestructura.orm_modelos import SeminarioORM
         auditar_usuario(db, administrador, usuario, "ELIMINAR_USUARIO", estado_auditable(usuario))
+        # El seminario se conserva, pero no admite nuevas cursadas hasta reasignar docente.
+        await db.execute(update(SeminarioORM).where(SeminarioORM.docente_id == usuario_id)
+                         .values(activo=False))
         await db.delete(
             usuario
         )
@@ -631,10 +635,8 @@ async def eliminar_usuario(
         raise HTTPException(
             status_code=409,
             detail=(
-                "No se puede eliminar el usuario "
-                "porque está relacionado con otros "
-                "registros del sistema. "
-                "Podés desactivarlo en su lugar."
+                "No se pudo eliminar el usuario sin afectar registros existentes. "
+                "Verificá que las migraciones estén aplicadas."
             ),
         )
 

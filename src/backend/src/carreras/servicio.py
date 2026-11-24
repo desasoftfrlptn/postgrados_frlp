@@ -3,7 +3,8 @@
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.carreras.modelos import CarreraORM
@@ -201,3 +202,40 @@ async def cambiar_estado_carrera(
     await db.refresh(carrera)
 
     return carrera
+
+async def borrar_carrera(carrera_id: UUID, db: AsyncSession) -> None:
+    registro = await db.scalar(select(CarreraORM).where(CarreraORM.id == carrera_id).with_for_update())
+    if registro is None:
+        raise HTTPException(404, "Carrera no encontrada.")
+    # Bloquear las entidades dependientes antes de eliminar. Todas las operaciones
+    # se ejecutan dentro de la misma transacción; no se eliminan cuentas de usuario.
+    parametros = {"carrera": carrera_id, "nombre": registro.nombre.strip()}
+    cohortes = "SELECT id FROM cohortes WHERE carrera_id = :carrera"
+    legajos = f"SELECT id FROM legajos WHERE cohorte_id IN ({cohortes}) OR (cohorte_id IS NULL AND lower(trim(carrera_elegida)) = lower(:nombre))"
+    seminarios = "SELECT id FROM seminarios WHERE carrera_id = :carrera"
+    tutorias = f"SELECT id FROM tutorias WHERE legajo_id IN ({legajos})"
+    documentos = f"SELECT id FROM documentos_legajo WHERE legajo_id IN ({legajos})"
+    try:
+        for consulta in (cohortes, legajos, seminarios, tutorias, documentos):
+            await db.execute(text(consulta + " FOR UPDATE"), parametros)
+        for sentencia in (
+            f"DELETE FROM encuentros_tutoria WHERE tutoria_id IN ({tutorias})",
+            f"DELETE FROM tutorias WHERE legajo_id IN ({legajos})",
+            f"DELETE FROM tesis WHERE legajo_id IN ({legajos})",
+            f"DELETE FROM trabajos_practicos WHERE legajo_id IN ({legajos})",
+            f"DELETE FROM inscripciones_seminario WHERE seminario_id IN ({seminarios}) OR legajo_id IN ({legajos})",
+            f"DELETE FROM asistencias_clase WHERE seminario_id IN ({seminarios}) OR legajo_id IN ({legajos})",
+            f"DELETE FROM notificaciones_conduccion WHERE documento_id IN ({documentos})",
+            f"DELETE FROM documentos_legajo WHERE legajo_id IN ({legajos})",
+            f"DELETE FROM gestion_legajos WHERE legajo_id IN ({legajos})",
+            f"DELETE FROM legajos WHERE id IN ({legajos})",
+            f"DELETE FROM numeracion_legajos_cohortes WHERE cohorte_id IN ({cohortes})",
+            "DELETE FROM seminarios WHERE carrera_id = :carrera",
+            "DELETE FROM cohortes WHERE carrera_id = :carrera",
+        ):
+            await db.execute(text(sentencia), parametros)
+        await db.delete(registro)
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(409, "No se pudo eliminar la carrera y sus asociaciones. No se realizaron cambios.") from exc

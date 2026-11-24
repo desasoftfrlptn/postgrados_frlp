@@ -1,3 +1,4 @@
+import "../estilos/Administrador.css";
 // Permite realizar el ABML de las carreras de posgrado.
 
 import {
@@ -69,7 +70,7 @@ function obtenerNombreTipo(
 
 export default function CarrerasPage() {
   const confirmacion = useConfirmacion();
-  const [asociaciones, setAsociaciones] = useState<Carrera | null>(null);
+  const [gestionId, setGestionId] = useState<string | null>(null);
   const [tipoFiltro, setTipoFiltro] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState<EstadoFiltro>("todos");
 
@@ -276,6 +277,7 @@ export default function CarrerasPage() {
       }
 
       cerrarFormulario();
+      setGestionId(null);
 
       await cargarCarreras();
 
@@ -288,6 +290,16 @@ export default function CarrerasPage() {
     }
   };
 
+
+  const eliminar = (carrera: Carrera) => {
+    if (!user?.token) return;
+    const token = user.token;
+    confirmacion.solicitar({ titulo: "Eliminar carrera", descripcion: `¿Eliminar ${carrera.nombre}? Se eliminarán definitivamente sus cohortes, seminarios, legajos, documentación, inscripciones, notas, asistencias, tutorías, tesis y trabajos prácticos asociados. Las cuentas de usuario se conservarán. Esta acción es irreversible.`, textoConfirmar: "Eliminar", peligroso: true, ejecutar: async () => {
+      setError(""); setMensaje("");
+      try { await api.delete<void>(`/carreras/${carrera.id}`, token); setMensaje("Registro eliminado correctamente."); await cargarCarreras(); }
+      catch (e) { setError(e instanceof Error ? e.message : "No se pudo eliminar el registro."); }
+    } });
+  };
 
   const cambiarEstado = async (
     carrera: Carrera
@@ -371,8 +383,8 @@ export default function CarrerasPage() {
     );
 
 
-  if (asociaciones && user) return <AsociacionesCarrera carrera={asociaciones} token={user.token} volver={() => setAsociaciones(null)} />;
 
+  const gestion = carreras.find(c => c.id === gestionId);
   return (
     <section>
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -386,13 +398,13 @@ export default function CarrerasPage() {
           </p>
         </div>
 
-        <button
+        {!gestion && <button
           type="button"
-          onClick={abrirNuevaCarrera}
+          onClick={() => { setGestionId(null); abrirNuevaCarrera(); }}
           className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
         >
           + Nueva carrera
-        </button>
+        </button>}
       </header>
 
 
@@ -422,7 +434,7 @@ export default function CarrerasPage() {
           <header className="mb-6">
             <h2 className="text-xl font-bold text-gray-900">
               {carreraEditando
-                ? "Editar carrera"
+                ? "Gestionar carrera"
                 : "Nueva carrera"}
             </h2>
           </header>
@@ -536,13 +548,15 @@ export default function CarrerasPage() {
           </div>
 
 
-          <footer className="mt-6 flex justify-end gap-3">
+          {gestion && <p className="mt-4 text-sm text-gray-600">Estado: {gestion.activo ? "Activa" : "Inactiva"}</p>}
+          <footer className="mt-6 flex flex-wrap justify-end gap-3">
+            {gestion && <button type="button" className="rounded-md border px-4 py-2 font-semibold" onClick={() => cambiarEstado(gestion)}>{gestion.activo ? "Desactivar" : "Activar"}</button>}
             <button
               type="button"
-              onClick={cerrarFormulario}
+              onClick={() => { cerrarFormulario(); setGestionId(null); }}
               className="rounded-md border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Cancelar
+              {gestion ? "Volver al listado" : "Cancelar"}
             </button>
 
             <button
@@ -558,6 +572,8 @@ export default function CarrerasPage() {
       )}
 
 
+      {gestion && user && <AsociacionesCarrera key={gestion.id} carrera={gestion} token={user.token} /> }
+      {!gestion && <>
       <div className="mb-4">
         <label
           htmlFor="buscar-carrera"
@@ -670,38 +686,8 @@ export default function CarrerasPage() {
 
                       <td className="p-4">
                         <div className="flex flex-wrap gap-3">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              abrirEdicion(
-                                carrera
-                              )
-                            }
-                            className="font-semibold text-blue-600 hover:underline"
-                          >
-                            Editar
-                          </button>
-                          <button type="button" className="font-semibold text-blue-600 hover:underline" onClick={() => setAsociaciones(carrera)}>
-                            Asociaciones
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              cambiarEstado(
-                                carrera
-                              )
-                            }
-                            className={
-                              carrera.activo
-                                ? "font-semibold text-red-600 hover:underline"
-                                : "font-semibold text-green-700 hover:underline"
-                            }
-                          >
-                            {carrera.activo
-                              ? "Desactivar"
-                              : "Activar"}
-                          </button>
+                          <button type="button" className="admin-accion-gestionar" onClick={() => { setGestionId(carrera.id); abrirEdicion(carrera); }}>Gestionar carrera</button>
+                          <button type="button" className="admin-accion-eliminar" onClick={() => eliminar(carrera)}>Eliminar</button>
                         </div>
                       </td>
                     </tr>
@@ -724,6 +710,7 @@ export default function CarrerasPage() {
           </tbody>
         </table>
       </div>
+      </>}
       <ConfirmacionModal
         abierto={confirmacion.abierto}
         titulo={confirmacion.titulo}

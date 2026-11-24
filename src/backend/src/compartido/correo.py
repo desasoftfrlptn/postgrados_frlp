@@ -18,10 +18,16 @@ def renderizar_correo_institucional(asunto: str, contenido: str) -> str:
     titulo = escape(asunto)
     partes = []
     base = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+    if not base and os.getenv("ENVIRONMENT") == "development":
+        base = "http://localhost:3000"
     for linea in contenido.split("\n"):
         segura = escape(linea)
         if base and asunto.startswith(("Activación de cuenta |", "Recuperación de contraseña |")) and linea.startswith((base + "/activar-cuenta#token=", base + "/restablecer-contrasena#token=")) and urlsplit(linea).scheme in {"https", "http"}:
             segura = f'<a href="{escape(linea, quote=True)}" style="display:inline-block;background:#341478;color:white;padding:14px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Establecer contraseña</a>'
+        if (base and asunto == "Corrección de inscripción"
+                and linea.startswith(base + "/estado-inscripcion#correccion=")
+                and urlsplit(linea).scheme in {"https", "http"}):
+            segura = f'<a href="{escape(linea, quote=True)}" style="display:inline-block;background:#341478;color:white;padding:14px 22px;border-radius:8px;text-decoration:none;font-weight:bold">Abrir inscripción y corregir datos</a>'
         partes.append(segura)
     cuerpo = "<br>\n".join(partes)
     return f"""<!doctype html><html lang="es"><head><meta charset="utf-8">

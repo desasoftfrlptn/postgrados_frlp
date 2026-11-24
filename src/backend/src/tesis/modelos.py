@@ -24,4 +24,4 @@ class TesisORM(Base):
     fecha_aprobacion = Column(Date, nullable=True)
     numero_resolucion = Column(String(100), nullable=True)
     version = Column(Integer, nullable=False, default=1, server_default="1")
-    actualizado_por = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False)
+    actualizado_por = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)

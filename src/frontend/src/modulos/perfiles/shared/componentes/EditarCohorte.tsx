@@ -18,9 +18,12 @@ interface Props<T extends DatosCohorte> {
   token: string;
   cancelar: () => void;
   guardada: (cohorte: T) => void;
+  textoVolver?: string;
+  modoGestion?: boolean;
+  cambiarEstado?: () => void;
 }
 
-export default function EditarCohorte<T extends DatosCohorte>({ cohorte, carreras, token, cancelar, guardada }: Props<T>) {
+export default function EditarCohorte<T extends DatosCohorte>({ cohorte, carreras, token, cancelar, guardada, textoVolver = "Volver al listado", modoGestion = false, cambiarEstado }: Props<T>) {
   const [nombre, setNombre] = useState(cohorte.nombre);
   const [anio, setAnio] = useState(String(cohorte.anio));
   const [carrera, setCarrera] = useState(cohorte.carrera_id ?? "");
@@ -52,20 +55,21 @@ export default function EditarCohorte<T extends DatosCohorte>({ cohorte, carrera
   }
   const campo = "w-full rounded-md border border-gray-300 bg-white p-2";
   return <section className="perfil-pagina">
-    <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    {!modoGestion && <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
       <div><h1 className="text-2xl font-bold">Editar cohorte</h1><p>Actualizá los datos de la cohorte.</p></div>
-      <button type="button" disabled={confirmacion.abierto} onClick={cancelar} className="rounded-md border px-4 py-2">Volver al listado</button>
-    </header>
-    <form onSubmit={guardar} className="rounded-xl border border-gray-200 bg-white p-6" aria-busy={confirmacion.procesando}>
-      <fieldset disabled={confirmacion.abierto} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div><label className="block font-semibold" htmlFor="editar-cohorte-nombre">Nombre *</label><input className={campo} id="editar-cohorte-nombre" value={nombre} required maxLength={50} onChange={e => setNombre(e.target.value)} /></div>
-        <div><label className="block font-semibold" htmlFor="editar-cohorte-anio">Año *</label><input className={campo} id="editar-cohorte-anio" type="number" min={1} step={1} required value={anio} onChange={e => setAnio(e.target.value)} /></div>
-        <div><label className="block font-semibold" htmlFor="editar-cohorte-carrera">Carrera *</label><select className={campo} id="editar-cohorte-carrera" required value={carrera} onChange={e => setCarrera(e.target.value)}><option value="">Seleccioná una carrera</option>{carreras.filter(c => c.activo || c.id === cohorte.carrera_id).map(c => <option key={c.id} value={c.id}>{c.nombre}{!c.activo ? " (inactiva)" : ""}</option>)}</select></div>
-        <div><label className="block font-semibold" htmlFor="editar-cohorte-fecha">Fecha de inicio</label><input className={campo} id="editar-cohorte-fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} /></div>
+      <button type="button" disabled={confirmacion.abierto} onClick={cancelar} className="rounded-md border px-4 py-2">{textoVolver}</button>
+    </header>}
+    <form onSubmit={guardar} className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm" aria-busy={confirmacion.procesando}>
+      {modoGestion && <header className="mb-6"><h2 className="text-xl font-bold text-gray-900">Gestionar cohorte</h2></header>}
+      <fieldset disabled={confirmacion.abierto} className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div><label className="mb-2 block font-semibold text-gray-700" htmlFor="editar-cohorte-nombre">Nombre *</label><input className={campo} id="editar-cohorte-nombre" value={nombre} required maxLength={50} onChange={e => setNombre(e.target.value)} /></div>
+        <div><label className="mb-2 block font-semibold text-gray-700" htmlFor="editar-cohorte-anio">Año *</label><input className={campo} id="editar-cohorte-anio" type="number" min={1} step={1} required value={anio} onChange={e => setAnio(e.target.value)} /></div>
+        <div><label className="mb-2 block font-semibold text-gray-700" htmlFor="editar-cohorte-carrera">Carrera *</label><select className={campo} id="editar-cohorte-carrera" required value={carrera} onChange={e => setCarrera(e.target.value)}><option value="">Seleccioná una carrera</option>{carreras.filter(c => c.activo || c.id === cohorte.carrera_id).map(c => <option key={c.id} value={c.id}>{c.nombre}{!c.activo ? " (inactiva)" : ""}</option>)}</select></div>
+        <div><label className="mb-2 block font-semibold text-gray-700" htmlFor="editar-cohorte-fecha">Fecha de inicio</label><input className={campo} id="editar-cohorte-fecha" type="date" value={fecha} onChange={e => setFecha(e.target.value)} /></div>
       </fieldset>
-      <p className="mt-4 text-sm text-gray-600">La carrera y el año no pueden cambiarse si existe historial académico. Para cerrar inscripciones utilizá la acción del listado.</p>
+      <p className="mt-4 text-sm text-gray-600">La carrera y el año no pueden cambiarse si existe historial académico. Para cerrar inscripciones, volvé a la gestión de la cohorte.</p>
       {error && <p role="alert" className="mt-4 rounded-md bg-red-50 p-3 text-red-800">{error}</p>}
-      <footer className="mt-6 flex flex-wrap justify-end gap-3"><button type="button" disabled={confirmacion.abierto} onClick={cancelar} className="rounded-md border px-4 py-2">Cancelar</button><button type="submit" disabled={confirmacion.abierto} className="rounded-md bg-blue-700 px-4 py-2 font-semibold text-white">Guardar cambios</button></footer>
+      <footer className="mt-6 flex flex-wrap justify-end gap-3">{modoGestion && cambiarEstado && <button type="button" className="rounded-md border px-4 py-2 font-semibold" onClick={cambiarEstado}>{cohorte.abierta ? "Desactivar" : "Activar"}</button>}<button type="button" disabled={confirmacion.abierto} onClick={cancelar} className="rounded-md border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50">{modoGestion ? "Volver al listado" : "Cancelar"}</button><button type="submit" disabled={confirmacion.abierto} className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">Guardar cambios</button></footer>
     </form>
     <ConfirmacionModal abierto={confirmacion.abierto} titulo={confirmacion.titulo} descripcion={confirmacion.descripcion} textoConfirmar={confirmacion.textoConfirmar} confirmando={confirmacion.procesando} alConfirmar={confirmacion.confirmar} alCancelar={confirmacion.cancelar} />
   </section>;

@@ -44,9 +44,9 @@ class SeminarioORM(Base):
         UUID(as_uuid=True),
         ForeignKey(
             "usuarios.id",
-            ondelete="RESTRICT",
+            ondelete="SET NULL",
         ),
-        nullable=False,
+        nullable=True,
     )
 
     fecha_inicio = Column(

@@ -18,7 +18,7 @@ from src.carreras.modelos import CarreraORM
 from src.inscripcion.infraestructura.cohortes_modelos import CohorteORM
 from src.inscripcion.infraestructura.orm_modelos import LegajoORM, ContadorInscripcionORM
 from src.conduccion.modelos import GestionLegajoORM
-from src.conduccion.servicio import generar_numero_legajo
+from src.conduccion.servicio import asignar_legajo_personal
 from src.seminarios.infraestructura.orm_modelos import SeminarioORM, InscripcionSeminarioORM, AsistenciaClaseORM
 
 NAMESPACE = UUID('8fcd8410-8ed4-4e9b-83b9-a8c600352db2')
@@ -115,11 +115,13 @@ async def cargar():
                             ciudad='La Plata', titulo_anterior='Ingeniería', universidad_anterior='UTN',
                             forma_conocio_ofertas='Sitio web', motivos_cursar='Prueba académica local', solicitud_beca=None)
                         matriculado = a <= 4
-                        db.add(GestionLegajoORM(legajo_id=legajo.id, datos_verificados=matriculado,
-                            numero_legajo=await generar_numero_legajo(db, cohorte.id) if matriculado else None,
+                        gestion = GestionLegajoORM(legajo_id=legajo.id, datos_verificados=matriculado,
                             fecha_aprobacion=ahora if matriculado else None, fecha_matricula=ahora if matriculado else None,
                             observaciones='Demo: documentación pendiente de revisión.' if a == 6 else None,
-                            documentacion_a_corregir=[]))
+                            documentacion_a_corregir=[])
+                        db.add(gestion)
+                        if matriculado:
+                            await asignar_legajo_personal(db, legajo, gestion)
                         await db.flush()
                     if a <= 4 and legajo.estado in ('ACTIVO', 'EN_RIESGO'):
                         await cuenta(ident, legajo.nombre, legajo.apellido, legajo.dni_pasaporte, 'ALUMNO')

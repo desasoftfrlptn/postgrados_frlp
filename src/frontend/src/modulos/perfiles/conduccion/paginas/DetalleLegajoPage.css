@@ -70,3 +70,11 @@
     text-align: left;
   }
 }
+/* Los datos de contacto ocupan una fila completa; no se reservan celdas vacías. */
+.conduccion-detalle .legajo-datos-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.legajo-datos-grid .conduccion-tarjeta { min-width: 0; margin-bottom: 0; }
+.legajo-datos-grid .legajo-contacto { grid-column: 1 / -1; }
+.legajo-datos-grid .conduccion-tarjeta:first-child { grid-column: 1 / -1; }
+.legajo-datos-grid .conduccion-tarjeta:last-child { grid-column: 1 / -1; }
+.conduccion-detalle .legajo-datos-grid .conduccion-datos { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
+@media (max-width: 640px) { .conduccion-detalle .legajo-datos-grid { grid-template-columns: minmax(0, 1fr); } }

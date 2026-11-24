@@ -325,3 +325,12 @@
     min-width: 560px;
   }
 }
+
+/* Distribución visual de estados en estadísticas de Conducción. */
+.cc-distribucion {
+  display: block;
+  width: min(100%, 12rem);
+  height: 0.9rem;
+  margin-top: 0.25rem;
+  accent-color: #2563eb;
+}
