@@ -383,6 +383,16 @@ export interface EstadisticasCohorte {
   en_riesgo: number;
   dados_de_baja: number;
 }
+
+export interface DesgranamientoCohorte {
+  cohorte_id: string;
+  cohorte_nombre: string;
+  anio: number;
+  total_inscriptos: number;
+  bajas_por_semestre: number[];
+  en_curso: boolean;
+}
+
 export interface DraftPayload {
   datosPersonales: DatosPersonales;
   datosAcademicos: DatosAcademicos;

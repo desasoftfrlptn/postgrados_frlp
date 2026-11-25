@@ -13,7 +13,8 @@ import {
 import { Spinner } from "@/shared/components/Spinner";
 import { useEstadisticasCohortes } from "../hooks/useCohortes";
 import type { TipoCarrera } from "@/shared/types/types";
- 
+import type { LegendPayload } from "recharts";
+
 const FILTROS_CARRERA: { value: TipoCarrera | ""; label: string }[] = [
   { value: "", label: "Todas las carreras" },
   { value: "Especializacion", label: "Especialización" },
@@ -124,7 +125,7 @@ export function Estadisticas() {
                       <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
                       <Tooltip />
                       <Legend
-                        onClick={(e) => {
+                        onClick={(e: LegendPayload) => {
                           if (e && (e.dataKey === "en_riesgo" || e.value === "En riesgo")) {
                             navigate("/riesgo");
                           }

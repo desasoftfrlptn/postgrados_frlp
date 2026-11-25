@@ -160,3 +160,6 @@ class CohorteService:
 
     async def estadisticas(self, tipo_carrera: str | None = None) -> list[dict[str, Any]]:
         return await self.repository.estadisticas(tipo_carrera)
+
+    async def desgranamiento(self) -> list[dict[str, Any]]:
+        return await self.repository.desgranamiento()

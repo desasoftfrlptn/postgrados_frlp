@@ -32,3 +32,10 @@ export function useEstadisticasCohortes(tipoCarrera?: TipoCarrera) {
     queryFn: () => cohortesApi.estadisticas(tipoCarrera),
   });
 }
+
+export function useDesgranamiento() {
+  return useQuery({
+    queryKey: ["desgranamiento"],
+    queryFn: cohortesApi.desgranamiento,
+  });
+}

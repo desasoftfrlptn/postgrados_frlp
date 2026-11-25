@@ -151,3 +151,12 @@ class EstadisticasCohorteResponse(BaseModel):
     graduados: int
     en_riesgo: int
     dados_de_baja: int
+
+class DesgranamientoCohorteResponse(BaseModel):
+    """Datos reales de bajas distribuidas por semestre para cada cohorte."""
+    cohorte_id: UUID
+    cohorte_nombre: str
+    anio: int
+    total_inscriptos: int
+    bajas_por_semestre: list[int]
+    en_curso: bool

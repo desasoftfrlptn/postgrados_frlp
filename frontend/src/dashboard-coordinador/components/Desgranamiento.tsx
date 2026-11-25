@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDownRight, GraduationCap, Users, UserRoundX } from "lucide-react";
+import { ArrowDownRight, Users, UserRoundX } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -10,59 +10,61 @@ import {
   YAxis,
 } from "recharts";
 
+import { useDesgranamiento } from "../hooks/useCohortes";
+
 const SEMESTRES = [1, 2, 3, 4, 5, 6];
 
-const COHORTES = [
-  {
-    id: "2024",
-    nombre: "Cohorte 2024",
-    inscriptos: 84,
-    bajasPorSemestre: [2, 4, 3, 5, 2, 1],
-    color: "#2563eb",
-    enCurso: false,
-  },
-  {
-    id: "2025",
-    nombre: "Cohorte 2025",
-    inscriptos: 76,
-    bajasPorSemestre: [3, 4, 5, 3, 2, 0],
-    color: "#8b5cf6",
-    enCurso: false,
-  },
-  {
-    id: "2026",
-    nombre: "Cohorte 2026",
-    inscriptos: 68,
-    bajasPorSemestre: [2, 3, 2, 1],
-    color: "#0f9f82",
-    enCurso: true,
-  },
-];
+const COLORES = ["#2563eb", "#8b5cf6", "#0f9f82"];
 
 const tasaBaja = (bajas: number, inscriptos: number) =>
   inscriptos > 0 ? (bajas / inscriptos) * 100 : 0;
 
 const formatoPorcentaje = (valor: number) =>
-  `${valor.toLocaleString("es-AR", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}%`;
-
-const DATOS_GRAFICO = SEMESTRES.map((semestre, index) => ({
-  semestre: `Semestre ${semestre}`,
-  ...Object.fromEntries(
-    COHORTES.map((cohorte) => [
-      cohorte.id,
-      cohorte.bajasPorSemestre[index] === undefined
-        ? null
-        : tasaBaja(cohorte.bajasPorSemestre[index], cohorte.inscriptos),
-    ]),
-  ),
-}));
+  `${valor.toLocaleString("es-AR", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: 1,
+  })}%`;
 
 export function Desgranamiento() {
-  const [cohorteSeleccionada, setCohorteSeleccionada] = useState("2026");
-  const cohorte = COHORTES.find((item) => item.id === cohorteSeleccionada) ?? COHORTES[0];
-  const totalBajas = cohorte.bajasPorSemestre.reduce((total, bajas) => total + bajas, 0);
-  const tasaTotal = tasaBaja(totalBajas, cohorte.inscriptos);
-  const semestreConMasBajas = cohorte.bajasPorSemestre.reduce(
+  const { data: cohortes = [], isLoading, isError, error } = useDesgranamiento();
+  const [cohorteSeleccionada, setCohorteSeleccionada] = useState("");
+
+  const cohorte =
+    cohortes.find((item) => item.cohorte_id === cohorteSeleccionada) ??
+    cohortes.find((item) => item.en_curso) ??
+    cohortes[cohortes.length - 1];
+
+  const datosGrafico = SEMESTRES.map((semestre, index) => ({
+    semestre: `Semestre ${semestre}`,
+    ...Object.fromEntries(
+      cohortes.map((item) => [
+        item.cohorte_id,
+        item.bajas_por_semestre[index] === undefined
+          ? null
+          : tasaBaja(item.bajas_por_semestre[index], item.total_inscriptos),
+      ]),
+    ),
+  }));
+
+  if (isLoading) {
+    return <p className="p-6 text-sm text-ink-secondary">Cargando datos de desgranamiento...</p>;
+  }
+
+  if (isError) {
+    return (
+      <p className="p-6 text-sm text-semaforo-rojo">
+        No se pudieron cargar los datos: {error instanceof Error ? error.message : "Error desconocido"}
+      </p>
+    );
+  }
+
+  if (!cohortes.length || !cohorte) {
+    return <p className="p-6 text-sm text-ink-secondary">No hay datos de desgranamiento disponibles.</p>;
+  }
+
+  const totalBajas = cohorte.bajas_por_semestre.reduce((total, bajas) => total + bajas, 0);
+  const tasaTotal = tasaBaja(totalBajas, cohorte.total_inscriptos);
+  const semestreConMasBajas = cohorte.bajas_por_semestre.reduce(
     (maximo, bajas, index, semestres) => (bajas > semestres[maximo] ? index : maximo),
     0,
   );
@@ -77,36 +79,27 @@ export function Desgranamiento() {
           Cohorte para el detalle
           <select
             aria-label="Cohorte para el detalle"
-            value={cohorteSeleccionada}
+            value={cohorte.cohorte_id}
             onChange={(event) => setCohorteSeleccionada(event.target.value)}
             className="min-w-48 rounded-lg border border-line bg-paper-surface px-3 py-2.5 text-sm font-medium text-ink"
           >
-            {COHORTES.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.nombre}{item.enCurso ? " · En curso" : ""}
+            {cohortes.map((item) => (
+              <option key={item.cohorte_id} value={item.cohorte_id}>
+                {item.cohorte_nombre}{item.en_curso ? " · En curso" : ""}
               </option>
             ))}
           </select>
         </label>
       </header>
 
-      <div className="flex items-start gap-3 rounded-xl border border-brand-500/20 bg-brand-500/5 px-4 py-3 text-sm text-ink-secondary">
-        <GraduationCap className="mt-0.5 h-5 w-5 shrink-0 text-brand-600 dark:text-brand-300" />
-        <p>
-          <span className="font-semibold text-ink">Datos demostrativos:</span> esta visualización usa
-          ejemplos locales del frontend y todavía no está conectada a datos reales. La cohorte 2026
-          está en curso; sus cifras son parciales hasta el semestre 4.
-        </p>
-      </div>
-
-      <section aria-label={`Resumen de ${cohorte.nombre}`} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label={`Resumen de ${cohorte.cohorte_nombre}`} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-xl border border-line bg-paper-surface p-4">
           <div className="flex items-center justify-between text-ink-secondary">
             <span className="text-sm">Total inscriptos</span>
             <Users className="h-4 w-4 text-brand-600 dark:text-brand-300" />
           </div>
-          <p className="mt-3 text-2xl font-bold text-ink">{cohorte.inscriptos}</p>
-          <p className="mt-1 text-xs text-ink-muted">{cohorte.nombre}</p>
+          <p className="mt-3 text-2xl font-bold text-ink">{cohorte.total_inscriptos}</p>
+          <p className="mt-1 text-xs text-ink-muted">{cohorte.cohorte_nombre}</p>
         </article>
         <article className="rounded-xl border border-line bg-paper-surface p-4">
           <div className="flex items-center justify-between text-ink-secondary">
@@ -130,7 +123,7 @@ export function Desgranamiento() {
           </div>
           <p className="mt-3 text-2xl font-bold text-ink">Semestre {semestreConMasBajas + 1}</p>
           <p className="mt-1 text-xs text-ink-muted">
-            {cohorte.bajasPorSemestre[semestreConMasBajas]} estudiantes dados de baja
+            {cohorte.bajas_por_semestre[semestreConMasBajas]} estudiantes dados de baja
           </p>
         </article>
       </section>
@@ -142,9 +135,9 @@ export function Desgranamiento() {
             Bajas de cada semestre como porcentaje del total de inscriptos de la cohorte.
           </p>
         </div>
-        <div className="h-72 w-full" role="img" aria-label="Gráfico de líneas con tasas de bajas por semestre para tres cohortes">
+        <div className="h-72 w-full" role="img" aria-label="Gráfico de líneas con tasas de bajas por semestre para distintas cohortes">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={DATOS_GRAFICO} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+            <LineChart data={datosGrafico} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-line" />
               <XAxis dataKey="semestre" tick={{ fontSize: 12 }} tickMargin={8} />
               <YAxis
@@ -160,15 +153,15 @@ export function Desgranamiento() {
                 }
                 labelStyle={{ color: "#172033", fontWeight: 600 }}
               />
-              {COHORTES.map((item) => (
+              {cohortes.map((item, index) => (
                 <Line
-                  key={item.id}
+                  key={item.cohorte_id}
                   type="monotone"
-                  dataKey={item.id}
-                  name={item.nombre}
-                  stroke={item.color}
+                  dataKey={item.cohorte_id}
+                  name={item.cohorte_nombre}
+                  stroke={COLORES[index % COLORES.length]}
                   strokeWidth={2.5}
-                  dot={{ r: 4, fill: item.color, strokeWidth: 0 }}
+                  dot={{ r: 4, fill: COLORES[index % COLORES.length], strokeWidth: 0 }}
                   activeDot={{ r: 6 }}
                   connectNulls={false}
                 />
@@ -177,10 +170,10 @@ export function Desgranamiento() {
           </ResponsiveContainer>
         </div>
         <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4">
-          {COHORTES.map((item) => (
-            <div key={item.id} className="flex items-center gap-2 text-xs text-ink-secondary">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-              {item.nombre}{item.enCurso ? " (en curso)" : ""}
+          {cohortes.map((item, index) => (
+            <div key={item.cohorte_id} className="flex items-center gap-2 text-xs text-ink-secondary">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: COLORES[index % COLORES.length] }} />
+              {item.cohorte_nombre}{item.en_curso ? " (en curso)" : ""}
             </div>
           ))}
         </div>
@@ -188,14 +181,14 @@ export function Desgranamiento() {
 
       <section className="rounded-xl border border-line bg-paper-surface p-5 sm:p-6">
         <div className="mb-5">
-          <h2 className="text-base font-semibold text-ink">Detalle de {cohorte.nombre}</h2>
+          <h2 className="text-base font-semibold text-ink">Detalle de {cohorte.cohorte_nombre}</h2>
           <p className="mt-1 text-sm text-ink-secondary">
             Distribución de las bajas registradas en cada semestre.
           </p>
         </div>
         <div className="space-y-4">
-          {cohorte.bajasPorSemestre.map((bajas, index) => {
-            const porcentaje = tasaBaja(bajas, cohorte.inscriptos);
+          {cohorte.bajas_por_semestre.map((bajas, index) => {
+            const porcentaje = tasaBaja(bajas, cohorte.total_inscriptos);
             const anchoBarra = tasaTotal > 0 ? (porcentaje / tasaTotal) * 100 : 0;
 
             return (

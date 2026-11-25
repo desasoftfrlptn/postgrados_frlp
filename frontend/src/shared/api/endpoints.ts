@@ -13,6 +13,7 @@ import type {
   TipoCarrera,
   TipoDocumento,
   TrabajoFinal,
+  DesgranamientoCohorte,
 } from "@/shared/types/types";
 import { api, ApiError, download, type TokenPair } from "./client";
 
@@ -336,6 +337,8 @@ export const cohortesApi = {
   detalle: (id: string) => api.get<CohorteApi>(`/cohortes/${enc(id)}`, { auth: false }),
   estadisticas: (tipoCarrera?: TipoCarrera) =>
     api.get<EstadisticasCohorte[]>("/estadisticas/cohortes", { params: { tipo_carrera: tipoCarrera } }),
+  desgranamiento: () =>
+    api.get<DesgranamientoCohorte[]>("/estadisticas/desgranamiento"),
 };
 
 export interface AlumnoPlanilla {
