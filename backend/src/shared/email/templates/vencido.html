@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    .container { background: #fff; max-width: 600px; margin: auto; border-radius: 8px; overflow: hidden; }
+    .header { background: #003366; padding: 20px; text-align: center; }
+    .header img { height: 50px; }
+    .content { padding: 24px; color: #333; line-height: 1.5; }
+    .datos { background: #ffebee; border-left: 4px solid #c62828; padding: 12px 16px; margin: 16px 0; }
+    .datos p { margin: 4px 0; }
+    .footer { font-size: 12px; color: #888; text-align: center; padding: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logo_url}}" alt="UTN FRLP">
+    </div>
+    <div class="content">
+      <h2>Venció una reserva de vacante</h2>
+      <p>Hola {{nombre_coordinador}},</p>
+      <p>El legajo cambio al estado <strong>Vencido</strong> por haber superado
+      los 30 días corridos desde su aprobación sin completar la matriculación:</p>
+      <div class="datos">
+        <p><strong>Legajo:</strong> {{numero_legajo}}</p>
+        <p><strong>Aspirante:</strong> {{nombre_aspirante}}</p>
+        <p><strong>Carrera:</strong> {{carrera}}</p>
+        <p><strong>Aprobado el:</strong> {{fecha_completado}}</p>
+        <p><strong>Vencido el:</strong> {{fecha_vencimiento}}</p>
+      </div>
+      <p>La vacante quedó liberada y disponible para reasignar.</p>
+    </div>
+    <div class="footer">
+      Secretaría de Posgrado · UTN FRLP · Aviso automático del sistema
+    </div>
+  </div>
+</body>
+</html>

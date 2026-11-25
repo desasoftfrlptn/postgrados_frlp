@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión Académica</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="favicon.png" type="image/png">
+</head>
+<body>
+
+<div class="utn-stripe"></div>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+   <div class="sidebar-watermark">
+     <img class="logo-image logo-light" src="logoUtnBlanco.png" alt="UTN FRLP modo claro">
+     <img class="logo-image logo-dark" src="logoUtn.svg" alt="UTN FRLP modo nocturno">
+    </div>
+
+    <div class="sidebar-logo">
+      <div class="logo-mark" aria-label="UTN FRLP">
+        <img class="logo-image logo-light" src="logoBlanco.png" alt="Logo UTN FRLP modo claro">
+        <img class="logo-image logo-dark" src="logoBlanco.png" alt="Logo UTN FRLP modo nocturno">
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Principal</div>
+      <div class="nav-item active">
+        <span class="nav-icon">◉</span> Inicio
+        <span class="nav-badge">4</span>
+      </div>
+      <div class="nav-item" onclick="switchTabByName('tab-inscripcion')">
+        <span class="nav-icon">◉</span> Inscripciones
+        <span class="nav-badge">312</span>
+      </div>
+      <div class="nav-item" onclick="showToast('Módulo Docencia — próximamente')">
+        <span class="nav-icon">◉</span> Docencia
+      </div>
+      <div class="nav-item" onclick="showToast('Módulo Graduación — próximamente')">
+        <span class="nav-icon">◉</span> Graduación
+      </div>
+      <div class="nav-item" onclick="showToast('Módulo Analítica — próximamente')">
+        <span class="nav-icon">◉</span> Analítica
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Configuración</div>
+      <div class="nav-item" onclick="showToast('Módulo de docentes — próximamente en MOD-B')">
+        <span class="nav-icon">◉</span> Docentes
+      </div>
+      <div class="nav-item" onclick="switchTabByName('tab-docs')">
+        <span class="nav-icon">◉</span> Documentos
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <strong>Administración Central</strong>
+      <span>admin@utnfrlp.edu.ar</span>
+      <button class="theme-toggle-btn" onclick="toggleTheme()" id="themeBtn" type="button">
+        <span id="themeIcon">🌙</span>
+        <span id="themeLabel">Modo oscuro</span>
+      </button>
+      <button class="logout-btn" type="button" onclick="window.location.href='login.html'">
+        <span>⎋</span>
+        <span>Cerrar sesión</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Inicio</div>
+        <div class="topbar-sub">UTN Facultad Regional La Plata · 2026</div>
+      </div>
+      <div class="topbar-right">
+        <button class="notif-btn" onclick="openNotifDrawer()" title="Notificaciones">
+          🔔
+          <span class="notif-dot" id="notifDot"></span>
+        </button>
+        <div class="topbar-welcome">¡Bienvenido, Usuario!</div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Inscriptos 2026</div>
+          <div class="stat-value">312</div>
+          <div class="stat-delta up">↑ 34 vs ciclo anterior</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Doc. completa</div>
+          <div class="stat-value">241</div>
+          <div class="stat-delta up">77% del total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pendientes</div>
+          <div class="stat-value">48</div>
+          <div class="stat-delta warn">⚠ Requieren acción</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Matriculados</div>
+          <div class="stat-value">193</div>
+          <div class="stat-delta up">En regla</div>
+        </div>
+      </div>
+
+      <!-- Quick access -->
+      <div>
+        <div class="section-label">Accesos rápidos</div>
+        <div class="quickaccess-grid">
+          <div class="qa-card qa-card-blue" onclick="openModal()">
+            <div class="qa-icon blue">📝</div>
+            <div class="qa-info">
+              <div class="qa-title">Inscribir alumno</div>
+              <div class="qa-desc">Crear nueva inscripción e iniciar workflow</div>
+            </div>
+            <div class="qa-action">Abrir</div>
+          </div>
+          <div class="qa-card qa-card-red" onclick="showToast('Módulo de docentes — próximamente en MOD-B')">
+            <div class="qa-icon red">👨‍🏫</div>
+            <div class="qa-info">
+              <div class="qa-title">Docente</div>
+              <div class="qa-desc">Docente </modulo-b></div>
+            </div>
+            <div class="qa-action">Abrir</div>
+          </div>
+          <div class="qa-card qa-card-green" onclick="switchTabByName('tab-inscripcion')">
+            <div class="qa-icon green">📋</div>
+            <div class="qa-info">
+              <div class="qa-title">Lista de alumnos</div>
+              <div class="qa-desc">Ver y filtrar todos los inscriptos</div>
+            </div>
+            <div class="qa-action">Abrir</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs + Notifs inline grid -->
+      <div class="main-grid">
+
+        <!-- Left: tabla principal -->
+        <div class="card-with-tabs">
+          <div class="tabs">
+            <div class="tab active" onclick="switchTab(this, 'tab-inscripcion')">Inscripciones <span class="tab-count">312</span></div>
+            <div class="tab" onclick="switchTab(this, 'tab-legajo')">Legajo digital</div>
+            <div class="tab" onclick="switchTab(this, 'tab-workflow')">Workflow</div>
+            <div class="tab" onclick="switchTab(this, 'tab-docs')">Documentos <span class="tab-count">6</span></div>
+            <button class="tabs-filter" id="filterBtn" type="button" onclick="toggleFilters()">
+              ⚙ Filtrar
+            </button>
+          </div>
+
+          <div class="filter-panel" id="inscripcionFilters">
+            <div class="filter-group">
+              <label for="careerFilter">Carrera</label>
+              <select id="careerFilter" onchange="applyInscripcionFilters()">
+                <option value="all">Todas</option>
+                <option value="ing. en sistemas">Ing. en Sistemas</option>
+                <option value="medicina">Medicina</option>
+                <option value="derecho">Derecho</option>
+                <option value="arquitectura">Arquitectura</option>
+                <option value="psicologia">Psicología</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="statusFilter">Estado doc.</label>
+              <select id="statusFilter" onchange="applyInscripcionFilters()">
+                <option value="all">Todos</option>
+                <option value="completa">Completa</option>
+                <option value="doc. pendiente">Pendiente</option>
+                <option value="en revision">En revisión</option>
+                <option value="falta dni">Falta DNI</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="cohortFilter">Cohorte</label>
+              <select id="cohortFilter" onchange="applyInscripcionFilters()">
+                <option value="all">Todas</option>
+                <option value="2025-a">2025-A</option>
+                <option value="2025-b">2025-B</option>
+                <option value="2026-a">2026-A</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label for="dniFilter">DNI</label>
+              <input id="dniFilter" type="text" placeholder="Buscar…" oninput="applyInscripcionFilters()">
+            </div>
+            <div class="filter-group">
+              <label for="legajoFilter">Legajo</label>
+              <input id="legajoFilter" type="text" placeholder="Buscar…" oninput="applyInscripcionFilters()">
+            </div>
+            <div class="filter-actions">
+              <button class="btn" type="button" onclick="clearInscripcionFilters()">Limpiar</button>
+            </div>
+          </div>
+
+          <!-- TAB: Inscripciones -->
+          <div id="tab-inscripcion" class="tab-panel active">
+            <table>
+              <thead>
+                <tr>
+                  <th>Alumno</th>
+                  <th>Carrera</th>
+                  <th>Cohorte</th>
+                  <th>Estado doc.</th>
+                  <th>Progreso</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="inscripcion-tbody">
+                <tr data-legajo="2025-0041" data-dni="30111222" data-cohorte="2025-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#E6EDFA;color:#003DA5;">MR</div><div><div class="user-name">María Rodríguez</div><div class="user-id">#2025-0041</div></div></div></td>
+                  <td style="color:var(--text-2);">Ing. en Sistemas</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-A</span></td>
+                  <td><span class="chip green">Completa</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-legajo')">Ver legajo →</a></td>
+                </tr>
+                <tr data-legajo="2025-0042" data-dni="28999111" data-cohorte="2025-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#E4F5EC;color:#1A7A4A;">CL</div><div><div class="user-name">Carlos López</div><div class="user-id">#2025-0042</div></div></div></td>
+                  <td style="color:var(--text-2);">Medicina</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-A</span></td>
+                  <td><span class="chip amber">Doc. pendiente</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-workflow')">Ver estado →</a></td>
+                </tr>
+                <tr data-legajo="2025-0043" data-dni="31222333" data-cohorte="2025-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#E6EDFA;color:#2361C9;">AV</div><div><div class="user-name">Ana Villalba</div><div class="user-id">#2025-0043</div></div></div></td>
+                  <td style="color:var(--text-2);">Derecho</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-A</span></td>
+                  <td><span class="chip blue">En revisión</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-workflow')">Ver estado →</a></td>
+                </tr>
+                <tr data-legajo="2025-0044" data-dni="33444555" data-cohorte="2025-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#FCEAEA;color:#A81B1B;">JP</div><div><div class="user-name">Juan Pérez</div><div class="user-id">#2025-0044</div></div></div></td>
+                  <td style="color:var(--text-2);">Arquitectura</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-A</span></td>
+                  <td><span class="chip red">Falta DNI</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="showToast('Notificación enviada a Juan Pérez')">Notificar →</a></td>
+                </tr>
+                <tr data-legajo="2025-0045" data-dni="27777888" data-cohorte="2025-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#E4F5EC;color:#1A7A4A;">LG</div><div><div class="user-name">Lucía González</div><div class="user-id">#2025-0045</div></div></div></td>
+                  <td style="color:var(--text-2);">Psicología</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-A</span></td>
+                  <td><span class="chip green">Completa</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-legajo')">Ver legajo →</a></td>
+                </tr>
+                <tr data-legajo="2026-0001" data-dni="40123456" data-cohorte="2026-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#EDE9FE;color:#4C1D95;">MT</div><div><div class="user-name">Micaela Torres</div><div class="user-id">#2026-0001</div></div></div></td>
+                  <td style="color:var(--text-2);">Economía</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2026-A</span></td>
+                  <td><span class="chip amber">Doc. pendiente</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-workflow')">Ver estado →</a></td>
+                </tr>
+                <tr data-legajo="2026-0002" data-dni="39221777" data-cohorte="2026-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#E0F2FE;color:#075985;">FG</div><div><div class="user-name">Federico García</div><div class="user-id">#2026-0002</div></div></div></td>
+                  <td style="color:var(--text-2);">Medicina</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2026-A</span></td>
+                  <td><span class="chip blue">En revisión</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="showToast('Notificación enviada a Federico García')">Notificar →</a></td>
+                </tr>
+                <tr data-legajo="2025-0046" data-dni="36554321" data-cohorte="2025-b">
+                  <td><div class="user-cell"><div class="avatar" style="background:#ECFDF5;color:#047857;">SR</div><div><div class="user-name">Sofía Ramírez</div><div class="user-id">#2025-0046</div></div></div></td>
+                  <td style="color:var(--text-2);">Psicología</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-B</span></td>
+                  <td><span class="chip green">Completa</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-legajo')">Ver legajo →</a></td>
+                </tr>
+                <tr data-legajo="2025-0047" data-dni="41888990" data-cohorte="2026-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#FEF3C7;color:#8B5300;">NB</div><div><div class="user-name">Nicolás Benítez</div><div class="user-id">#2025-0047</div></div></div></td>
+                  <td style="color:var(--text-2);">Arquitectura</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2026-A</span></td>
+                  <td><span class="chip red">Falta DNI</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="showToast('Notificación enviada a Nicolás Benítez')">Notificar →</a></td>
+                </tr>
+                <tr data-legajo="2026-0003" data-dni="40777123" data-cohorte="2026-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#FFE4E6;color:#9F1239;">CB</div><div><div class="user-name">Camila Bravo</div><div class="user-id">#2026-0003</div></div></div></td>
+                  <td style="color:var(--text-2);">Derecho</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2026-A</span></td>
+                  <td><span class="chip green">Completa</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-legajo')">Ver legajo →</a></td>
+                </tr>
+                <tr data-legajo="2026-0004" data-dni="42110987" data-cohorte="2026-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#EDE9FE;color:#4C1D95;">JM</div><div><div class="user-name">Joaquín Méndez</div><div class="user-id">#2026-0004</div></div></div></td>
+                  <td style="color:var(--text-2);">Ing. en Sistemas</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2026-A</span></td>
+                  <td><span class="chip amber">Doc. pendiente</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="showToast('Notificación enviada a Joaquín Méndez')">Notificar →</a></td>
+                </tr>
+                <tr data-legajo="2025-0048" data-dni="38999001" data-cohorte="2025-b">
+                  <td><div class="user-cell"><div class="avatar" style="background:#DBEAFE;color:#1D4ED8;">PG</div><div><div class="user-name">Pablo Gómez</div><div class="user-id">#2025-0048</div></div></div></td>
+                  <td style="color:var(--text-2);">Medicina</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-B</span></td>
+                  <td><span class="chip blue">En revisión</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-workflow')">Ver estado →</a></td>
+                </tr>
+                <tr data-legajo="2025-0049" data-dni="37222456" data-cohorte="2025-b">
+                  <td><div class="user-cell"><div class="avatar" style="background:#ECFDF5;color:#047857;">AR</div><div><div class="user-name">Agustina Ríos</div><div class="user-id">#2025-0049</div></div></div></td>
+                  <td style="color:var(--text-2);">Psicología</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-B</span></td>
+                  <td><span class="chip green">Completa</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-legajo')">Ver legajo →</a></td>
+                </tr>
+                <tr data-legajo="2026-0005" data-dni="41666009" data-cohorte="2026-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#FEF3C7;color:#8B5300;">DL</div><div><div class="user-name">Diego Luna</div><div class="user-id">#2026-0005</div></div></div></td>
+                  <td style="color:var(--text-2);">Economía</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2026-A</span></td>
+                  <td><span class="chip red">Falta DNI</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="showToast('Notificación enviada a Diego Luna')">Notificar →</a></td>
+                </tr>
+                <tr data-legajo="2025-0050" data-dni="39880012" data-cohorte="2025-a">
+                  <td><div class="user-cell"><div class="avatar" style="background:#E0F2FE;color:#075985;">VC</div><div><div class="user-name">Valentina Castro</div><div class="user-id">#2025-0050</div></div></div></td>
+                  <td style="color:var(--text-2);">Arquitectura</td>
+                  <td><span style="font-family:var(--mono);font-size:11px;">2025-A</span></td>
+                  <td><span class="chip amber">Doc. pendiente</span></td>
+                  <td><div class="wf-mini"><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot done"></div><div class="wf-mini-line done"></div><div class="wf-mini-dot active"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div><div class="wf-mini-line"></div><div class="wf-mini-dot"></div></div></td>
+                  <td><a class="action-link" onclick="switchTabByName('tab-workflow')">Ver estado →</a></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- TAB: Legajo digital -->
+          <div id="tab-legajo" class="tab-panel">
+            <div class="legajo-layout">
+              <div class="legajo-sidebar">
+                <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.07em;font-weight:500;padding:2px 4px 8px;">Alumnos</div>
+                <div class="legajo-item active" onclick="selectLegajo(this,'MR','María Rodríguez','Ing. en Sistemas','2025-0041','2025-A','✓ Completa')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">María Rodríguez</div><div class="legajo-item-count">#2025-0041</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'CL','Carlos López','Medicina','2025-0042','2025-A','⚠ Pendiente')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Carlos López</div><div class="legajo-item-count">#2025-0042</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'AV','Ana Villalba','Derecho','2025-0043','2025-A','⟳ En revisión')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Ana Villalba</div><div class="legajo-item-count">#2025-0043</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'JP','Juan Pérez','Arquitectura','2025-0044','2025-A','✗ Falta DNI')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Juan Pérez</div><div class="legajo-item-count">#2025-0044</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'LG','Lucía González','Psicología','2025-0045','2025-A','✓ Completa')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Lucía González</div><div class="legajo-item-count">#2025-0045</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'MT','Micaela Torres','Economía','2026-0001','2026-A','⚠ Pendiente')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Micaela Torres</div><div class="legajo-item-count">#2026-0001</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'FG','Federico García','Medicina','2026-0002','2026-A','⟳ En revisión')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Federico García</div><div class="legajo-item-count">#2026-0002</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'SR','Sofía Ramírez','Psicología','2025-0046','2025-B','✓ Completa')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Sofía Ramírez</div><div class="legajo-item-count">#2025-0046</div></div></div>
+                <div class="legajo-item" onclick="selectLegajo(this,'CB','Camila Bravo','Derecho','2026-0003','2026-A','✓ Completa')"><div class="legajo-item-icon">📄</div><div class="legajo-item-info"><div class="legajo-item-name">Camila Bravo</div><div class="legajo-item-count">#2026-0003</div></div></div>
+              </div>
+              <div class="legajo-main">
+                <div class="legajo-header">
+                  <div class="legajo-avatar" id="legajo-avatar">MR</div>
+                  <div>
+                    <div class="legajo-name" id="legajo-name">María Rodríguez</div>
+                    <div class="legajo-id" id="legajo-id">Legajo #2025-0041</div>
+                  </div>
+                  <div style="margin-left:auto;">
+                    <button class="btn" onclick="showToast('Generando PDF del legajo…')">⬇ Exportar PDF</button>
+                  </div>
+                </div>
+                <div class="fields-grid">
+                  <div class="field"><div class="field-label">Carrera</div><div class="field-value" id="legajo-carrera">Ing. en Sistemas</div></div>
+                  <div class="field"><div class="field-label">Cohorte</div><div class="field-value mono" id="legajo-cohorte">2025-A</div></div>
+                  <div class="field"><div class="field-label">DNI</div><div class="field-value mono">38.451.902</div></div>
+                  <div class="field"><div class="field-label">Fecha de nacimiento</div><div class="field-value mono">14/03/1999</div></div>
+                  <div class="field"><div class="field-label">Email</div><div class="field-value" style="font-size:12px;">m.rodriguez@mail.com</div></div>
+                  <div class="field"><div class="field-label">Teléfono</div><div class="field-value mono">+54 9 221 555-0172</div></div>
+                  <div class="field"><div class="field-label">Estado documentación</div><div class="field-value" id="legajo-estado">✓ Completa</div></div>
+                  <div class="field"><div class="field-label">Fecha de inscripción</div><div class="field-value mono">03/02/2025</div></div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <span class="chip green">DNI ✓</span>
+                  <span class="chip green">Cert. analítico ✓</span>
+                  <span class="chip green">Partida de nacimiento ✓</span>
+                  <span class="chip green">Foto 4×4 ✓</span>
+                  <span class="chip green">Declaración jurada ✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: Workflow -->
+          <div id="tab-workflow" class="tab-panel">
+            <div class="workflow-wrap">
+              <div class="wf-legend">
+                <div class="wf-legend-item"><div class="wf-dot" style="background:var(--green);"></div> Completado</div>
+                <div class="wf-legend-item"><div class="wf-dot" style="background:var(--accent);"></div> En curso</div>
+                <div class="wf-legend-item"><div class="wf-dot" style="background:var(--border);"></div> Pendiente</div>
+              </div>
+
+              <div style="background:var(--accent-light);border:1px solid #b3d4ee;border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--accent);">
+                📋 Workflow de <strong>Ana Villalba</strong> — #2025-0043 · Derecho
+              </div>
+
+              <div class="workflow-track">
+                <div class="wf-line-bg"></div>
+                <div class="wf-line-fill" style="width:calc(75% - 18px);"></div>
+                <div class="wf-step"><div class="wf-node done" title="03/02/2025">✓</div><div class="wf-label">Solicitud</div></div>
+                <div class="wf-step"><div class="wf-node done" title="05/02/2025">✓</div><div class="wf-label">Documentos</div></div>
+                <div class="wf-step"><div class="wf-node done" title="07/02/2025">✓</div><div class="wf-label">Validación</div></div>
+                <div class="wf-step"><div class="wf-node active">4</div><div class="wf-label">Revisión académica</div></div>
+                <div class="wf-step"><div class="wf-node pending">5</div><div class="wf-label">Matriculación</div></div>
+              </div>
+
+              <div style="font-size:11px;color:var(--text-3);margin-bottom:20px;">Paso 4 de 5 · Iniciado el 09/02/2025 · Responsable: Dpto. Académico</div>
+
+              <div style="font-size:11px;font-weight:500;color:var(--text-2);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.07em;">Otras inscripciones activas</div>
+
+              <div class="wf-instances">
+                <div class="wf-instance"><div class="avatar" style="background:#E6EDFA;color:#003DA5;">MR</div><div class="wf-instance-info"><div class="wf-instance-name">María Rodríguez — Ing. en Sistemas</div><div class="wf-instance-meta">#2025-0041 · Matriculada el 10/02/2025</div></div><span class="chip green">Matriculada</span></div>
+                <div class="wf-instance"><div class="avatar" style="background:#E4F5EC;color:#1A7A4A;">CL</div><div class="wf-instance-info"><div class="wf-instance-name">Carlos López — Medicina</div><div class="wf-instance-meta">#2025-0042 · Esperando Acta complementaria</div></div><span class="chip amber">Documentación</span></div>
+                <div class="wf-instance"><div class="avatar" style="background:#FCEAEA;color:#A81B1B;">JP</div><div class="wf-instance-info"><div class="wf-instance-name">Juan Pérez — Arquitectura</div><div class="wf-instance-meta">#2025-0044 · Falta DNI original</div></div><span class="chip red">Bloqueado</span></div>
+                <div class="wf-instance"><div class="avatar" style="background:#E4F5EC;color:#1A7A4A;">LG</div><div class="wf-instance-info"><div class="wf-instance-name">Lucía González — Psicología</div><div class="wf-instance-meta">#2025-0045 · En proceso de matriculación</div></div><span class="chip blue">Matriculando</span></div>
+              </div>
+
+              <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;">
+                <button class="btn primary" onclick="showToast('Avanzando al paso 5: Matriculación')">Avanzar → Matriculación</button>
+                <button class="btn" onclick="showToast('Devolviendo al paso 3')">← Devolver</button>
+                <button class="btn" onclick="showToast('Notificación enviada al alumno')">Notificar alumno</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: Documentos -->
+          <div id="tab-docs" class="tab-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 0;">
+              <div style="font-size:12px;color:var(--text-2);">Documentos requeridos para inscripción 2025</div>
+              <button class="btn" onclick="showToast('Subiendo nuevo documento…')">+ Subir</button>
+            </div>
+            <div class="doc-grid">
+              <div class="doc-card"><div class="doc-icon">🪪</div><div class="doc-name">DNI (frente y dorso)</div><div class="doc-meta">Obligatorio · PDF, JPG</div><div class="doc-footer"><span class="chip green">Requerido</span><a class="action-link" onclick="showToast('Descargando plantilla…')">Plantilla</a></div></div>
+              <div class="doc-card"><div class="doc-icon">📋</div><div class="doc-name">Certificado analítico</div><div class="doc-meta">Obligatorio · PDF</div><div class="doc-footer"><span class="chip green">Requerido</span><a class="action-link" onclick="showToast('Descargando plantilla…')">Plantilla</a></div></div>
+              <div class="doc-card"><div class="doc-icon">📜</div><div class="doc-name">Partida de nacimiento</div><div class="doc-meta">Obligatorio · PDF, JPG</div><div class="doc-footer"><span class="chip green">Requerido</span><a class="action-link" onclick="showToast('Descargando plantilla…')">Plantilla</a></div></div>
+              <div class="doc-card"><div class="doc-icon">🖼️</div><div class="doc-name">Foto 4×4 fondo blanco</div><div class="doc-meta">Obligatorio · JPG, PNG</div><div class="doc-footer"><span class="chip green">Requerido</span><a class="action-link" onclick="showToast('Abriendo requisitos…')">Requisitos</a></div></div>
+              <div class="doc-card"><div class="doc-icon">📝</div><div class="doc-name">Declaración jurada</div><div class="doc-meta">Obligatorio · Firma digital</div><div class="doc-footer"><span class="chip green">Requerido</span><a class="action-link" onclick="showToast('Descargando formulario…')">Formulario</a></div></div>
+              <div class="doc-card"><div class="doc-icon">🏥</div><div class="doc-name">Aptitud médica</div><div class="doc-meta">Condicional · PDF</div><div class="doc-footer"><span class="chip amber">Condicional</span><a class="action-link" onclick="showToast('Verificando carreras…')">Carreras</a></div></div>
+            </div>
+          </div>
+
+        </div><!-- end card-with-tabs -->
+
+        <!-- Right: Notificaciones inline -->
+        <div class="notif-panel">
+          <div class="notif-header">
+            <div class="notif-header-title">
+              Notificaciones
+              <span class="notif-count-badge" id="inlineNotifBadge">5</span>
+            </div>
+            <span class="notif-clear" onclick="markAllRead()">Marcar leídas</span>
+          </div>
+          <div class="notif-list" id="inlineNotifList">
+            <!-- filled by JS -->
+          </div>
+        </div>
+
+      </div><!-- end main-grid -->
+
+    </div><!-- end content -->
+  </div><!-- end main -->
+</div><!-- end shell -->
+
+<!-- Notif Drawer (topbar) -->
+<div class="notif-drawer" id="notifDrawer">
+  <div class="notif-drawer-header">
+    <div class="notif-drawer-title">Centro de notificaciones</div>
+    <button class="notif-drawer-close" onclick="closeNotifDrawer()">✕</button>
+  </div>
+  <div class="notif-drawer-body" id="drawerNotifList"></div>
+  <div class="notif-drawer-footer">
+    <button class="btn" style="width:100%;" onclick="markAllRead();closeNotifDrawer();">Marcar todas como leídas</button>
+  </div>
+</div>
+
+<!-- Modal nueva inscripción -->
+<div class="modal-overlay" id="modal" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nueva inscripción</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input id="nameInput" type="text" placeholder="Nombre del alumno" oninput="validateTextField(this,'nameError','Solo letras.')">
+          <div class="field-error" id="nameError"></div>
+        </div>
+        <div class="form-group">
+          <label>Apellido</label>
+          <input id="surnameInput" type="text" placeholder="Apellido" oninput="validateTextField(this,'surnameError','Solo letras.')">
+          <div class="field-error" id="surnameError"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>DNI</label>
+          <input id="dniInput" type="text" placeholder="00.000.000" oninput="validateDniField(this)">
+          <div class="field-error" id="dniError"></div>
+        </div>
+        <div class="form-group">
+          <label>Fecha de nacimiento</label>
+          <input type="date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input id="emailInput" type="email" placeholder="alumno@mail.com" oninput="validateEmailField(this)">
+        <div class="field-error" id="emailError"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Carrera</label>
+          <select>
+            <option value="">Seleccionar…</option>
+            <option>Ingeniería en Sistemas</option>
+            <option>Medicina</option>
+            <option>Derecho</option>
+            <option>Arquitectura</option>
+            <option>Psicología</option>
+            <option>Economía</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Cohorte</label>
+          <select>
+            <option>2025-A</option>
+            <option>2025-B</option>
+            <option>2026-A</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="submitForm()">Crear inscripción</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="scripts.js"></script>
+</body>
+</html>
