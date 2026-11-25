@@ -162,3 +162,55 @@ class PostgresCohorteRepository(CohorteRepository):
             .limit(3)
         )
         return [dict(row) for row in (await self.session.execute(query)).mappings()]
+
+    async def desgranamiento(self) -> list[dict[str, Any]]:
+        cohortes_result = await self.session.execute(
+            select(Cohorte)
+            .order_by(Cohorte.anio.desc(), Cohorte.created_at.desc())
+            .limit(3)
+        )
+        cohortes = list(cohortes_result.scalars().all())
+
+        resultado = []
+
+        for cohorte in reversed(cohortes):
+            total_inscriptos = int(await self.session.scalar(
+                select(func.count(Legajo.id)).where(
+                    Legajo.cohorte_id == cohorte.id,
+                    Legajo.estado != "BORRADOR",
+                )
+            ) or 0)
+
+            bajas_por_semestre = [0, 0, 0, 0, 0, 0]
+
+            if cohorte.fecha_inicio:
+                auditorias = await self.session.execute(
+                    select(AuditoriaLegajo.created_at)
+                    .join(Legajo, Legajo.id == AuditoriaLegajo.legajo_id)
+                    .where(
+                        Legajo.cohorte_id == cohorte.id,
+                        AuditoriaLegajo.estado_nuevo == "BAJA",
+                    )
+                )
+
+                for (fecha_baja,) in auditorias:
+                    meses = (
+                        (fecha_baja.year - cohorte.fecha_inicio.year) * 12
+                        + fecha_baja.month - cohorte.fecha_inicio.month
+                    )
+
+                    if meses >= 0:
+                        semestre = meses // 6
+                        if semestre < 6:
+                            bajas_por_semestre[semestre] += 1
+
+            resultado.append({
+                "cohorte_id": str(cohorte.id),
+                "cohorte_nombre": cohorte.nombre,
+                "anio": cohorte.anio,
+                "total_inscriptos": total_inscriptos,
+                "bajas_por_semestre": bajas_por_semestre,
+                "en_curso": cohorte.anio == datetime.now().year,
+            })
+
+        return resultado
