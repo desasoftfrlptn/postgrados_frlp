@@ -11,6 +11,9 @@ Este proyecto sigue [Versionado Semántico](https://semver.org/lang/es/).
 
 > Los cambios que están en `develop` pero no en un release van acá.
 
+### Fixed
+- Arranque conjunto con Docker Compose: clave de autenticación del backend, espera de salud de la API, instalación reproducible del frontend y guía de inicio actualizada.
+
 ### Added
 - Estructura inicial del repositorio
 - Documentación base: SRS, PRD, BFD, Arquitectura, Cronograma

@@ -1,0 +1,134 @@
+/* Campana y contador de notificaciones. */
+
+.alertas-campana {
+    position: relative;
+}
+
+.alertas-contador {
+    position: absolute;
+    top: 0;
+    right: -5px;
+    background: #b91c1c;
+    color: white;
+    font-size: 11px;
+    border-radius: 12px;
+    padding: 2px 5px;
+}
+
+
+/* Panel desplegable de notificaciones. */
+
+.alertas-desplegable {
+    position: absolute;
+    z-index: 40;
+    top: 100%;
+    right: 0;
+    width: min(380px, calc(100vw - 24px));
+    background: white;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px #0f172a20;
+    padding: 16px;
+}
+
+.alertas-desplegable header,
+.alertas-toolbar,
+.alerta-acciones {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.alertas-desplegable .alertas-lista {
+    max-height: 45vh;
+    overflow: auto;
+}
+
+
+/* Listado de notificaciones. */
+
+.alertas-lista {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.alerta-item {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
+}
+
+.alerta-item p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.alerta-item small,
+.alertas-nota {
+    color: #475569;
+    font-size: 12px;
+}
+
+
+/* Identificación visual de notificaciones sin leer. */
+
+.alerta-nueva {
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+}
+
+
+/* Panel, botones y enlaces. */
+
+.alertas-panel {
+    padding: 20px;
+}
+
+.alertas-pagina button,
+.alertas-desplegable button {
+    color: #1d4ed8;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 7px 10px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+}
+
+.alertas-pagina button:disabled,
+.alertas-desplegable button:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.alertas-pagina a,
+.alertas-desplegable a {
+    color: #1d4ed8;
+    text-decoration: underline;
+    font-size: 13px;
+}
+
+
+/* Adaptación a dispositivos móviles. */
+
+@media (max-width: 600px) {
+    .alertas-desplegable {
+        position: fixed;
+        top: 65px;
+        right: 12px;
+        max-height: 75vh;
+        overflow: auto;
+    }
+
+    .alertas-panel {
+        padding: 12px;
+    }
+}

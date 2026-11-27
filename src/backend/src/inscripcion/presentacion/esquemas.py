@@ -1,0 +1,234 @@
+import re
+
+from src.compartido.documentos import normalizar_documento
+
+from datetime import datetime
+from uuid import UUID
+from typing import Optional, Literal
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    field_validator,
+    model_validator,
+)
+
+
+class LegajoCrear(BaseModel):
+    cohorte_id: UUID
+    carrera_elegida: str
+    apellido: str
+    nombre: str
+    nacionalidad: str
+    dni_pasaporte: str
+    correo_electronico: EmailStr
+    telefono_movil: str
+    correo_alternativo: Optional[EmailStr] = None
+    domicilio: str
+    pais: str
+    provincia: str
+    ciudad: str
+    titulo_anterior: str
+    universidad_anterior: str
+    forma_conocio_ofertas: str
+    motivos_cursar: str
+    solicitud_beca: Optional[Literal[30, 100]] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validar_campos_obligatorios(cls, valores):
+        if not isinstance(valores, dict):
+            return valores
+
+        valores = valores.copy()
+
+        for campo, valor in valores.items():
+            if isinstance(valor, str):
+                valor = valor.strip()
+
+                if campo == "correo_alternativo" and not valor:
+                    valores[campo] = None
+                    continue
+
+                if not valor and campo != "solicitud_beca":
+                    raise ValueError(
+                        f"El campo {campo} es obligatorio"
+                    )
+
+                valores[campo] = valor
+
+        return valores
+
+    @field_validator(
+        "apellido",
+        "nombre",
+        "nacionalidad",
+        "telefono_movil",
+        "pais",
+        "forma_conocio_ofertas",
+    )
+    @classmethod
+    def validar_longitud_100(cls, valor):
+        if len(valor) > 100:
+            raise ValueError(
+                "El campo no puede superar los 100 caracteres."
+            )
+        return valor
+
+    @field_validator(
+        "carrera_elegida",
+        "provincia",
+        "ciudad",
+        "titulo_anterior",
+        "universidad_anterior",
+    )
+    @classmethod
+    def validar_longitud_200(cls, valor):
+        if len(valor) > 200:
+            raise ValueError(
+                "El campo no puede superar los 200 caracteres."
+            )
+        return valor
+
+    @field_validator(
+        "correo_electronico",
+        "correo_alternativo",
+        "domicilio",
+    )
+    @classmethod
+    def validar_longitud_255(cls, valor):
+        if valor is not None and len(valor) > 255:
+            raise ValueError(
+                "El campo no puede superar los 255 caracteres."
+            )
+        return valor
+
+    @field_validator("dni_pasaporte")
+    @classmethod
+    def validar_dni_pasaporte(cls, valor):
+        valor = normalizar_documento(valor)
+
+        dni_valido = re.fullmatch(r"[0-9]{7,8}", valor)
+
+        pasaporte_valido = re.fullmatch(
+            r"(?=.*[A-Z])[A-Z0-9]{6,20}",
+            valor,
+        )
+
+        if not dni_valido and not pasaporte_valido:
+            raise ValueError(
+                "Ingresá un DNI de 7 u 8 dígitos o "
+                "un pasaporte alfanumérico de 6 a 20 caracteres."
+            )
+
+        return valor
+
+    @field_validator("telefono_movil")
+    @classmethod
+    def validar_telefono_movil(cls, valor):
+        digitos = re.sub(r"[^0-9]", "", valor)
+
+        if (
+            not re.fullmatch(r"\+?[0-9()\s-]+", valor)
+            or not 7 <= len(digitos) <= 15
+        ):
+            raise ValueError(
+                "Ingresá un teléfono válido de 7 a 15 dígitos."
+            )
+
+        return valor
+
+
+
+class LegajoRespuesta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    cohorte_id: Optional[UUID] = None
+    carrera_elegida: str
+    apellido: str
+    nombre: str
+    nacionalidad: str
+    dni_pasaporte: str
+    telefono_movil: Optional[str] = None
+    correo_electronico: EmailStr
+    correo_alternativo: Optional[EmailStr] = None
+    domicilio: Optional[str] = None
+    estado: str
+    pais: str
+    provincia: str
+    ciudad: str
+    titulo_anterior: str
+    universidad_anterior: str
+    numero_seguimiento: str
+    forma_conocio_ofertas: str
+    motivos_cursar: str
+    solicitud_beca: Optional[int] = None
+
+
+class DocumentoLegajoRespuesta(BaseModel):
+    """
+    Datos de un documento que puede consultar
+    el Equipo de Conducción.
+
+    No expone la ruta física del archivo.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    tipo: str
+    fecha: datetime
+
+
+class CompletitudDocumentalRespuesta(BaseModel):
+    """
+    Resultado de la verificación documental
+    de un aspirante.
+    """
+
+    porcentaje: int
+    documentos_requeridos: int
+    documentos_presentados: int
+    documentos_faltantes: list[str]
+    completo: bool
+
+
+class DocumentacionLegajoRespuesta(BaseModel):
+    """
+    Información documental asociada a un legajo.
+
+    La completitud puede ser None cuando todavía
+    no se conocen las condiciones particulares
+    del aspirante.
+    """
+
+    legajo_id: UUID
+    documentos: list[DocumentoLegajoRespuesta]
+    completitud: Optional[CompletitudDocumentalRespuesta] = None
+
+
+class LoginRequest(BaseModel):
+    correo_electronico: EmailStr
+    password: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    rol: str
+
+class LegajoActualizarPerfil(BaseModel):
+    telefono_movil: Optional[str] = None
+    correo_alternativo: Optional[str] = None
+    domicilio: Optional[str] = None
+    ciudad: Optional[str] = None
+    provincia: Optional[str] = None
+    pais: Optional[str] = None
+    nacionalidad: Optional[str] = None
+
+class EstadoInscripcionRespuesta(BaseModel):
+    numero_seguimiento: str
+    estado: str
+    observaciones: Optional[str] = None
+    documentacion_a_corregir: list[str] = []

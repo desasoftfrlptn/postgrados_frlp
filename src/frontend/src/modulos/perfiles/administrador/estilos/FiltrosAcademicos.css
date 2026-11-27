@@ -1,0 +1,51 @@
+.admin-filtros-academicos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+    align-items: end;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.admin-filtros-academicos .admin-filtro-campo {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .35rem;
+    min-width: 0;
+}
+
+.admin-filtros-academicos label {
+    font-weight: 600;
+    font-size: .875rem;
+}
+
+.admin-filtros-academicos input,
+.admin-filtros-academicos select,
+.admin-limpiar-filtros {
+    border: 1px solid #9ca3af;
+    border-radius: .375rem;
+    padding: .65rem;
+    background: white;
+    color: #1f2937;
+    max-width: 100%;
+}
+
+.admin-filtros-academicos input,
+.admin-filtros-academicos select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.admin-limpiar-filtros {
+    cursor: pointer;
+}
+
+.admin-filtros-academicos :focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.admin-resultado-filtros {
+    font-size: .875rem;
+    margin-bottom: .75rem;
+}

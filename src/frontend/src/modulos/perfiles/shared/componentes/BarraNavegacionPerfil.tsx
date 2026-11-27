@@ -1,0 +1,93 @@
+// Renderiza las opciones de navegación disponibles para cada perfil.
+
+import { NavLink, useLocation } from "react-router-dom";
+
+
+export interface OpcionMenuPerfil {
+  texto: string;
+  icono: string;
+  ruta?: string;
+}
+
+
+interface BarraNavegacionPerfilProps {
+  rol: string;
+  opciones: OpcionMenuPerfil[];
+}
+
+
+export default function BarraNavegacionPerfil({
+  rol,
+  opciones,
+}: BarraNavegacionPerfilProps) {
+  const { pathname, search } = useLocation();
+  const esRutaInicio = (
+    ruta: string
+  ) =>
+    ruta === "/dashboard" ||
+    ruta === "/dashboard/general" ||
+    ruta === "/dashboard/docente" ||
+    ruta === "/dashboard/administrador" ||
+    ruta === "/dashboard/conduccion";
+
+
+  return (
+    <nav
+      className="perfil-menu"
+      aria-label={`Navegación del perfil de ${rol.toLowerCase()}`}
+    >
+      <ul className="perfil-menu-lista">
+        {opciones.map((opcion) => (
+          <li key={opcion.texto}>
+            {opcion.ruta ? (
+              <NavLink
+                to={opcion.ruta}
+                end={
+                  esRutaInicio(
+                    opcion.ruta
+                  )
+                }
+                aria-current={pathname === "/dashboard/estado-academico" && opcion.ruta?.startsWith(pathname) ? (opcion.ruta === pathname + (new URLSearchParams(search).get("vista") === "seminarios" ? "?vista=seminarios" : "") ? "page" : false) : undefined}
+                className={({
+                  isActive,
+                }) =>
+                  (pathname === "/dashboard/estado-academico" && opcion.ruta?.startsWith("/dashboard/estado-academico")
+                    ? opcion.ruta === pathname + (new URLSearchParams(search).get("vista") === "seminarios" ? "?vista=seminarios" : "")
+                    : isActive)
+                    ? "perfil-menu-enlace perfil-menu-enlace-activo"
+                    : "perfil-menu-enlace"
+                }
+              >
+                <span
+                  aria-hidden="true"
+                >
+                  {opcion.icono}
+                </span>
+
+                <span>
+                  {opcion.texto}
+                </span>
+              </NavLink>
+            ) : (
+              <span
+                className="perfil-menu-enlace perfil-menu-enlace-deshabilitado"
+                aria-disabled="true"
+              >
+                <span
+                  aria-hidden="true"
+                >
+                  {opcion.icono}
+                </span>
+
+                <span>
+                  {opcion.texto} <small>(Próximamente)</small>
+                </span>
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+

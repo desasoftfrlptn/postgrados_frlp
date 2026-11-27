@@ -1,0 +1,305 @@
+/* Consulta de perfiles académicos */
+
+.perfiles-academicos {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+/* Encabezado */
+
+.perfiles-academicos .perfil-pagina-encabezado {
+    margin-bottom: 24px;
+}
+
+.perfiles-academicos .perfil-pagina-encabezado h1 {
+    font-weight: 800;
+}
+
+/* Pestañas */
+
+.perfiles-academicos-pestanas {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.perfiles-academicos-pestanas button {
+    padding: 12px 18px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: #64748b;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.perfiles-academicos-pestanas button:hover {
+    color: #2563eb;
+}
+
+.perfiles-academicos-pestanas button.activa {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+}
+
+/* Filtros */
+
+.perfiles-academicos-filtros {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    align-items: start;
+    gap: 16px;
+    padding: 20px;
+    margin: 0 0 20px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+.perfiles-academicos-cohorte {
+    display: contents;
+}
+
+.perfiles-academicos-filtros .cc-filtro,
+.perfiles-academicos-filtros .cc-campo,
+.perfiles-academicos-filtros .admin-filtro-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.perfiles-academicos-filtros label {
+    display: block;
+    margin: 0;
+    padding: 0;
+    min-height: 20px;
+    line-height: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.perfiles-academicos-filtros input,
+.perfiles-academicos-filtros select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    min-height: 42px;
+    margin: 0;
+    padding: 9px 12px;
+    font-size: 14px;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.perfiles-academicos-filtros .admin-limpiar-filtros {
+    grid-column: 1 / -1;
+    justify-self: end;
+    width: auto;
+    min-height: 38px;
+    padding: 8px 14px;
+    margin: 0;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+    background: #fff;
+}
+
+.perfiles-academicos-filtros .admin-limpiar-filtros:hover {
+    background: #f8fafc;
+}
+
+@media (max-width: 600px) {
+    .perfiles-academicos-filtros {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 16px;
+    }
+}
+
+/* Tabla */
+
+.perfiles-academicos-tabla-contenedor {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+}
+
+.perfiles-academicos-tabla {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-size: 14px;
+    text-align: left;
+}
+
+.perfiles-academicos-tabla th {
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+}
+
+.perfiles-academicos-tabla th,
+.perfiles-academicos-tabla td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.perfiles-academicos-tabla td {
+    color: #374151;
+    border-top: 1px solid #e5e7eb;
+    overflow-wrap: anywhere;
+}
+
+.perfiles-academicos-tabla tbody tr:hover {
+    background: #f8fafc;
+}
+
+.perfiles-academicos-nombre {
+    font-weight: 600;
+}
+
+/* Estados */
+
+.perfiles-academicos-estado {
+    color: #64748b;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.perfiles-academicos-estado[data-estado="ACTIVO"],
+.perfiles-academicos-estado[data-estado="COMPLETADO"],
+.perfiles-academicos-estado[data-estado="GRADUADO"] {
+    color: #15803d;
+}
+
+.perfiles-academicos-estado[data-estado="EN_RIESGO"],
+.perfiles-academicos-estado[data-estado="PENDIENTE"],
+.perfiles-academicos-estado[data-estado="OBSERVADO"] {
+    color: #b45309;
+}
+
+.perfiles-academicos-estado[data-estado="EN_REVISION"] {
+    color: #2563eb;
+}
+
+.perfiles-academicos-estado[data-estado="RECHAZADO"] {
+    color: #b91c1c;
+}
+
+/* Acciones */
+
+.perfiles-academicos-consultar {
+    border: 0;
+    padding: 6px 0;
+    background: transparent;
+    color: #2563eb;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.perfiles-academicos-consultar:hover {
+    text-decoration: underline;
+}
+
+/* Detalle de solo lectura */
+
+.perfiles-academicos-detalle {
+    margin-top: 24px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+}
+
+.perfiles-academicos-detalle > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.perfiles-academicos-detalle > header p {
+    margin: 6px 0 0;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.perfiles-academicos-detalle .perfil-panel-interior {
+    padding: 24px;
+}
+
+.perfiles-academicos-datos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    margin: 0;
+}
+
+.perfiles-academicos-datos dt {
+    margin-bottom: 8px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.perfiles-academicos-datos dd {
+    margin: 0;
+    color: #1f2937;
+    font-size: 15px;
+    overflow-wrap: anywhere;
+}
+
+/* Estados de carga y consulta vacía */
+
+.perfiles-academicos .perfiles-academicos-vacio {
+    padding: 32px 24px;
+    margin: 0;
+    text-align: center;
+    color: #64748b;
+}
+
+.perfiles-academicos-vacio button {
+    margin-top: 12px;
+}
+
+/* Accesibilidad */
+
+.perfiles-academicos :is(button, input, select):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+    .perfiles-academicos-datos {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+    }
+
+    .perfiles-academicos-pestanas button {
+        padding: 10px 14px;
+    }
+
+    .perfiles-academicos-detalle .perfil-panel-interior {
+        padding: 16px;
+    }
+}

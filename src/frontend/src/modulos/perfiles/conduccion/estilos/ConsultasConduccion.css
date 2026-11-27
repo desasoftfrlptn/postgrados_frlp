@@ -1,0 +1,211 @@
+/* Consultas academicas de Conduccion */
+
+.seminarios-conduccion,
+.estadisticas-conduccion {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+/* Encabezados */
+
+.seminarios-conduccion .admin-dashboard-encabezado,
+.estadisticas-conduccion .admin-dashboard-encabezado {
+    margin-bottom: 28px;
+}
+
+/* Filtros */
+
+.seminarios-conduccion .admin-filtros-academicos,
+.estadisticas-conduccion .admin-filtros-academicos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    align-items: start;
+    gap: 16px;
+}
+
+.consulta-filtros-dependientes {
+    display: contents;
+}
+
+.consulta-acciones-filtros {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.seminarios-conduccion .cc-filtro,
+.estadisticas-conduccion .cc-filtro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+}
+
+.seminarios-conduccion label,
+.estadisticas-conduccion label {
+    display: block;
+    margin: 0;
+    min-height: 20px;
+    line-height: 20px;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.seminarios-conduccion .admin-filtros-academicos select,
+.estadisticas-conduccion .admin-filtros-academicos select {
+    box-sizing: border-box;
+    width: 100%;
+    height: 42px;
+    min-width: 0;
+    margin: 0;
+    padding: 9px 12px;
+    border: 1px solid #9ca3af;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 14px;
+}
+
+.seminarios-conduccion .admin-limpiar-filtros,
+.estadisticas-conduccion .admin-limpiar-filtros {
+    min-height: 42px;
+    padding: 9px 14px;
+    font-size: 14px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.estadisticas-conduccion .admin-filtros-academicos > button {
+    align-self: end;
+}
+
+.seminarios-conduccion select:disabled,
+.estadisticas-conduccion select:disabled {
+    background: #f3f4f6;
+    cursor: not-allowed;
+}
+
+.seminarios-conduccion button:disabled,
+.estadisticas-conduccion button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+/* Indicadores */
+
+.consulta-metricas {
+    margin: 20px 0 24px;
+}
+
+.consulta-metrica strong {
+    font-variant-numeric: tabular-nums;
+}
+
+.consulta-metrica span {
+    order: -1;
+}
+
+/* Tablas */
+
+.consulta-tabla-contenedor {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+}
+
+.consulta-tabla {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+.consulta-tabla th,
+.consulta-tabla td {
+    padding: 14px 16px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.consulta-tabla th {
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+}
+
+.consulta-tabla td {
+    color: #374151;
+    border-top: 1px solid #e5e7eb;
+}
+
+.consulta-tabla tbody tr:hover {
+    background: #f8fafc;
+}
+
+.consulta-tabla td:first-child {
+    font-weight: 600;
+}
+
+.consulta-tabla td:nth-child(n+4) {
+    white-space: nowrap;
+}
+
+/* Estados academicos */
+
+.consulta-estado {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.consulta-estado[data-estado="APROBADO"] {
+    color: #15803d;
+}
+
+.consulta-estado[data-estado="PENDIENTE"],
+.consulta-estado[data-estado="EN_CURSO"] {
+    color: #b45309;
+}
+
+.consulta-estado[data-estado="DESAPROBADO"] {
+    color: #b91c1c;
+}
+
+/* Estados vacios */
+
+.consulta-vacio {
+    margin: 16px 0;
+    padding: 32px 24px;
+    text-align: center;
+    color: #64748b;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+}
+
+/* Accesibilidad */
+
+.seminarios-conduccion :is(button, input, select):focus-visible,
+.estadisticas-conduccion :is(button, input, select):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    .seminarios-conduccion .admin-filtros-academicos,
+    .estadisticas-conduccion .admin-filtros-academicos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .consulta-acciones-filtros button {
+        width: 100%;
+    }
+}

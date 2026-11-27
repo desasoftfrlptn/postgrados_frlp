@@ -1,0 +1,873 @@
+/* Estilos específicos de las páginas del perfil Administrador. */
+
+.admin-dashboard {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.admin-dashboard-encabezado {
+  margin-bottom: 28px;
+}
+
+.admin-dashboard-encabezado h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.admin-dashboard-encabezado p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+
+/* Resumen */
+
+.admin-resumen {
+  margin-bottom: 36px;
+}
+
+.admin-resumen-grilla {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-tarjeta {
+  min-height: 170px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.admin-tarjeta:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.admin-tarjeta-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-tarjeta-encabezado h2 {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.admin-tarjeta-icono {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+.admin-tarjeta-valor {
+  margin: 14px 0 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.admin-tarjeta-pie {
+  margin-top: 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-tarjeta-detalle {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-tarjeta-enlace {
+  flex-shrink: 0;
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-tarjeta-enlace:hover {
+  text-decoration: underline;
+}
+
+.admin-tarjeta-enlace:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+
+/* Accesos rápidos */
+
+.admin-accesos {
+  margin-top: 8px;
+}
+
+.admin-seccion-encabezado {
+  margin-bottom: 16px;
+}
+
+.admin-seccion-encabezado h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.admin-seccion-encabezado p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.admin-paneles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-panel {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+}
+
+.admin-panel > header {
+  padding: 20px 22px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-panel > header h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.admin-panel > header p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.admin-accesos-lista {
+  margin: 0;
+  padding: 10px;
+  list-style: none;
+}
+
+.admin-accesos-lista li + li {
+  margin-top: 4px;
+}
+
+.admin-acceso {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  color: #1f2937;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.admin-acceso:hover {
+  background: #f8fafc;
+}
+
+.admin-acceso:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+.admin-acceso-icono {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  font-size: 18px;
+}
+
+.admin-acceso-contenido {
+  min-width: 0;
+}
+
+.admin-acceso-titulo {
+  display: block;
+  margin-bottom: 3px;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admin-acceso-descripcion {
+  display: block;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.admin-acceso-flecha {
+  color: #94a3b8;
+  font-size: 18px;
+}
+
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+  .admin-resumen-grilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .admin-paneles {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-dashboard-encabezado h1 {
+    font-size: 26px;
+  }
+
+  .admin-resumen-grilla {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tarjeta {
+    min-height: auto;
+  }
+
+  .admin-acceso {
+    grid-template-columns: 36px 1fr auto;
+  }
+}
+
+/* Reportes y accesos de configuración. */
+
+.admin-reporte {
+    padding: 20px;
+}
+
+.admin-reporte label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.admin-reporte select {
+    max-width: 100%;
+    padding: 8px;
+    border: 1px solid #9ca3af;
+    border-radius: 6px;
+}
+
+.admin-reporte-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+}
+
+.admin-reporte-tabla caption {
+    text-align: left;
+    font-weight: 600;
+    padding-bottom: 10px;
+}
+
+.admin-reporte-tabla th,
+.admin-reporte-tabla td {
+    text-align: left;
+    padding: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    overflow-wrap: anywhere;
+}
+
+.admin-reporte-tabla tbody th {
+    font-weight: 400;
+}
+
+.admin-reporte button,
+.admin-dashboard > button {
+    padding: 10px 16px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    color: white;
+    background: #2563eb;
+    cursor: pointer;
+}
+
+.admin-reporte button:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
+
+.admin-reporte p {
+    margin-top: 10px;
+    color: #475569;
+    font-size: 14px;
+}
+
+.admin-configuracion-acceso {
+    padding: 20px 22px;
+}
+
+.admin-configuracion-acceso a {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+
+/* Dashboard accesible de indicadores: sin librería de gráficos externa. */
+
+.admin-grafico-barras {
+    list-style: none;
+    padding: 0;
+    margin: 1.25rem 0 0;
+    display: grid;
+    gap: .9rem;
+}
+
+.admin-grafico-fila {
+    display: grid;
+    grid-template-columns: minmax(145px, 2fr) minmax(100px, 4fr) minmax(40px, 45px);
+    align-items: center;
+    gap: .85rem;
+}
+
+.admin-grafico-nombre {
+    color: #334155;
+    font-size: .9rem;
+}
+
+.admin-grafico-pista {
+    height: 16px;
+    border-radius: 6px;
+    background: #e2e8f0;
+    overflow: hidden;
+}
+
+.admin-grafico-barra {
+    display: block;
+    height: 100%;
+    min-width: 0;
+    border-radius: 6px;
+    background: #2563eb;
+}
+
+.admin-grafico-cantidad {
+    text-align: right;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-reportes-selector {
+    margin-bottom: 1rem;
+}
+
+.admin-reportes-selector label {
+    display: block;
+    margin-bottom: .5rem;
+}
+
+@media (max-width: 620px) {
+    .admin-grafico-fila {
+        grid-template-columns: 1fr 54px;
+        gap: .3rem .8rem;
+    }
+
+    .admin-grafico-pista {
+        grid-row: 2;
+        grid-column: 1 / -1;
+    }
+
+    .admin-grafico-cantidad {
+        grid-column: 2;
+        grid-row: 1;
+    }
+}
+
+.admin-reportes-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.admin-reportes-cabecera button {
+    background: #375a9e;
+    color: white;
+    font-weight: 600;
+}
+
+.admin-reportes-cabecera button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+
+/* Reportes: una franja de indicadores y un gráfico amplio, sin tarjetas repetidas. */
+
+.admin-reporte-metricas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-block: 1px solid #dce3eb;
+    padding: 1.2rem 0;
+    margin: 1.25rem 0;
+    gap: 1rem;
+}
+
+.admin-reporte-metricas > div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    padding-inline: 1rem;
+    border-inline-end: 1px solid #dce3eb;
+}
+
+.admin-reporte-metricas > div:last-child {
+    border: 0;
+}
+
+.admin-reporte-metricas strong {
+    font-size: 2rem;
+    color: #375a9e;
+    line-height: 1.2;
+}
+
+.admin-reporte-metricas span {
+    font-size: .9rem;
+    color: #475569;
+}
+
+.admin-reporte-analisis {
+    background: white;
+    border: 1px solid #dce3eb;
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.admin-reporte-control {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1rem;
+}
+
+.admin-reporte-control h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin-right: auto;
+}
+
+.admin-reporte-control select {
+    max-width: 100%;
+    border: 1px solid #cbd5e1;
+    padding: .5rem;
+    border-radius: 6px;
+}
+
+.admin-reporte-analisis .indicadores-grafico {
+    border: 0;
+    box-shadow: none;
+    padding: .5rem 0;
+    min-height: 0;
+}
+
+@media (max-width: 700px) {
+    .admin-reporte-metricas {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* Gestión administrativa. */
+
+.admin-gestion-ficha {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: .75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 2px #0000000d;
+    min-width: 0;
+}
+
+.admin-gestion-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.admin-gestion-cabecera h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.admin-gestion-cabecera p,
+.admin-gestion-resumen {
+    color: #4b5563;
+    margin: .5rem 0;
+}
+
+.admin-gestion-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin: 1rem 0;
+}
+
+.admin-gestion-boton,
+.admin-gestion-cabecera > button {
+    border: 1px solid #d1d5db;
+    border-radius: .375rem;
+    padding: .6rem 1rem;
+    font-weight: 600;
+    color: #2563eb;
+    background: white;
+    text-decoration: none;
+}
+
+.admin-gestion-boton:hover,
+.admin-gestion-cabecera > button:hover {
+    background: #eff6ff;
+}
+
+.admin-accion-gestionar,
+.admin-accion-eliminar {
+    font-weight: 600;
+    display: inline-block;
+    white-space: nowrap;
+    padding: .25rem .4rem;
+}
+
+.admin-accion-gestionar {
+    color: #2563eb;
+}
+
+.admin-accion-eliminar {
+    color: #dc2626;
+}
+
+.admin-accion-gestionar:hover,
+.admin-accion-eliminar:hover {
+    text-decoration: underline;
+}
+
+
+/* Asociaciones de carreras. */
+
+.admin-asociaciones {
+    min-width: 0;
+}
+
+.admin-asociaciones-filtro {
+    max-width: 36rem;
+    margin-block: 1rem;
+}
+
+.admin-asociaciones-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: .9rem;
+}
+
+.admin-asociaciones-tabla th {
+    background: #f9fafb;
+    color: #374151;
+}
+
+.admin-asociaciones-tabla td {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+
+/* Filtros y gráficos de reportes. */
+
+.admin-reportes-filtros h2 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.admin-reportes-filtros .admin-filtros-academicos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .8rem 1rem;
+}
+
+.admin-reportes-filtros .admin-limpiar-filtros {
+    justify-self: start;
+}
+
+.admin-reportes-graficos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+    align-items: stretch;
+}
+
+.admin-reportes-graficos .indicadores-grafico {
+    min-height: 200px;
+}
+
+@media (max-width: 850px) {
+    .admin-reportes-filtros .admin-filtros-academicos {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 580px) {
+    .admin-reportes-filtros .admin-filtros-academicos,
+    .admin-reportes-graficos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-gestion-ficha {
+        padding: 1rem;
+    }
+}
+
+
+/* Datos de gestión. */
+
+.admin-gestion-datos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 1.25rem;
+    margin: 1rem 0;
+}
+
+.admin-gestion-datos dt,
+.admin-gestion-datos label {
+    display: block;
+    color: #475569;
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+
+.admin-gestion-datos dd {
+    margin: 0;
+    color: #111827;
+    overflow-wrap: anywhere;
+}
+
+.admin-gestion-datos select {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: .375rem;
+    padding: .65rem;
+    background: white;
+}
+
+.admin-panel.admin-reportes-filtros {
+    box-sizing: border-box;
+    width: 100%;
+    padding: clamp(1.25rem, 3vw, 2rem);
+    margin-bottom: 1.5rem;
+    min-width: 0;
+}
+
+.admin-reportes-filtros .admin-filtros-academicos {
+    margin: 1rem 0 0;
+    gap: 1.25rem;
+    padding: 0;
+}
+
+.admin-reportes-filtros .admin-filtro-campo {
+    min-width: 0;
+}
+
+.admin-asociaciones > .admin-gestion-cabecera {
+    padding: 0 .25rem;
+}
+
+.admin-reportes-filtros > p {
+    margin-top: 1.25rem;
+    line-height: 1.55;
+}
+
+/* Listado de seminarios. */
+
+.admin-tabla-seminarios {
+    width: 100%;
+    min-width: 950px;
+    border-collapse: collapse;
+    table-layout: auto;
+    font-size: .9rem;
+}
+
+.admin-tabla-seminarios th,
+.admin-tabla-seminarios td {
+    padding: 12px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.admin-seminario-nombre {
+    min-width: 180px;
+    font-weight: 600;
+}
+
+.admin-seminario-carrera {
+    min-width: 200px;
+}
+
+.admin-seminario-docente {
+    min-width: 130px;
+}
+
+.admin-seminario-fecha {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-seminario-acciones {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.admin-seminario-acciones button {
+    flex-shrink: 0;
+}
+
+/* Listado de carreras. */
+
+.admin-tabla-carreras {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: collapse;
+    table-layout: auto;
+    font-size: .9rem;
+}
+
+.admin-tabla-carreras th,
+.admin-tabla-carreras td {
+    padding: 12px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.admin-tabla-carreras td:first-child {
+    min-width: 180px;
+    font-weight: 600;
+}
+
+.admin-tabla-carreras td:nth-child(2),
+.admin-tabla-carreras td:nth-child(3),
+.admin-tabla-carreras td:nth-child(5) {
+    white-space: nowrap;
+}
+
+.admin-carrera-descripcion {
+    width: 40%;
+    min-width: 220px;
+    max-width: 400px;
+}
+.admin-carrera-descripcion-texto {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+
+.admin-carrera-acciones {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+}
+
+.admin-carrera-acciones button {
+    flex-shrink: 0;
+}
+
+/* Listado de cohortes. */
+
+.admin-tabla-cohortes {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+    table-layout: auto;
+    font-size: .9rem;
+}
+
+.admin-tabla-cohortes th,
+.admin-tabla-cohortes td {
+    padding: 12px;
+    vertical-align: middle;
+    line-height: 1.4;
+}
+
+.admin-tabla-cohortes td:nth-child(1),
+.admin-tabla-cohortes td:nth-child(4),
+.admin-tabla-cohortes td:nth-child(5),
+.admin-tabla-cohortes td:nth-child(6) {
+    white-space: nowrap;
+}
+
+.admin-tabla-cohortes td:nth-child(2) {
+    min-width: 180px;
+    font-weight: 600;
+}
+
+.admin-tabla-cohortes td:nth-child(3) {
+    min-width: 200px;
+}
+
+.admin-tabla-cohortes td:nth-child(4) {
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-tabla-cohortes .admin-accion-gestionar {
+    margin-right: 8px;
+}
+
+.admin-tabla-cohortes thead {
+    background: #f3f4f6;
+    color: #374151;
+}

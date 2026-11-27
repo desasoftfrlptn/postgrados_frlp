@@ -1,0 +1,205 @@
+/* Períodos de inscripción */
+
+.periodos-inscripcion {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Encabezado */
+
+.periodos-cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.periodos-cabecera h1 {
+    margin: 0;
+    color: #111827;
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.3;
+}
+
+.periodos-cabecera p {
+    margin: 4px 0 0;
+    color: #6b7280;
+    font-size: 16px;
+}
+
+/* Botón principal */
+
+.periodos-boton-nuevo {
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 6px;
+    background: #2563eb;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.periodos-boton-nuevo:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+/* Formulario de alta */
+
+.periodos-formulario {
+    margin-bottom: 24px;
+}
+
+.periodos-formulario input,
+.periodos-formulario select {
+    box-sizing: border-box;
+    min-height: 42px;
+}
+
+/* Resumen de resultados */
+
+.periodos-resumen-listado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.periodos-resumen-listado p {
+    margin: 0;
+    color: #475569;
+    font-size: 14px;
+}
+
+/* Tabla */
+
+.periodos-tabla-contenedor {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+}
+
+.periodos-tabla {
+    width: 100%;
+    min-width: 850px;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.periodos-tabla th {
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+}
+
+.periodos-tabla th,
+.periodos-tabla td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.periodos-tabla td {
+    color: #374151;
+}
+
+.periodos-tabla tbody tr:hover {
+    background: #f8fafc;
+}
+
+.periodos-tabla td:nth-child(3),
+.periodos-tabla td:nth-child(4),
+.periodos-tabla td:nth-child(5) {
+    white-space: nowrap;
+}
+
+/* Acciones de gestión */
+
+.periodos-acciones {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 16px;
+}
+
+.periodos-acciones button {
+    padding: 6px 0;
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.periodos-accion-editar,
+.periodos-accion-abrir {
+    color: #2563eb;
+}
+
+.periodos-accion-cerrar {
+    color: #b45309;
+}
+
+.periodos-acciones button:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.periodos-inscripcion button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+/* Estados de carga y listado vacío */
+
+.periodos-mensaje-tabla {
+    padding: 32px 24px;
+    margin: 0;
+    text-align: center;
+    color: #64748b;
+}
+
+.periodos-mensaje-tabla button {
+    margin-top: 12px;
+}
+
+/* Accesibilidad */
+
+.periodos-inscripcion :is(button, input, select):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Adaptación a pantallas pequeñas */
+
+@media (max-width: 600px) {
+    .periodos-cabecera {
+        align-items: stretch;
+        flex-direction: column;
+        margin-bottom: 20px;
+    }
+
+    .periodos-cabecera h1 {
+        font-size: 24px;
+    }
+
+    .periodos-resumen-listado {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .periodos-formulario {
+        padding: 16px;
+    }
+}

@@ -1,0 +1,33 @@
+/* Distribución general de las páginas públicas. */
+
+.layout-publico {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-publico-contenido {
+  flex: 1;
+}
+/* La imagen de autenticación ocupa el espacio entre navegación y pie. */
+.layout-publico-contenido:has(> .sesion) {
+  display: flex;
+  flex-direction: column;
+}
+
+.layout-publico-contenido > .sesion {
+  flex: 1 0 auto;
+  box-sizing: border-box;
+}
+
+/* El inicio ocupa la altura disponible sin estirar sus tarjetas. */
+.layout-publico-contenido:has(> .home-hero) {
+  display: flex;
+  flex-direction: column;
+}
+.layout-publico-contenido > .home-hero {
+  flex: 1 0 auto;
+}
+.layout-publico-contenido > .home-accesos {
+  flex: 0 0 auto;
+}

@@ -1,0 +1,120 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import type { ReactNode } from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import ExportacionesConduccionPage from "../src/modulos/perfiles/conduccion/paginas/ExportacionesConduccionPage";
+import PerfilesAcademicosConduccionPage from "../src/modulos/perfiles/conduccion/paginas/PerfilesAcademicosConduccionPage";
+import TutoriasConduccionPage from "../src/modulos/perfiles/conduccion/paginas/TutoriasConduccionPage";
+import TrabajosFinalesConduccionPage from "../src/modulos/perfiles/conduccion/paginas/TrabajosFinalesConduccionPage";
+import SeminariosConduccionPage from "../src/modulos/perfiles/conduccion/paginas/SeminariosConduccionPage";
+import AlertasConduccionPage from "../src/modulos/perfiles/conduccion/paginas/AlertasConduccionPage";
+import EstadisticasConduccionPage from "../src/modulos/perfiles/conduccion/paginas/EstadisticasConduccionPage";
+import PanelConduccionPage from "../src/modulos/perfiles/conduccion/paginas/PanelConduccionPage";
+import { menuConduccion } from "../src/modulos/perfiles/conduccion/config/menuConduccion";
+import { api } from "../src/shared/api/client";
+
+vi.mock("../src/shared/api/client", () => ({ api: { get: vi.fn() } }));
+vi.mock("../src/modulos/manejo-sesion/useAuth", () => ({
+  useAuth: () => ({ user: { token: "prueba", rol: "COORDINADOR" } }),
+}));
+const cohortes = [{id:"cohorte-1", anio:2026, nombre:"Cohorte 2026", carrera_id:"carrera-1", abierta:true, fecha_inicio:null, created_at:null}];
+const carreras = [{id:"carrera-1",nombre:"Especialización en Datos",activo:true}];
+const legajos = [{id:"legajo-1",cohorte_id:"cohorte-1",nombre:"Ana",apellido:"Pérez",dni_pasaporte:"123",correo_electronico:"a@example.com",carrera_elegida:"Especialización en Datos",estado:"PENDIENTE",solicitud_beca:30}];
+function montar(elemento: ReactNode) { render(<MemoryRouter>{elemento}</MemoryRouter>); }
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(api.get).mockImplementation(async <T,>(ruta: string): Promise<T> => {
+    if (ruta === "/inscripcion/tesis/registros" || ruta === "/tutorias") return [] as T;
+    if (ruta === "/seminarios/consulta-conduccion?cohorte_id=cohorte-1") return [{id:"cursada-1",seminario:"Bases de datos",docente:"García, Luis",estudiante:"Pérez, Ana",documento:"123",estado:"CURSANDO",nota:null,asistencias:0,total_clases:0}] as T;
+    if (ruta === "/conduccion/perfiles-academicos") return [{id:"doc-1",nombre:"Luis",apellido:"García",correo_electronico:"doc@example.com",rol:"DOCENTE",activo:true}] as T;
+    if (ruta === "/cohortes") return cohortes as T;
+    if (ruta === "/carreras") return carreras as T;
+    if (ruta === "/inscripcion/" || ruta === "/inscripcion/?cohorte_id=cohorte-1") return legajos as T;
+    throw new Error(`Ruta no simulada: ${ruta}`);
+  });
+});
+
+describe("Navegación completa de Conducción", () => {
+  it("tiene las 9 opciones con rutas sin alertas duplicadas", () => {
+    expect(menuConduccion).toHaveLength(9);
+    expect(menuConduccion.some(item => item.ruta?.endsWith("/alertas"))).toBe(false);
+    expect(menuConduccion.every((item) => !!item.ruta)).toBe(true);
+  });
+  it("el panel enlaza a estadísticas sin duplicar accesos de gestión", () => {
+    montar(<PanelConduccionPage />);
+    expect(screen.getByRole("heading", { name: /Hola, Coordinador!/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Accesos de gestión" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Ingresar al módulo" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Ver detalle →" }).find(enlace => enlace.getAttribute("href") === "/dashboard/conduccion/estadisticas")).toHaveAttribute("href", "/dashboard/conduccion/estadisticas");
+    expect(screen.getByText("Cohortes registradas")).toBeInTheDocument();
+  });
+  it("muestra seguimiento de la cohorte sin duplicar indicadores", async () => {
+    montar(<PanelConduccionPage />);
+    await screen.findByRole("option", {name: /Cohorte 2026/});
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/inscripcion/?"), expect.anything());
+    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
+    expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
+    expect(screen.queryByText("Legajos en seguimiento")).not.toBeInTheDocument();
+  });
+  it("exportaciones no consulta legajos hasta elegir cohorte", async () => {
+    montar(<ExportacionesConduccionPage />);
+    expect(await screen.findByRole("heading", { name: "Exportación de legajos" })).toBeInTheDocument();
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith("/cohortes", "prueba"));
+    expect(api.get).not.toHaveBeenCalledWith(expect.stringContaining("/inscripcion/?"), expect.anything());
+    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
+    expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
+  });
+  it("muestra la ficha de aspirantes en modo lectura", async () => {
+    montar(<PerfilesAcademicosConduccionPage />);
+    fireEvent.click(screen.getByRole("button", {name:"Aspirantes"}));
+    await screen.findByRole("option", {name:/Cohorte 2026/});
+    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
+    fireEvent.click(await screen.findByRole("button", {name:"Consultar Pérez, Ana"}));
+    expect(screen.getByRole("heading", {name:"Pérez, Ana"})).toBeInTheDocument();
+  });
+  it("consulta docentes sin acciones de edición", async () => {
+    montar(<PerfilesAcademicosConduccionPage />);
+    fireEvent.click(screen.getByRole("button", {name:"Docentes"}));
+    fireEvent.click(await screen.findByRole("button", {name:"Consultar García, Luis"}));
+    expect(screen.getByRole("heading", {name:"García, Luis"})).toBeInTheDocument();
+    expect(screen.queryByRole("button", {name:"Eliminar"})).not.toBeInTheDocument();
+  });
+  it("muestra alertas basadas en estados reales", async () => {
+    montar(<AlertasConduccionPage />);
+    await screen.findByRole("option", {name:/Cohorte 2026/});
+    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
+    expect(await screen.findByText("Pérez, Ana")).toBeInTheDocument();
+  });
+  it("calcula estadísticas solamente con datos reales", async () => {
+    montar(<EstadisticasConduccionPage />);
+    expect(await screen.findByText("Aspirantes pendientes")).toBeInTheDocument();
+    expect(screen.getByText("Aspirantes pendientes").parentElement).toHaveTextContent("1");
+    expect(screen.queryByLabelText("Cohorte")).not.toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/inscripcion/", "prueba");
+    expect(screen.getByText("Solicitudes de beca de aspirantes")).toBeInTheDocument();
+  });
+  it("consulta tesis reales sin acciones de escritura", async () => {
+    montar(<TrabajosFinalesConduccionPage />);
+    expect(await screen.findByText("No hay tesis que coincidan con la consulta.")).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/inscripcion/tesis/registros", "prueba");
+    expect(screen.queryByRole("button", {name: "Registrar tesis"})).not.toBeInTheDocument();
+  });
+  it("consulta tutorías reales en modo lectura", async () => {
+    montar(<TutoriasConduccionPage />);
+    expect(await screen.findByText("No se encontraron tutorías.")).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/tutorias", "prueba");
+    expect(screen.queryByRole("button", {name: "Asignar tutoría"})).not.toBeInTheDocument();
+  });
+  it.each([
+    ["Seminarios y calificaciones", <SeminariosConduccionPage />],
+  ])("muestra %s sin simular datos académicos", async (titulo, componente) => {
+    montar(componente);
+    expect(screen.getByRole("heading", {name: titulo})).toBeInTheDocument();
+    await screen.findByRole("option", {name:/Cohorte 2026/});
+    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
+    expect(await screen.findByRole("cell", { name: "Sin clases" })).toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/seminarios/consulta-conduccion?cohorte_id=cohorte-1", "prueba");
+  });
+});
