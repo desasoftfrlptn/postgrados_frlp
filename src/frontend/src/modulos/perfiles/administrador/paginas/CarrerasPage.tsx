@@ -604,7 +604,7 @@ export default function CarrerasPage() {
       </div>
       <p role="status" className="admin-resultado-filtros">{carrerasFiltradas.length} de {carreras.length} resultados</p>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-left">
+        <table className="admin-tabla-carreras w-full text-left">
           <thead className="bg-gray-100">
             <tr>
               <th scope="col" className="p-4">
@@ -666,9 +666,11 @@ export default function CarrerasPage() {
                         {carrera.duracion}
                       </td>
 
-                      <td className="max-w-md p-4">
-                        {carrera.descripcion}
-                      </td>
+                      <td className="admin-carrera-descripcion">
+                          <div className="admin-carrera-descripcion-texto">
+                            {carrera.descripcion}
+                          </div>
+                        </td>
 
                       <td className="p-4">
                         <span
@@ -685,8 +687,8 @@ export default function CarrerasPage() {
                       </td>
 
                       <td className="p-4">
-                        <div className="flex flex-wrap gap-3">
-                          <button type="button" className="admin-accion-gestionar" onClick={() => { setGestionId(carrera.id); abrirEdicion(carrera); }}>Gestionar carrera</button>
+                        <div className="admin-carrera-acciones">
+                          <button type="button" className="admin-accion-gestionar" onClick={() => { setGestionId(carrera.id); abrirEdicion(carrera); }}>Gestionar</button>
                           <button type="button" className="admin-accion-eliminar" onClick={() => eliminar(carrera)}>Eliminar</button>
                         </div>
                       </td>

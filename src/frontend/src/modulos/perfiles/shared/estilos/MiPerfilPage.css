@@ -587,8 +587,28 @@
     width: 100%;
   }
 }
-.mi-perfil-input-foto:focus-visible { opacity: 1; width: auto; height: auto; position: static; }
-.mi-perfil-campo input[readonly] { background: #f8fafc; }
-.mi-perfil-datos > form > p { margin-bottom: 16px; color: #475569; }
-.mi-perfil-avatar-contenedor p { overflow-wrap: anywhere; max-width: 100%; }
-.mi-perfil button:disabled { cursor: not-allowed; opacity: .65; }
+.mi-perfil-input-foto:focus-visible {
+    opacity: 1;
+    width: auto;
+    height: auto;
+    position: static;
+}
+
+.mi-perfil-campo input[readonly] {
+    background: #f8fafc;
+}
+
+.mi-perfil-datos > form > p {
+    margin-bottom: 16px;
+    color: #475569;
+}
+
+.mi-perfil-avatar-contenedor p {
+    overflow-wrap: anywhere;
+    max-width: 100%;
+}
+
+.mi-perfil button:disabled {
+    cursor: not-allowed;
+    opacity: .65;
+}

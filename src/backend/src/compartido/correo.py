@@ -14,7 +14,6 @@ TAMANIO_MAXIMO_PDF = 5 * 1024 * 1024
 
 
 def renderizar_correo_institucional(asunto: str, contenido: str) -> str:
-    """Presentación compartida; los textos de usuarios nunca se interpretan como HTML."""
     titulo = escape(asunto)
     partes = []
     base = os.getenv("FRONTEND_URL", "").strip().rstrip("/")

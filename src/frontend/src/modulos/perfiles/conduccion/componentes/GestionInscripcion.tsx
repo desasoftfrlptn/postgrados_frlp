@@ -305,6 +305,48 @@ export default function GestionInscripcion({
     setMensaje("");
 
     try {
+      if (accion === "APROBAR") {
+        if (!requisitosAprobacionCumplidos()) {
+          setError("Completá los requisitos antes de aprobar.");
+          return;
+        }
+
+        if (verificacionPendiente()) {
+          const verificacion = await api.put<Gestion>(
+            `${base}/verificacion`,
+            {
+              datos_verificados: datosVerificados,
+              tiene_titulo_posgrado: tituloPosgrado === "si",
+            },
+            token,
+          );
+
+          setGestion(verificacion);
+          onEstadoActualizado?.(verificacion.estado);
+          onDocumentacionActualizada?.();
+
+          if (verificacion.estado !== gestion.estado) {
+            await cargar();
+            setError("El estado de la inscripción cambió. Revisá los datos antes de continuar.");
+            return;
+          }
+        }
+
+        const requisitos = await api.get<RespuestaCompletitud>(
+          `${base}/completitud`,
+          token,
+        );
+
+        setDocumentacion(requisitos);
+
+        if (requisitos.completitud?.completo !== true) {
+          setError(
+            "No se puede aprobar: hay documentación pendiente. La verificación se conserva guardada."
+          );
+          return;
+        }
+      }
+
       const resultado = await api.post<Gestion>(
         `${base}/acciones`,
         {
@@ -341,15 +383,27 @@ export default function GestionInscripcion({
     }
   }
 
+  function verificacionPendiente() {
+    return !!gestion && (
+      datosVerificados !== gestion.datos_verificados ||
+      tituloPosgrado !== (
+        gestion.tiene_titulo_posgrado === null
+          ? ""
+          : gestion.tiene_titulo_posgrado ? "si" : "no"
+      )
+    );
+  }
+
   function requisitosAprobacionCumplidos() {
     return (
       consultaValida &&
-      gestion?.datos_verificados === true &&
-      gestion.tiene_titulo_posgrado != null &&
-      documentacion?.completitud?.completo === true &&
-      datosVerificados === gestion.datos_verificados &&
-      tituloPosgrado === (
-        gestion.tiene_titulo_posgrado ? "si" : "no"
+      gestion?.estado === "EN_REVISION" &&
+      datosVerificados &&
+      tituloPosgrado !== "" &&
+      documentacionACorregir.length === 0 &&
+      (
+        verificacionPendiente() ||
+        documentacion?.completitud?.completo === true
       )
     );
   }
@@ -382,7 +436,7 @@ export default function GestionInscripcion({
     ) {
       setMensaje("");
       setError(
-        "Completá y guardá los requisitos antes de aprobar."
+        "Completá los requisitos antes de aprobar."
       );
       return;
     }
@@ -453,7 +507,7 @@ export default function GestionInscripcion({
     VERIFICAR: "Se guardarán los datos de verificación del legajo.",
     REVISAR: "La inscripción pasará a estar en revisión.",
     OBSERVAR: "Se registrarán las correcciones solicitadas al aspirante.",
-    APROBAR: "Se aprobará la solicitud de inscripción.",
+    APROBAR: "Se guardará la verificación pendiente y se aprobará la inscripción si cumple todos los requisitos.",
     RECHAZAR: "La inscripción será rechazada.",
     MATRICULAR: "Se autorizará la matrícula del aspirante.",
     DAR_BAJA: "Se registrará la baja del legajo.",
@@ -461,7 +515,7 @@ export default function GestionInscripcion({
 
 
   const puedeVerificar = gestion
-    ? ["PENDIENTE", "EN_REVISION", "OBSERVADO"].includes(gestion.estado)
+    ? gestion.estado === "EN_REVISION"
     : false;
 
   return (
@@ -489,7 +543,7 @@ export default function GestionInscripcion({
           />
         )}
 
-        <button
+        {!consultaValida && !cargando && (<button
           type="button"
           disabled={cargando || guardando}
           onClick={() => {
@@ -499,7 +553,7 @@ export default function GestionInscripcion({
           }}
         >
           Actualizar gestión
-        </button>
+        </button>)}
 
         {gestion && (
           <>
@@ -558,7 +612,7 @@ export default function GestionInscripcion({
                 <legend>Verificación del legajo</legend>
 
                 <p className="gestion-ayuda">
-                  Revisá los datos y guardá la verificación para calcular los requisitos de aprobación.
+                  Revisá los datos del aspirante. Podés guardar los avances o aprobar directamente cuando corresponda.
                 </p>
 
                 <div className="gestion-campo">
@@ -696,18 +750,18 @@ export default function GestionInscripcion({
                   <h4>Requisitos para aprobar</h4>
 
                   <ul className="gestion-requisitos-lista">
-                    <li data-completo={gestion.datos_verificados}>
+                    <li data-completo={datosVerificados}>
                       Datos personales y académicos:
                       {" "}
-                      {gestion.datos_verificados
+                      {datosVerificados
                         ? "Verificados"
                         : "Pendientes"}
                     </li>
 
-                    <li data-completo={gestion.tiene_titulo_posgrado != null}>
+                    <li data-completo={tituloPosgrado !== ""}>
                       Información del título previo:
                       {" "}
-                      {gestion.tiene_titulo_posgrado != null
+                      {tituloPosgrado !== ""
                         ? "Registrada"
                         : "Pendiente"}
                     </li>
@@ -764,42 +818,98 @@ export default function GestionInscripcion({
 
                   {!requisitosAprobacionCumplidos() && (
                     <p className="gestion-ayuda">
-                      Completá y guardá los requisitos pendientes
-                      para habilitar la aprobación.
+                      Completá los requisitos pendientes para habilitar
+                      la aprobación. Los cambios se guardarán automáticamente.
                     </p>
                   )}
                 </section>
               )}
 
-              <div className="gestion-acciones">
-              {puedeVerificar && (
-                <button type="button" className="gestion-boton-guardar"
-                  disabled={bloqueado || tituloPosgrado === ""}
-                  onClick={() => setAccionPendiente("VERIFICAR")}>
-                  Guardar verificación
-                </button>
-              )}
-              {(accionesPorEstado[gestion.estado] ?? []).map(
-                ({ accion, texto }) => (
+              <div className="gestion-acciones gestion-acciones-principales">
+                {puedeVerificar && (
                   <button
-                    key={accion}
                     type="button"
-                    className={
-                      `gestion-accion gestion-accion--${accion.toLowerCase()}`
-                    }
+                    className="gestion-accion gestion-boton-guardar"
                     disabled={
                       bloqueado ||
-                      (accion === "APROBAR" &&
-                        !requisitosAprobacionCumplidos())
+                      tituloPosgrado === "" ||
+                      !verificacionPendiente()
                     }
-                    onClick={() => solicitarAccion(accion)}
+                    onClick={() => setAccionPendiente("VERIFICAR")}
                   >
-                    {texto}
+                    Guardar avances
                   </button>
-                ),
+                )}
+
+                {(accionesPorEstado[gestion.estado] ?? [])
+                  .filter(({ accion }) =>
+                    !["RECHAZAR", "DAR_BAJA"].includes(accion)
+                  )
+                  .map(({ accion, texto }) => (
+                    <button
+                      key={accion}
+                      type="button"
+                      className={`gestion-accion gestion-accion--${accion.toLowerCase()}`}
+                      disabled={
+                        bloqueado ||
+                        (accion === "APROBAR" &&
+                          !requisitosAprobacionCumplidos())
+                      }
+                      onClick={() => solicitarAccion(accion)}
+                    >
+                      {texto}
+                    </button>
+                  ))}
+              </div>
+
+              {(
+                (accionesPorEstado[gestion.estado] ?? []).some(
+                  ({ accion }) =>
+                    ["RECHAZAR", "DAR_BAJA"].includes(accion)
+                ) ||
+                (onEliminado &&
+                  (!gestion.fecha_matricula || gestion.estado === "BAJA") &&
+                  ["PENDIENTE", "EN_REVISION", "OBSERVADO",
+                   "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"]
+                    .includes(gestion.estado))
+              ) && (
+                <details className="gestion-otras-acciones">
+                  <summary>Otras acciones</summary>
+
+                  <div className="gestion-acciones">
+                    {(accionesPorEstado[gestion.estado] ?? [])
+                      .filter(({ accion }) =>
+                        ["RECHAZAR", "DAR_BAJA"].includes(accion)
+                      )
+                      .map(({ accion, texto }) => (
+                        <button
+                          key={accion}
+                          type="button"
+                          className={`gestion-accion gestion-accion--${accion.toLowerCase()}`}
+                          disabled={bloqueado}
+                          onClick={() => solicitarAccion(accion)}
+                        >
+                          {texto}
+                        </button>
+                      ))}
+
+                    {onEliminado &&
+                      (!gestion.fecha_matricula || gestion.estado === "BAJA") &&
+                      ["PENDIENTE", "EN_REVISION", "OBSERVADO",
+                       "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"]
+                        .includes(gestion.estado) && (
+                        <button
+                          type="button"
+                          className="gestion-accion gestion-accion--dar_baja"
+                          disabled={bloqueado}
+                          onClick={() => setAccionPendiente("ELIMINAR")}
+                        >
+                          Eliminar aspirante
+                        </button>
+                      )}
+                  </div>
+                </details>
               )}
-              {onEliminado && (!gestion.fecha_matricula || gestion.estado === "BAJA") && ["PENDIENTE", "EN_REVISION", "OBSERVADO", "COMPLETADO", "RECHAZADO", "VENCIDO", "BAJA"].includes(gestion.estado) && <button type="button" className="gestion-accion gestion-accion--dar_baja" disabled={bloqueado} onClick={() => setAccionPendiente("ELIMINAR")}>Eliminar aspirante</button>}
-            </div>
 
             </section>
             </form>

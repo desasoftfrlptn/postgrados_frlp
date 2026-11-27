@@ -78,6 +78,14 @@ const formularioInicial: FormularioSeminario = {
 };
 
 
+function formatearFecha(fecha: string): string {
+  if (!fecha) return "—";
+
+  const [anio, mes, dia] = fecha.split("T")[0].split("-");
+
+  return `${dia}/${mes}/${anio}`;
+}
+
 export default function SeminariosPage() {
   const confirmacion = useConfirmacion();
   const [carreraFiltro, setCarreraFiltro] = useState(() => new URLSearchParams(window.location.search).get("carrera") ?? "");
@@ -713,7 +721,7 @@ export default function SeminariosPage() {
       </div>
       <p role="status" className="admin-resultado-filtros">{seminariosFiltrados.length} de {seminarios.length} resultados</p>
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-left">
+        <table className="admin-tabla-seminarios w-full text-left">
           <thead className="bg-gray-100">
             <tr>
               <th
@@ -788,35 +796,25 @@ export default function SeminariosPage() {
                       }
                       className="border-t border-gray-200"
                     >
-                      <td className="p-4 font-semibold">
-                        {
-                          seminario.nombre
-                        }
-                      </td>
+                      <td className="admin-seminario-nombre">
+  {seminario.nombre}
+</td>
 
-                      <td className="p-4">
-                        {
-                          seminario.carrera_nombre
-                        }
-                      </td>
+                      <td className="admin-seminario-carrera">
+  {seminario.carrera_nombre}
+</td>
 
-                      <td className="p-4">
-                        {
-                          seminario.docente_nombre
-                        }
-                      </td>
+                      <td className="admin-seminario-docente">
+  {seminario.docente_nombre}
+</td>
 
-                      <td className="p-4">
-                        {
-                          seminario.fecha_inicio
-                        }
-                      </td>
+                      <td className="admin-seminario-fecha">
+  {formatearFecha(seminario.fecha_inicio)}
+</td>
 
-                      <td className="p-4">
-                        {
-                          seminario.fecha_fin
-                        }
-                      </td>
+                      <td className="admin-seminario-fecha">
+  {formatearFecha(seminario.fecha_fin)}
+</td>
 
                       <td className="p-4">
                         <span
@@ -833,7 +831,7 @@ export default function SeminariosPage() {
                       </td>
 
                       <td className="p-4">
-                        <div className="flex flex-wrap gap-3">
+                        <div className="admin-seminario-acciones">
                           <button
                             type="button"
                             onClick={() =>
@@ -843,8 +841,8 @@ export default function SeminariosPage() {
                             }
                             className="admin-accion-gestionar"
                           >
-                            Gestionar seminario
-                          </button>
+  Gestionar
+</button>
 
 
                           <button type="button" onClick={() => eliminarSeminario(seminario)}

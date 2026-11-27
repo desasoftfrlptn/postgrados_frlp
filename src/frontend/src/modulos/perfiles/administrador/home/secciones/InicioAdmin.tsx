@@ -303,16 +303,24 @@ export default function InicioAdmin() {
           disabled={!editando || guardando}
         >
           {campos.map((campo) => (
-            <CampoConfiguracion
+            <div
               key={campo.clave}
-              id={`home-${campo.clave.replaceAll("_", "-")}`}
-              etiqueta={campo.etiqueta}
-              multilinea={campo.multilinea ?? false}
-              valor={valores[campo.clave] ?? ""}
-              alCambiar={(valor) =>
-                modificarCampo(campo.clave, valor)
+              className={
+                ["hero_titulo", "hero_descripcion"].includes(campo.clave)
+                  ? "admin-home-campo-ancho"
+                  : ""
               }
-            />
+            >
+              <CampoConfiguracion
+                id={`home-${campo.clave.replaceAll("_", "-")}`}
+                etiqueta={campo.etiqueta}
+                multilinea={campo.multilinea ?? false}
+                valor={valores[campo.clave] ?? ""}
+                alCambiar={(valor) =>
+                  modificarCampo(campo.clave, valor)
+                }
+              />
+            </div>
           ))}
         </fieldset>
 

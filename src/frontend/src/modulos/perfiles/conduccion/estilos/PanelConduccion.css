@@ -1,0 +1,151 @@
+/* Inicio del Equipo de Conducción */
+
+.panel-conduccion {
+    width: 100%;
+    min-width: 0;
+}
+
+.panel-conduccion-titulo {
+    margin: 24px 0 16px;
+    color: #111827;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.panel-conduccion-indicadores {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.panel-conduccion-indicador {
+    min-width: 0;
+    padding: 20px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.panel-conduccion-indicador h3 {
+    margin: 0;
+    color: #475569;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.panel-conduccion-indicador strong {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.panel-conduccion-indicador p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.panel-indicador-pendiente strong {
+    color: #b45309;
+}
+
+.panel-indicador-revision strong {
+    color: #2563eb;
+}
+
+.panel-indicador-matricula strong {
+    color: #475569;
+}
+
+.panel-indicador-activo strong {
+    color: #15803d;
+}
+
+.panel-conduccion-ayuda {
+    margin: 0 0 16px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.panel-conduccion .perfil-dashboard-seguimiento {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 20px;
+}
+
+.panel-conduccion .perfil-dashboard-seguimiento .perfil-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.panel-conduccion-descripcion {
+    margin: 0;
+    padding: 16px 20px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.panel-conduccion-estado {
+    display: block;
+    margin-top: 5px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.panel-conduccion-estado[data-estado="PENDIENTE"],
+.panel-conduccion-estado[data-estado="OBSERVADO"],
+.panel-conduccion-estado[data-estado="EN_RIESGO"] {
+    color: #a16207;
+}
+
+.panel-conduccion-estado[data-estado="EN_REVISION"] {
+    color: #2563eb;
+}
+
+.panel-conduccion-estado[data-estado="COMPLETADO"] {
+    color: #15803d;
+}
+
+.panel-conduccion-pie {
+    margin-top: auto;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.panel-conduccion-pie small {
+    color: #64748b;
+    font-size: 12px;
+}
+
+@media (max-width: 1100px) {
+    .panel-conduccion-indicadores {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 750px) {
+    .panel-conduccion .perfil-dashboard-seguimiento {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .panel-conduccion-indicadores {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

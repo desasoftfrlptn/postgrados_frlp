@@ -22,22 +22,6 @@ interface AlumnoSeminario {
   estado: string;
 }
 export default function CalificacionesPage() {
-  // Simulamos la lista de alumnos inscriptos en el seminario
-  // const alumnos = [
-  //   { id: "LEG-001", apellido: "Pérez", nombre: "Juan" },
-  //   { id: "LEG-002", apellido: "Gómez", nombre: "Ana" },
-  //   { id: "LEG-003", apellido: "López", nombre: "Carlos" }
-  // ];
-
-  // // Función que maneja el evento de envío del formulario
-  // const handleSubmit = async (event: React.FormEvent) => {
-  //   // Evitamos que el navegador recargue la página (comportamiento HTML por defecto)
-  //   event.preventDefault();
-    
-  //   // Aquí a futuro irá el Fetch/Async Await para enviar los datos al Backend
-  //   alert("Las calificaciones se han guardado exitosamente.");
-  // };
-
 
 const { user } = useAuth();
 const [seminarios, setSeminarios] = useState<SeminarioDocente[]>([]);
@@ -272,25 +256,6 @@ const handleSubmit = async (event: React.FormEvent) => {
                       {alumno.apellido}, {alumno.nombre}
                     </td>
                   {/* 
-                    <td className="p-4 text-center">
-                      {/* Label accesible, visualmente oculto mediante sr-only }
-                      <label htmlFor={`condicion-${alumno.id}`} className="sr-only">
-                        Condición académica de {alumno.nombre}
-                      </label>
-                      <select 
-                        id={`condicion-${alumno.id}`}
-                        name={`condicion-${alumno.id}`}
-                        defaultValue=""
-                        required
-                        className="border border-slate-300 rounded-md p-2 text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-[150px]"
-                      >
-                        <option value="" disabled>Seleccionar...</option>
-                        <option value="Aprobado">Aprobado</option>
-                        <option value="Regular">Regular</option>
-                        <option value="Libre">Libre</option>
-                        <option value="Ausente">Ausente</option> 
-                      </select>
-                    </td>
                   */}
                     <td className="p-4 text-center">
                       <span className="font-semibold text-slate-700">

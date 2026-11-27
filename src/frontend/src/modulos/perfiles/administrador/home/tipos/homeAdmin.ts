@@ -1,5 +1,3 @@
-// Define los tipos compartidos por la administración del sitio público.
-
 export type SeccionHomeAdmin =
   | "inicio"
   | "carreras"

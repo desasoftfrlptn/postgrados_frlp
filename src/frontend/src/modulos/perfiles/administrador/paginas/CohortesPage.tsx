@@ -522,10 +522,7 @@ export default function CohortesPage() {
 
 
       {!gestion && <>
-      <article className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-lg font-bold text-gray-900">
-          Listado de cohortes
-        </h2>
+      <div className="w-full min-w-0">
 
 
         <div className="admin-filtros-academicos">
@@ -535,6 +532,12 @@ export default function CohortesPage() {
 <div className="admin-filtro-campo"><label htmlFor="filtro-anio-cohorte">Año</label><select id="filtro-anio-cohorte" value={anioFiltro} onChange={e => setAnioFiltro(e.target.value)}><option value="">Todos</option>{Array.from(new Set(cohortes.map(c => c.anio))).sort((a,b) => b-a).map(anio => <option key={anio} value={anio}>{anio}</option>)}</select></div>
         <button type="button" className="admin-limpiar-filtros" onClick={() => { setEstadoFiltro("todos"); setBusqueda(""); setCarreraFiltro(""); setAnioFiltro(""); }}>Limpiar filtros</button>
       </div>
+        {!cargando && (
+          <p role="status" className="admin-resultado-filtros">
+            {cohortesFiltradas.length} de {cohortes.length} resultados
+          </p>
+        )}
+
         {cargando ? (
           <p className="mt-4 text-gray-500">
             Cargando cohortes...
@@ -544,10 +547,10 @@ export default function CohortesPage() {
             {cohortes.length === 0 ? "Todavía no hay cohortes registradas." : "No hay cohortes que coincidan con los filtros."}
           </p>
         ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-200 text-sm text-gray-500">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+            <table className="admin-tabla-cohortes w-full text-left">
+              <thead className="bg-gray-100">
+                <tr className="border-b border-gray-200 text-gray-900">
                   <th className="px-3 py-3">Año</th>
                   <th className="px-3 py-3">Nombre</th>
                   <th className="px-3 py-3">Carrera</th>
@@ -561,7 +564,7 @@ export default function CohortesPage() {
                 {cohortesFiltradas.map((cohorte) => (
                   <tr
                     key={cohorte.id}
-                    className="border-b border-gray-100"
+                    className="border-t border-gray-200"
                   >
                     <td className="px-3 py-3">
                       {cohorte.anio}
@@ -587,12 +590,16 @@ export default function CohortesPage() {
                     </td>
 
                     <td className="px-3 py-3">
-                      {cohorte.abierta
-                        ? "Abierta"
-                        : "Cerrada"}
+                      <span className={
+                        cohorte.abierta
+                          ? "font-semibold text-green-700"
+                          : "font-semibold text-gray-500"
+                      }>
+                        {cohorte.abierta ? "Abierta" : "Cerrada"}
+                      </span>
                     </td>
                     <td className="px-3 py-3">
-                      <button type="button" className="admin-accion-gestionar" onClick={() => setGestionId(cohorte.id)}>Gestionar cohorte</button>
+                      <button type="button" className="admin-accion-gestionar" onClick={() => setGestionId(cohorte.id)}>Gestionar</button>
                           <button type="button" className="admin-accion-eliminar" onClick={() => eliminar(cohorte)}>Eliminar</button>
                     </td>
                   </tr>
@@ -601,7 +608,7 @@ export default function CohortesPage() {
             </table>
           </div>
         )}
-      </article>
+      </div>
       </>}
       <ConfirmacionModal
         abierto={confirmacion.abierto}

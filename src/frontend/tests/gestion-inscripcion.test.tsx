@@ -225,9 +225,12 @@ it("muestra el error del servidor", async () => {
 });
 
 it("guarda la verificación", async () => {
+  gestionActual.estado = "EN_REVISION";
   render(<GestionInscripcion legajoId="legajo-1" />);
 
-  await obtenerBotonRevision();
+  await screen.findByRole("button", {
+    name: "Guardar avances",
+  });
 
   fireEvent.click(
     screen.getByRole("checkbox", {
@@ -244,7 +247,7 @@ it("guarda la verificación", async () => {
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: "Guardar verificación",
+      name: "Guardar avances",
     }),
   );
 
@@ -424,9 +427,12 @@ it("evita enviar dos veces la misma operación", async () => {
 
 
 it("cancela la verificación sin guardar los cambios", async () => {
+  gestionActual.estado = "EN_REVISION";
   render(<GestionInscripcion legajoId="legajo-1" />);
 
-  await obtenerBotonRevision();
+  await screen.findByRole("button", {
+    name: "Guardar avances",
+  });
 
   fireEvent.change(
     screen.getByRole("combobox", {
@@ -437,7 +443,7 @@ it("cancela la verificación sin guardar los cambios", async () => {
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: "Guardar verificación",
+      name: "Guardar avances",
     }),
   );
 
@@ -499,9 +505,12 @@ it("impide aprobar si faltan requisitos", async () => {
 });
 
 it("actualiza la completitud después de guardar la verificación", async () => {
+  gestionActual.estado = "EN_REVISION";
   render(<GestionInscripcion legajoId="legajo-1" />);
 
-  await obtenerBotonRevision();
+  await screen.findByRole("button", {
+    name: "Guardar avances",
+  });
 
   fireEvent.change(
     screen.getByRole("combobox", {
@@ -512,7 +521,7 @@ it("actualiza la completitud después de guardar la verificación", async () => 
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: "Guardar verificación",
+      name: "Guardar avances",
     }),
   );
 
@@ -650,7 +659,7 @@ it("impide aprobar con documentación incompleta", async () => {
   expect(api.post).not.toHaveBeenCalled();
 });
 
-it("impide aprobar si se modifica la verificación sin guardarla", async () => {
+it("guarda la verificación pendiente y comprueba la documentación antes de aprobar", async () => {
   prepararAprobacion();
 
   render(<GestionInscripcion legajoId="legajo-1" />);
@@ -659,8 +668,6 @@ it("impide aprobar si se modifica la verificación sin guardarla", async () => {
     name: "Aprobar inscripción",
   });
 
-  expect(aprobar).toBeEnabled();
-
   fireEvent.change(
     screen.getByRole("combobox", {
       name: /¿Tiene título de posgrado\?/,
@@ -668,7 +675,53 @@ it("impide aprobar si se modifica la verificación sin guardarla", async () => {
     { target: { value: "si" } },
   );
 
-  expect(aprobar).toBeDisabled();
+  expect(api.put).not.toHaveBeenCalled();
+  expect(api.post).not.toHaveBeenCalled();
+
+  vi.mocked(api.put).mockImplementationOnce(async <T,>() => {
+    gestionActual.tiene_titulo_posgrado = true;
+    return { ...gestionActual } as T;
+  });
+
+  const consultaOriginal = vi.mocked(api.get).getMockImplementation();
+
+  vi.mocked(api.get).mockImplementation(async <T,>(ruta: string, token?: string): Promise<T> => {
+    if (ruta.endsWith("/completitud")) {
+      return {
+        legajo_id: "legajo-1",
+        pendiente: null,
+        completitud: {
+          porcentaje: 80,
+          documentos_requeridos: 5,
+          documentos_presentados: 4,
+          documentos_faltantes: ["Título de posgrado"],
+          completo: false,
+        },
+      } as T;
+    }
+
+    if (!consultaOriginal) throw new Error("Consulta no configurada");
+    return consultaOriginal(ruta, token) as Promise<T>;
+  });
+
+  fireEvent.click(aprobar);
+  await confirmarModal();
+
+  await waitFor(() => {
+    expect(api.put).toHaveBeenCalledWith(
+      "/conduccion/legajos/legajo-1/verificacion",
+      {
+        datos_verificados: true,
+        tiene_titulo_posgrado: true,
+      },
+      "token-prueba",
+    );
+  });
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "No se puede aprobar"
+  );
+
   expect(api.post).not.toHaveBeenCalled();
 });
 
@@ -712,6 +765,7 @@ it("informa errores al consultar la completitud documental", async () => {
 });
 
 it("notifica la actualización documental al guardar la verificación", async () => {
+  gestionActual.estado = "EN_REVISION";
   const actualizarDocumentacion = vi.fn();
 
   render(
@@ -721,7 +775,9 @@ it("notifica la actualización documental al guardar la verificación", async ()
     />,
   );
 
-  await obtenerBotonRevision();
+  await screen.findByRole("button", {
+    name: "Guardar avances",
+  });
 
   fireEvent.change(
     screen.getByRole("combobox", {
@@ -732,7 +788,7 @@ it("notifica la actualización documental al guardar la verificación", async ()
 
   fireEvent.click(
     screen.getByRole("button", {
-      name: "Guardar verificación",
+      name: "Guardar avances",
     }),
   );
 
@@ -1012,7 +1068,7 @@ it("reúne verificación y resolución en un único formulario sin ejecutar oper
   gestionActual.estado = "EN_REVISION";
   render(<GestionInscripcion legajoId="legajo-1" />);
   const formulario = await screen.findByRole("form", { name: "Revisión y resolución del legajo" });
-  expect(formulario).toContainElement(screen.getByRole("button", { name: "Guardar verificación" }));
+  expect(formulario).toContainElement(screen.getByRole("button", { name: "Guardar avances" }));
   expect(formulario).toContainElement(screen.getByRole("button", { name: "Aprobar inscripción" }));
   expect(api.put).not.toHaveBeenCalled();
   expect(api.post).not.toHaveBeenCalled();

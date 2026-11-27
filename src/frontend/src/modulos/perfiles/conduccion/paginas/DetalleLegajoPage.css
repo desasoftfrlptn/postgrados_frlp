@@ -78,3 +78,57 @@
 .legajo-datos-grid .conduccion-tarjeta:last-child { grid-column: 1 / -1; }
 .conduccion-detalle .legajo-datos-grid .conduccion-datos { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 16px; }
 @media (max-width: 640px) { .conduccion-detalle .legajo-datos-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* Creacion de cuentas desde el detalle del legajo. */
+
+.cuenta-acceso-legajo .conduccion-tarjeta-cuerpo {
+    display: grid;
+    gap: 12px;
+}
+
+.cuenta-legajo-acciones {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.cuenta-legajo-acciones small {
+    display: block;
+    margin-top: 6px;
+    color: #64748b;
+}
+
+.cuenta-legajo-boton {
+    width: fit-content;
+    padding: 10px 18px;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cuenta-legajo-boton:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.cuenta-legajo-boton:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.cuenta-legajo-enlace {
+    color: #2563eb;
+    font-weight: 500;
+    text-decoration: underline;
+}
+
+@media (max-width: 680px) {
+    .cuenta-legajo-boton {
+        width: 100%;
+    }
+}

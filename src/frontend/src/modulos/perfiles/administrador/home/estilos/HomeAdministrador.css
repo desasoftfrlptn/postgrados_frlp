@@ -2,7 +2,7 @@
 
 .admin-home {
   width: 100%;
-  max-width: 1200px;
+  max-width: none;
   margin: 0 auto;
 }
 
@@ -80,10 +80,12 @@
 
 
 .admin-home-panel {
+  min-width: 0;
   overflow: hidden;
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .admin-home-panel > header {
@@ -95,6 +97,7 @@
   margin: 0;
   color: #111827;
   font-size: 20px;
+  font-weight: 600;
 }
 
 .admin-home-panel > header p {
@@ -454,14 +457,14 @@
 
 .admin-inicio-campos {
   border: 0;
-  padding: 0;
+  padding: 24px;
   margin: 0;
   min-width: 0;
 }
 
 .admin-inicio-aviso {
   padding: 12px 16px;
-  margin: 16px 0;
+  margin: 16px 24px 0;
   border: 1px solid #c9d9e8;
   border-radius: 8px;
   background: #f0f6fc;
@@ -581,4 +584,58 @@
   background-color: #f3f4f6;
   color: #4b5563;
   cursor: not-allowed;
+}
+
+/* Distribucion interna de los paneles de contenido publico. */
+
+.admin-home-panel > .admin-home-acciones {
+  margin: 0 24px;
+  padding: 20px 0 24px;
+}
+
+.admin-home-campo {
+  min-width: 0;
+}
+
+.admin-home-campo-ancho {
+  grid-column: 1 / -1;
+}
+
+.admin-home-campo input,
+.admin-home-campo select {
+  min-height: 44px;
+}
+
+.admin-home-campo textarea {
+  min-height: 100px;
+}
+
+.admin-home-panel > .admin-inicio-campos {
+  align-items: start;
+}
+
+.admin-home-panel > .admin-home-formulario-lectura .admin-inicio-campos,
+.admin-home-panel form .admin-inicio-campos {
+  padding: 0;
+}
+
+.admin-home-panel > .admin-home-formulario-lectura .admin-inicio-aviso,
+.admin-home-panel form .admin-inicio-aviso {
+  margin: 0 0 16px;
+}
+
+@media (max-width: 750px) {
+  .admin-home-panel > header,
+  .admin-home-panel > .admin-inicio-campos {
+    padding: 20px;
+  }
+
+  .admin-home-panel > .admin-home-acciones {
+    margin: 0 20px;
+    padding-bottom: 20px;
+  }
+
+  .admin-home-panel > .admin-inicio-aviso {
+    margin: 16px 20px 0;
+  }
 }

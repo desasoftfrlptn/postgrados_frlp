@@ -563,30 +563,106 @@
 }
 
 /* Confirmación y seguimiento: ocupar el espacio disponible sin estirar la tarjeta. */
+
 .layout-publico-contenido:has(> .inscripcion) {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
-.layout-publico-contenido > .inscripcion { flex: 1 0 auto; box-sizing: border-box; }
-.inscripcion.inscripcion-completada { align-items: center; }
+
+.layout-publico-contenido > .inscripcion {
+    flex: 1 0 auto;
+    box-sizing: border-box;
+}
+
+.inscripcion.inscripcion-completada {
+    align-items: center;
+}
+
 .inscripcion-completada .inscripcion-formulario {
-  width: min(100%, 680px);
-  padding: clamp(20px, 4vw, 44px);
-  text-align: center;
+    width: min(100%, 680px);
+    padding: clamp(20px, 4vw, 44px);
+    text-align: center;
 }
-.inscripcion-completada h1 { font-size: clamp(23px, 3vw, 30px); font-weight: 600; }
-.inscripcion-resultado { display: grid; gap: 18px; color: #334155; line-height: 1.55; }
-.inscripcion-resultado p { margin: 0; }
+
+.inscripcion-completada h1 {
+    font-size: clamp(23px, 3vw, 30px);
+    font-weight: 600;
+}
+
+.inscripcion-resultado {
+    display: grid;
+    gap: 18px;
+    color: #334155;
+    line-height: 1.55;
+}
+
+.inscripcion-resultado p {
+    margin: 0;
+}
+
 .inscripcion-numero-seguimiento {
-  display: grid; justify-items: center; gap: 10px;
-  padding: 20px; border: 1px solid #dce3ec; border-radius: 12px; background: #f1f5f9;
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 20px;
+    border: 1px solid #dce3ec;
+    border-radius: 12px;
+    background: #f1f5f9;
 }
-.inscripcion-numero-seguimiento h2 { font-size: 14px; font-weight: 500; margin: 0; }
-.inscripcion-numero-seguimiento p { font-size: clamp(22px, 4vw, 30px); font-weight: 700; color: var(--color-primary); overflow-wrap: anywhere; }
-.inscripcion-numero-seguimiento button { background: white; color: var(--color-secondary); border: 1px solid currentColor; border-radius: 8px; padding: 9px 14px; cursor: pointer; }
-.inscripcion-numero-seguimiento span:empty { display: none; }
-.inscripcion-resultado-acciones { display: grid; gap: 12px; justify-items: center; }
-.inscripcion-resultado-acciones a { color: var(--color-secondary); text-decoration: underline; }
-.inscripcion-resultado-acciones .inscripcion-consultar { background: var(--color-secondary); color: #fff; border-radius: 8px; padding: 12px 20px; text-decoration: none; }
-.inscripcion-resultado a:focus-visible, .inscripcion-resultado button:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
-@media (max-width: 600px) { .inscripcion.inscripcion-completada { padding: 20px 12px; } }
+
+.inscripcion-numero-seguimiento h2 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.inscripcion-numero-seguimiento p {
+    font-size: clamp(22px, 4vw, 30px);
+    font-weight: 700;
+    color: var(--color-primary);
+    overflow-wrap: anywhere;
+}
+
+.inscripcion-numero-seguimiento button {
+    background: white;
+    color: var(--color-secondary);
+    border: 1px solid currentColor;
+    border-radius: 8px;
+    padding: 9px 14px;
+    cursor: pointer;
+}
+
+.inscripcion-numero-seguimiento span:empty {
+    display: none;
+}
+
+.inscripcion-resultado-acciones {
+    display: grid;
+    gap: 12px;
+    justify-items: center;
+}
+
+.inscripcion-resultado-acciones a {
+    color: var(--color-secondary);
+    text-decoration: underline;
+}
+
+.inscripcion-resultado-acciones .inscripcion-consultar {
+    background: var(--color-secondary);
+    color: #fff;
+    border-radius: 8px;
+    padding: 12px 20px;
+    text-decoration: none;
+}
+
+.inscripcion-resultado a:focus-visible,
+.inscripcion-resultado button:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+    .inscripcion.inscripcion-completada {
+        padding: 20px 12px;
+    }
+}

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +31,7 @@ beforeEach(() => {
     if (ruta === "/conduccion/perfiles-academicos") return [{id:"doc-1",nombre:"Luis",apellido:"García",correo_electronico:"doc@example.com",rol:"DOCENTE",activo:true}] as T;
     if (ruta === "/cohortes") return cohortes as T;
     if (ruta === "/carreras") return carreras as T;
-    if (ruta === "/inscripcion/?cohorte_id=cohorte-1") return legajos as T;
+    if (ruta === "/inscripcion/" || ruta === "/inscripcion/?cohorte_id=cohorte-1") return legajos as T;
     throw new Error(`Ruta no simulada: ${ruta}`);
   });
 });
@@ -89,14 +89,11 @@ describe("Navegación completa de Conducción", () => {
   });
   it("calcula estadísticas solamente con datos reales", async () => {
     montar(<EstadisticasConduccionPage />);
-    await screen.findByRole("option", {name:/Cohorte 2026/});
-    fireEvent.change(screen.getByLabelText("Cohorte"), {target:{value:"cohorte-1"}});
-    expect(await screen.findByText("Pendiente de revisión")).toBeInTheDocument();
-    const filaEstado = screen.getByText("Pendiente de revisión").closest("li")!;
-    expect(within(filaEstado).getByText("100 %")).toBeInTheDocument();
-    const filaBeca = screen.getByText("Sin solicitud").closest("li")!;
-    expect(within(filaBeca).getByText("0 %")).toBeInTheDocument();
-    expect(screen.getByText("Legajos en seguimiento").parentElement).toHaveTextContent("1");
+    expect(await screen.findByText("Aspirantes pendientes")).toBeInTheDocument();
+    expect(screen.getByText("Aspirantes pendientes").parentElement).toHaveTextContent("1");
+    expect(screen.queryByLabelText("Cohorte")).not.toBeInTheDocument();
+    expect(api.get).toHaveBeenCalledWith("/inscripcion/", "prueba");
+    expect(screen.getByText("Solicitudes de beca de aspirantes")).toBeInTheDocument();
   });
   it("consulta tesis reales sin acciones de escritura", async () => {
     montar(<TrabajosFinalesConduccionPage />);
@@ -106,7 +103,7 @@ describe("Navegación completa de Conducción", () => {
   });
   it("consulta tutorías reales en modo lectura", async () => {
     montar(<TutoriasConduccionPage />);
-    expect(await screen.findByText("No hay tutorías que coincidan con la consulta.")).toBeInTheDocument();
+    expect(await screen.findByText("No se encontraron tutorías.")).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith("/tutorias", "prueba");
     expect(screen.queryByRole("button", {name: "Asignar tutoría"})).not.toBeInTheDocument();
   });

@@ -34,7 +34,7 @@ it("incorpora accesos independientes al menú CPR", () => {
 
 async function completarTrabajo() {
   render(<TrabajosPracticosCPRPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Registrar trabajo práctico" }));
+  fireEvent.click(await screen.findByRole("button", { name: "+ Nuevo trabajo práctico" }));
   expect(screen.queryByRole("option", { name: /No habilitado/ })).not.toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Estudiante"), { target: { value: "l1" } });
   fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2026-01-15" } });
@@ -79,8 +79,10 @@ it("da de baja un trabajo solo después de confirmar", async () => {
 
 it("asocia estudiante y tutor desde la página independiente", async () => {
   render(<TutoriasCPRPage />);
-  fireEvent.click(await screen.findByRole("button", { name: "Registrar tutoría" }));
-  fireEvent.change(screen.getByLabelText("Estudiante y cohorte *"), { target: { value: "l1" } });
+  fireEvent.click(await screen.findByRole("button", { name: "+ Nueva tutoría" }));
+  fireEvent.change(screen.getByLabelText("Carrera *"), { target: { value: "Maestría" } });
+  fireEvent.change(screen.getByLabelText("Cohorte *"), { target: { value: "2026" } });
+  fireEvent.change(screen.getByLabelText("Estudiante *"), { target: { value: "l1" } });
   fireEvent.change(screen.getByLabelText("Tutor *"), { target: { value: "d1" } });
   fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
   expect(api.post).not.toHaveBeenCalled();

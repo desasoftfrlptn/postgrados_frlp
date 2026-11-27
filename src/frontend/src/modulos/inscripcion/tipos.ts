@@ -10,27 +10,6 @@ export interface Aspirante {
   carreraElegida: string;
   estado: string;
 }
-/*
-export interface DatosInscripcion {
-  carreraElegida: string;
-  apellido: string;
-  nombre: string;
-  nacionalidad: string;
-  dniPasaporte: string;
-  telefonoMovil: string;
-  email: string;
-  correoAlternativo: string;
-  domicilio: string;
-  pais: string;
-  provincia: string;
-  ciudad: string;
-  tituloAnterior: string;
-  universidadAnterior: string;
-  formaConocioOfertas: string;
-  motivosCursar: string;
-  solicitudBeca: string;
-}
-  */
 
 export interface EstadoInscripcion {
   numero_seguimiento: string;

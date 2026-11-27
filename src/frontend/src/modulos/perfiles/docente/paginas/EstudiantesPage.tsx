@@ -232,10 +232,18 @@ const estudiantesFiltrados = estudiantes.filter((e) =>
    <div className="docente-campo">
      <label htmlFor="dni-asociar" className="block text-sm font-semibold mb-1">Estudiante habilitado</label>
      <select id="dni-asociar" required value={legajoSeleccionado} disabled={confirmacion.abierto || cargandoCandidatos || !seminarioId} onChange={e => setLegajoSeleccionado(e.target.value)} className="w-full border rounded-md p-2">
-       <option value="">{!seminarioId ? "Sin seminario asignado" : cargandoCandidatos ? "Cargando…" : candidatos.length === 0 ? "No hay estudiantes habilitados" : "Seleccioná un estudiante"}</option>
+       <option value="">{!seminarioId ? "Sin seminario asignado" : cargandoCandidatos ? "Cargando…" : errorCandidatos ? "Error al consultar estudiantes" : candidatos.length === 0 ? "Sin estudiantes disponibles" : "Seleccioná un estudiante"}</option>
        {candidatos.filter(c => buscarCandidato.trim().toLowerCase().split(/\s+/).every(palabra => `${c.apellido} ${c.nombre} ${c.dni_pasaporte}`.toLowerCase().includes(palabra))).map(c => <option key={c.legajo_id} value={c.legajo_id}>{c.apellido}, {c.nombre} · {c.dni_pasaporte}</option>)}
      </select>
-     {errorCandidatos && <p role="alert">{errorCandidatos} <button type="button" onClick={() => { setCargandoCandidatos(true); setErrorCandidatos(""); setRevisionCandidatos(v => v + 1); }}>Reintentar</button></p>}
+
+      {!cargandoCandidatos && !errorCandidatos &&
+        seminarioId && candidatos.length === 0 && (
+          <p className="mt-2 text-sm text-slate-500">
+            No hay estudiantes matriculados de esta carrera
+            disponibles para asociar, o todos ya están inscriptos.
+          </p>
+      )}
+      {errorCandidatos && <p role="alert">{errorCandidatos} <button type="button" onClick={() => { setCargandoCandidatos(true); setErrorCandidatos(""); setRevisionCandidatos(v => v + 1); }}>Reintentar</button></p>}
    </div>
 
    <button

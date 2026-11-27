@@ -70,7 +70,7 @@ it("muestra el acceso a inscripción incluso cuando no hay seminarios disponible
   vi.mocked(api.get).mockResolvedValue([]);
   render(<MemoryRouter><SeminariosEstudiantePage /></MemoryRouter>);
   fireEvent.click(screen.getByRole("button", { name: "Inscribirme a un seminario" }));
-  expect(await screen.findByText("No hay seminarios disponibles para tu carrera en este momento.")).toBeInTheDocument();
+  expect(await screen.findByText("No tenés nuevos seminarios disponibles para inscribirte.")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Inscribirme" })).toBeDisabled();
   expect(api.post).not.toHaveBeenCalled();
 });

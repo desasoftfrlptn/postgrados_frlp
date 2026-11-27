@@ -1,0 +1,247 @@
+/* Diseño institucional del Equipo de Conducción */
+
+.conduccion-institucional {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 24px;
+    display: block;
+    color: #111827;
+}
+
+/* Encabezados */
+
+.conduccion-institucional > header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 0 0 28px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.conduccion-institucional > header h1 {
+    font-size: 30px;
+    line-height: 1.25;
+    font-weight: 800;
+    color: #111827;
+    margin: 0;
+}
+
+.conduccion-institucional > header p {
+    color: #6b7280;
+    font-size: 16px;
+    font-weight: 400;
+    margin: 6px 0 0;
+    line-height: 1.5;
+}
+
+/* Filtros */
+
+.conduccion-institucional .admin-filtros-academicos {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 220px), 1fr)
+    );
+    align-items: start;
+    gap: 16px;
+    margin: 20px 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+
+.conduccion-institucional .admin-filtro-campo,
+.conduccion-institucional .cc-filtro,
+.conduccion-institucional .cc-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+}
+
+.conduccion-institucional .admin-filtros-academicos label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    min-height: 20px;
+    margin: 0;
+    color: #374151;
+}
+
+.conduccion-institucional .admin-filtros-academicos input,
+.conduccion-institucional .admin-filtros-academicos select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    min-height: 42px;
+    margin: 0;
+    padding: 9px 12px;
+    background: #fff;
+    color: #1f2937;
+    border: 1px solid #9ca3af;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+}
+
+.conduccion-institucional .admin-filtros-academicos
+.admin-limpiar-filtros {
+    grid-column: 1 / -1;
+    justify-self: end;
+    width: fit-content;
+    height: 38px;
+    min-height: 38px;
+    padding: 7px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+    background: #fff;
+    color: #374151;
+    border: 1px solid #9ca3af;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.conduccion-institucional .consulta-acciones-filtros {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Contadores */
+
+.conduccion-institucional .admin-resultado-filtros,
+.conduccion-institucional .tutorias-resultados {
+    margin: 0 0 12px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+/* Tablas */
+
+.conduccion-institucional :is(
+    .consulta-tabla-contenedor,
+    .periodos-tabla-contenedor,
+    .perfiles-academicos-tabla-contenedor,
+    .tutorias-tabla
+) {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+}
+
+.conduccion-institucional table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    text-align: left;
+}
+
+.conduccion-institucional table th,
+.conduccion-institucional table td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    text-align: left;
+}
+
+.conduccion-institucional table th {
+    background: #f3f4f6;
+    color: #374151;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.conduccion-institucional table td {
+    color: #374151;
+    border-top: 1px solid #e5e7eb;
+}
+
+.conduccion-institucional table tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* Estados */
+
+.conduccion-institucional
+[data-estado="ACTIVO"],
+.conduccion-institucional
+[data-estado="APROBADO"] {
+    color: #15803d;
+    font-weight: 600;
+}
+
+.conduccion-institucional
+[data-estado="EN_RIESGO"],
+.conduccion-institucional
+[data-estado="PENDIENTE"] {
+    color: #b45309;
+    font-weight: 600;
+}
+
+/* Botones principales */
+
+.conduccion-institucional > header > button {
+    width: fit-content;
+    min-height: 40px;
+    padding: 9px 16px;
+    background: #2563eb;
+    border: 1px solid #2563eb;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Accesibilidad */
+
+.conduccion-institucional button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.conduccion-institucional
+:is(button, select, input):focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+/* Indicadores y estadísticas */
+
+.conduccion-institucional .admin-reportes-graficos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.conduccion-institucional .admin-reporte-metricas {
+    margin: 24px 0;
+}
+
+@media (max-width: 750px) {
+    .conduccion-institucional .admin-filtros-academicos,
+    .conduccion-institucional .admin-reportes-graficos {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .conduccion-institucional > header h1 {
+        font-size: 26px;
+    }
+}

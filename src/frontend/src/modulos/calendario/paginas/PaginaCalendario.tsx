@@ -212,7 +212,7 @@ export default function PaginaCalendario() {
         if (activo) {
           setFeriados([]);
           setErrorFeriados(
-            "No se pudieron cargar los feriados."
+            `Los feriados de ${anio} no están disponibles en este momento. Podés consultar los eventos académicos normalmente.`
           );
         }
       }

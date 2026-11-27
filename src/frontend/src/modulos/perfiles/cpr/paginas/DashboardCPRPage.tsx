@@ -1,9 +1,9 @@
+import "../estilos/CPR.css";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 import { api } from "../../../../shared/api/client";
 import { tesisApi, type RegistroTesis, type CandidatoTesis } from "../../../../shared/api/tesis";
-import ListaAlertas from "../../shared/componentes/ListaAlertas";
 import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
 import "../../shared/estilos/PerfilesCompartidos.css";
 
@@ -65,10 +65,10 @@ export default function DashboardCPRPage() {
   ];
 
   return (
-    <section className="perfil-pagina animate-fade-in">
+    <section className="perfil-pagina cpr-inicio animate-fade-in">
       <header className="perfil-pagina-encabezado">
         <h1>Hola, {user?.nombre ?? "CPR"}!</h1>
-        <p>Bienvenido/a a tu panel de CPR.</p>
+        <p>Consultá el resumen de la gestión académica de posgrados.</p>
       </header>
       {cargando && <p role="status">Cargando resumen académico…</p>}
       {error && <div className="perfil-dashboard-seguimiento">
@@ -86,22 +86,19 @@ export default function DashboardCPRPage() {
           </article>
         ))}
       </section>
-      <div className="perfil-paneles perfil-dashboard-seguimiento">
+      <div className="cpr-paneles perfil-dashboard-seguimiento">
         <article className="perfil-panel">
           <header><h2>Tesis pendientes de aprobación</h2></header>
           {!cargando && (pendientes === undefined ? <p className="perfil-panel-interior">No se pudo consultar las tesis.</p> : pendientes.length ? <ul className="perfil-lista">{pendientes.slice(0, 5).map(r => <li key={r.id}><span><strong>{r.estudiante}</strong><br />{r.titulo}<br />{r.carrera} · {r.cohorte}</span></li>)}</ul> : <p className="perfil-panel-interior">No hay tesis pendientes de aprobación.</p>)}
           <div className="perfil-panel-interior"><Link className="perfil-enlace" to={rutaTesis}>Gestionar tesis →</Link></div>
         </article>
-        <article className="perfil-panel">
-          <header><h2>Últimas notificaciones</h2></header>
-          <div className="perfil-panel-interior"><ListaAlertas resumen /><Link className="perfil-enlace" to="/dashboard/alertas">Ver todas las notificaciones →</Link></div>
-        </article>
-      </div>
+
       <article className="perfil-panel">
         <header><h2>Estudiantes habilitados para registrar tesis{datos?.candidatos ? ` (${datos.candidatos.length})` : ""}</h2></header>
         {!cargando && (datos?.candidatos == null ? <p className="perfil-panel-interior">No se pudo consultar los estudiantes habilitados.</p> : datos.candidatos.length ? <ul className="perfil-lista">{datos.candidatos.slice(0, 5).map(c => <li key={c.legajo_id}><span><strong>{c.estudiante}</strong><br />{c.carrera} · {c.cohorte}</span></li>)}</ul> : <p className="perfil-panel-interior">No hay estudiantes matriculados de maestría o doctorado sin tesis registrada.</p>)}
         <div className="perfil-panel-interior"><Link className="perfil-enlace" to={rutaTesis}>Consultar estudiantes y registrar tesis →</Link></div>
       </article>
+      </div>
     </section>
   );
 }

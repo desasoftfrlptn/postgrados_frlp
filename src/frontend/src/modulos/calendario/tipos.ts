@@ -13,17 +13,3 @@ export type Evento = {
   descripcion: string;
   tipo: TipoEvento;
 };
-
-export type FeriadoCalendarific = {
-  name: string;
-  date: {
-    iso: string;
-  };
-  type: string[];
-};
-
-export type RespuestaCalendarific = {
-  response: {
-    holidays: FeriadoCalendarific[];
-  };
-};

@@ -204,7 +204,15 @@ export default function SeminariosEstudiante({ gestion }: { gestion: boolean }) 
           {cargando ? <p role="status">Cargando seminarios disponibles...</p> : errorCarga ? (
             <p>No se pudieron consultar los seminarios. Reintentá la consulta.</p>
           ) : seminariosParaInscribir.length === 0 ? (
-            <p>No hay seminarios disponibles para tu carrera en este momento.</p>
+            <div role="status">
+              <p>No tenés nuevos seminarios disponibles para inscribirte.</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Verificá que tu matrícula esté habilitada y que existan
+                seminarios activos para tu carrera. Si ya estás inscripto
+                en todos los seminarios disponibles, podés consultarlos
+                en el listado de tus cursadas.
+              </p>
+            </div>
           ) : (
             <>
               <label htmlFor="seminario-elegido">Seminario disponible *</label>

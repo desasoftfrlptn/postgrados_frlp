@@ -7,7 +7,9 @@ import { api } from "../../../../shared/api/client";
 import { useAuth } from "../../../manejo-sesion/useAuth";
 import "../estilos/Conduccion.css";
 import "../estilos/ConduccionModulos.css";
+import "../../administrador/estilos/FiltrosAcademicos.css";
 import "./PeriodosInscripcionPage.css";
+import "../estilos/ConduccionInstitucional.css";
 
 interface Carrera {
   id: string;
@@ -242,30 +244,48 @@ export default function PeriodosInscripcionPage() {
     setMensaje("La cohorte fue modificada correctamente.");
   }} />;
 
+
   return (
-    <section className="perfil-pagina periodos-inscripcion" aria-labelledby="titulo-periodos">
-      <header className="perfil-pagina-encabezado">
-        <h1 id="titulo-periodos">Períodos de inscripción</h1>
-        <p>
-          Consultá las cohortes y habilitá o cerrá las inscripciones de cada
-          una según su carrera.
-        </p>
+    <section className="perfil-pagina periodos-inscripcion conduccion-institucional" aria-labelledby="titulo-periodos">
+      <header className="periodos-cabecera">
+        <div>
+          <h1 id="titulo-periodos">Períodos de inscripción</h1>
+          <p>
+            Gestioná las cohortes y la apertura de inscripciones
+            de las carreras de posgrado.
+          </p>
+        </div>
+
+        {!mostrarAlta && (
+          <button
+            type="button"
+            className="periodos-boton-nuevo"
+            onClick={() => setMostrarAlta(true)}
+            disabled={creando || procesandoId !== null || Boolean(operacionPendiente)}
+          >
+            + Nueva cohorte
+          </button>
+        )}
       </header>
 
-      <section className="perfil-panel" aria-labelledby="titulo-gestion-cohortes">
-        <div className="perfil-panel-interior">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 id="titulo-gestion-cohortes" className="text-lg font-bold">Administración de cohortes</h2>
-              <p>Creá cohortes y gestioná la apertura de inscripciones según la carrera.</p>
-            </div>
-            <button type="button" className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700"
-              onClick={() => setMostrarAlta((visible) => !visible)}>
-              {mostrarAlta ? "Cerrar formulario" : "+ Nueva cohorte"}
-            </button>
-          </div>
-          {mostrarAlta && <form className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4" onSubmit={solicitarAlta}>
-            <h3 className="mb-4 text-lg font-bold">Crear cohorte</h3>
+      {error && (
+            <MensajeSistema
+              tipo="error"
+              texto={error}
+              alCerrar={() => setError("")}
+            />
+          )}
+          {mensaje && (
+            <MensajeSistema
+              tipo="exito"
+              texto={mensaje}
+              alCerrar={() => setMensaje("")}
+            />
+          )}
+
+
+      {mostrarAlta && <form className="periodos-formulario rounded-xl border border-gray-200 bg-white p-6 shadow-sm" onSubmit={solicitarAlta}>
+            <h3 className="mb-6 text-xl font-bold text-gray-900">Crear cohorte</h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div><label htmlFor="nueva-cohorte-nombre" className="mb-1 block font-semibold">Nombre</label>
                 <input id="nueva-cohorte-nombre" required maxLength={50} value={nueva.nombre}
@@ -288,7 +308,7 @@ export default function PeriodosInscripcionPage() {
                   onChange={(e) => setNueva((a) => ({ ...a, fecha_inicio: e.target.value }))}
                   className="w-full rounded-md border border-slate-300 bg-white p-2" /></div>
             </div>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-6 flex flex-row-reverse flex-wrap gap-3">
               <button type="submit" disabled={creando || procesandoId !== null || Boolean(operacionPendiente)} className="rounded-md bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50">
                 {creando ? "Creando…" : "Crear cohorte"}
               </button>
@@ -296,32 +316,17 @@ export default function PeriodosInscripcionPage() {
                 className="rounded-md border border-slate-300 bg-white px-4 py-2 font-semibold">Cancelar</button>
             </div>
           </form>}
-        </div>
-      </section>
 
-      <section className="perfil-panel" aria-label="Resumen de inscripciones">
-        <div className="perfil-panel-interior">
-          <p className="font-semibold">
-            {cohortes.length} cohortes registradas · {cantidadAbiertas} con
-            inscripción abierta · {cohortes.length - cantidadAbiertas} cerradas
-          </p>
-        </div>
-      </section>
-
-      <section className="perfil-panel" aria-labelledby="titulo-listado-periodos">
-        <header >
-          <h2 id="titulo-listado-periodos">Inscripciones por carrera y cohorte</h2>
-        </header>
-
-        <div className="perfil-panel-interior">
-          <div className="periodos-filtros">
-            <div>
-              <label htmlFor="periodos-carrera" className="mb-2 block font-semibold">
+      {!mostrarAlta && (
+        <>
+          <div className="admin-filtros-academicos">
+            <div className="admin-filtro-campo">
+              <label htmlFor="periodos-carrera" >
                 Carrera
               </label>
               <select
                 id="periodos-carrera"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+
                 value={filtroCarrera}
                 onChange={(evento) => setFiltroCarrera(evento.target.value)}
               >
@@ -334,13 +339,13 @@ export default function PeriodosInscripcionPage() {
               </select>
             </div>
 
-            <div>
-              <label htmlFor="periodos-estado" className="mb-2 block font-semibold">
+            <div className="admin-filtro-campo">
+              <label htmlFor="periodos-estado" >
                 Estado de inscripción
               </label>
               <select
                 id="periodos-estado"
-                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+
                 value={filtroEstado}
                 onChange={(evento) =>
                   setFiltroEstado(evento.target.value as FiltroEstado)
@@ -351,71 +356,87 @@ export default function PeriodosInscripcionPage() {
                 <option value="CERRADAS">Cerradas</option>
               </select>
             </div>
-            <div><label htmlFor="periodos-nombre" className="mb-2 block font-semibold">Buscar cohorte</label><input id="periodos-nombre" type="search" className="w-full rounded-md border border-gray-300 p-2" value={filtroNombre} onChange={e => setFiltroNombre(e.target.value)} /></div>
-            <div><label htmlFor="periodos-anio" className="mb-2 block font-semibold">Año</label><select id="periodos-anio" className="w-full rounded-md border border-gray-300 p-2" value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)}><option value="">Todos</option>{Array.from(new Set(cohortes.map(c => c.anio))).sort((a,b) => b-a).map(a => <option key={a} value={a}>{a}</option>)}</select></div>
-          <button type="button" className="periodos-limpiar rounded-md border px-3 py-2" onClick={() => {setFiltroNombre("");setFiltroAnio("");setFiltroCarrera("");setFiltroEstado("TODAS");}}>Limpiar filtros</button>
+            <div className="admin-filtro-campo"><label htmlFor="periodos-nombre" >Buscar cohorte</label><input id="periodos-nombre" type="search"  value={filtroNombre} onChange={e => setFiltroNombre(e.target.value)} /></div>
+            <div className="admin-filtro-campo"><label htmlFor="periodos-anio" >Año</label><select id="periodos-anio"  value={filtroAnio} onChange={e => setFiltroAnio(e.target.value)}><option value="">Todos</option>{Array.from(new Set(cohortes.map(c => c.anio))).sort((a,b) => b-a).map(a => <option key={a} value={a}>{a}</option>)}</select></div>
+          <button type="button" className="admin-limpiar-filtros" onClick={() => {setFiltroNombre("");setFiltroAnio("");setFiltroCarrera("");setFiltroEstado("TODAS");}}>Limpiar filtros</button>
           </div>
 
-          {error && (
-            <MensajeSistema
-              tipo="error"
-              texto={error}
-              alCerrar={() => setError("")}
-            />
-          )}
-          {mensaje && (
-            <MensajeSistema
-              tipo="exito"
-              texto={mensaje}
-              alCerrar={() => setMensaje("")}
-            />
-          )}
-          {cargando && <p role="status">Cargando cohortes y carreras…</p>}
+          {!cargando && !errorCarga && (
+            <div className="periodos-resumen-listado">
+              <p role="status" className="admin-resultado-filtros">
+                {cohortesFiltradas.length} de {cohortes.length} resultados
+              </p>
 
-          {!cargando && !errorCarga && cohortes.length === 0 && (
-            <p>No hay cohortes registradas.</p>
-          )}
-          {!cargando && !errorCarga && cohortes.length > 0 && cohortesFiltradas.length === 0 && (
-            <p>No se encontraron cohortes para los filtros seleccionados.</p>
+              <p className="periodos-resumen-cantidades">
+                {cantidadAbiertas} abiertas · {cohortes.length - cantidadAbiertas} cerradas
+              </p>
+            </div>
           )}
 
-          {!cargando && !errorCarga && cohortesFiltradas.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] border-collapse text-left text-sm">
-                <thead>
+          <div className="periodos-tabla-contenedor">
+            {cargando ? (
+              <p className="periodos-mensaje-tabla" role="status">
+                Cargando cohortes y carreras…
+              </p>
+            ) : errorCarga ? (
+              <div className="periodos-mensaje-tabla">
+                <p>No se pudieron cargar las cohortes.</p>
+
+                <button
+                  type="button"
+                  className="admin-limpiar-filtros"
+                  onClick={() => {
+                    setCargando(true);
+                    setVersionConsulta(actual => actual + 1);
+                  }}
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : cohortes.length === 0 ? (
+              <p className="periodos-mensaje-tabla">
+                No hay cohortes registradas.
+              </p>
+            ) : cohortesFiltradas.length === 0 ? (
+              <p className="periodos-mensaje-tabla">
+                No se encontraron cohortes para los filtros seleccionados.
+              </p>
+            ) : (
+              <table className="periodos-tabla w-full text-left">
+                <thead className="bg-gray-100">
                   <tr className="border-b border-gray-200 text-gray-600">
-                    <th scope="col" className="px-3 py-3">Carrera</th>
-                    <th scope="col" className="px-3 py-3">Cohorte</th>
-                    <th scope="col" className="px-3 py-3">Año</th>
-                    <th scope="col" className="px-3 py-3">Inicio de cohorte</th>
-                    <th scope="col" className="px-3 py-3">Inscripción</th>
-                    <th scope="col" className="px-3 py-3">Acciones</th>
+                    <th scope="col" className="p-4">Carrera</th>
+                    <th scope="col" className="p-4">Cohorte</th>
+                    <th scope="col" className="p-4">Año</th>
+                    <th scope="col" className="p-4">Inicio de cohorte</th>
+                    <th scope="col" className="p-4">Inscripción</th>
+                    <th scope="col" className="p-4">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cohortesFiltradas.map((cohorte) => (
-                    <tr key={cohorte.id} className="border-b border-gray-100">
-                      <td className="px-3 py-3">
+                    <tr key={cohorte.id} className="border-t border-gray-200">
+                      <td className="p-4">
                         {cohorte.carrera_id
                           ? nombresCarreras.get(cohorte.carrera_id) ?? "Carrera no encontrada"
                           : "Sin carrera asociada"}
                       </td>
-                      <td className="px-3 py-3 font-semibold">{cohorte.nombre}</td>
-                      <td className="px-3 py-3">{cohorte.anio}</td>
-                      <td className="px-3 py-3">{mostrarFecha(cohorte.fecha_inicio)}</td>
-                      <td className="px-3 py-3">
+                      <td className="p-4 font-semibold">{cohorte.nombre}</td>
+                      <td className="p-4">{cohorte.anio}</td>
+                      <td className="p-4">{mostrarFecha(cohorte.fecha_inicio)}</td>
+                      <td className="p-4">
                         <span
-                          className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${
+                          className={`font-semibold ${
                             cohorte.abierta
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-700"
+                              ? "text-green-700"
+                              : "text-gray-500"
                           }`}
                         >
                           {cohorte.abierta ? "Abierta" : "Cerrada"}
                         </span>
                       </td>
-                      <td className="px-3 py-3">
-                        <div className="periodos-acciones"><button type="button" className="periodos-btn-secundario" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
+                      <td className="p-4">
+                        <div className="periodos-acciones"><button type="button" className="periodos-accion-editar" aria-label={`Editar ${cohorte.nombre}`} onClick={() => { setError(""); setMensaje(""); setEditando(cohorte); }} disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}>Editar</button>
                         <button
                           type="button"
                           disabled={procesandoId !== null || creando || Boolean(operacionPendiente)}
@@ -428,7 +449,7 @@ export default function PeriodosInscripcionPage() {
                             });
                           }}
                           aria-label={`${cohorte.abierta ? "Cerrar" : "Abrir"} inscripciones de ${cohorte.nombre}`}
-                          className={cohorte.abierta ? "periodos-btn-peligro" : "periodos-btn-primario"}
+                          className={cohorte.abierta ? "periodos-accion-cerrar" : "periodos-accion-abrir"}
                         >
                           {procesandoId === cohorte.id
                             ? "Guardando…"
@@ -441,23 +462,10 @@ export default function PeriodosInscripcionPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {!cargando && errorCarga && (
-            <button
-              type="button"
-              onClick={() => {
-                setCargando(true);
-                setVersionConsulta((actual) => actual + 1);
-              }}
-              className="rounded-md border border-gray-300 px-3 py-2 font-semibold hover:bg-gray-50"
-            >
-              Reintentar
-            </button>
-          )}
-        </div>
-      </section>
+            )}
+          </div>
+        </>
+      )}
 
       <ConfirmacionModal
         abierto={operacionPendiente !== null}

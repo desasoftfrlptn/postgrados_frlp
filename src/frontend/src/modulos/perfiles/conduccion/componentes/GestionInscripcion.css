@@ -362,27 +362,171 @@
 }
 
 /* Una sola superficie para revisión, observaciones y resolución. */
+
 .gestion-inscripcion .gestion-formulario-unificado {
-  display: grid; gap: 16px; padding: 20px; min-width: 0;
-  border: 1px solid #dce2eb; border-radius: 10px; background: #fff;
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+    min-width: 0;
+    border: 1px solid #dce2eb;
+    border-radius: 10px;
+    background: #fff;
 }
-.gestion-formulario-unificado > h3 { margin: 0; font-size: 18px; font-weight: 600; color: #26364a; }
+
+.gestion-formulario-unificado > h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #26364a;
+}
+
 .gestion-inscripcion .gestion-formulario-unificado .gestion-verificacion,
 .gestion-inscripcion .gestion-formulario-unificado .gestion-documentacion {
-  display: grid; gap: 12px; padding: 0; margin: 0; border: 0; background: transparent;
+    display: grid;
+    gap: 12px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
 }
-.gestion-inscripcion .gestion-formulario-unificado legend { padding: 0; margin-bottom: 6px; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-campo { padding: 0; margin: 0; border: 0; background: transparent; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-checkbox { padding: 10px 12px; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-ayuda { margin: 0; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-resolucion { display: grid; gap: 12px; padding: 14px 0 0; border: 0; border-top: 1px solid #e2e8f0; border-radius: 0; }
-.gestion-formulario-unificado .gestion-resolucion > h4 { margin: 0; font-weight: 600; color: #26364a; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-requisitos { margin: 0; padding: 12px; gap: 8px; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-acciones { align-items: center; gap: 8px; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-boton-guardar { min-height: 44px; background: #fff; border: 1px solid #2563eb; color: #1d4ed8; }
-.gestion-inscripcion .gestion-formulario-unificado .gestion-boton-guardar:hover:not(:disabled) { background: #eff6ff; }
-@media (max-width: 680px) { .gestion-inscripcion .gestion-formulario-unificado { padding: 14px; } .gestion-formulario-unificado .gestion-boton-guardar { width: 100%; } }
 
-.gestion-inscripcion .gestion-accion { background: #fff; border-color: #cbd5e1; color: #1d4ed8; }
-.gestion-inscripcion .gestion-accion--aprobar, .gestion-inscripcion .gestion-accion--matricular { background: #2563eb; border-color: #2563eb; color: white; }
-.gestion-inscripcion .gestion-accion--dar_baja, .gestion-inscripcion .gestion-accion--rechazar { color: #b91c1c; border-color: #b91c1c; }
+.gestion-inscripcion .gestion-formulario-unificado legend {
+    padding: 0;
+    margin-bottom: 6px;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-campo {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-checkbox {
+    padding: 10px 12px;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-ayuda {
+    margin: 0;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-resolucion {
+    display: grid;
+    gap: 12px;
+    padding: 14px 0 0;
+    border: 0;
+    border-top: 1px solid #e2e8f0;
+    border-radius: 0;
+}
+
+.gestion-formulario-unificado .gestion-resolucion > h4 {
+    margin: 0;
+    font-weight: 600;
+    color: #26364a;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-requisitos {
+    margin: 0;
+    padding: 12px;
+    gap: 8px;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-acciones {
+    align-items: center;
+    gap: 8px;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-boton-guardar {
+    min-height: 44px;
+    background: #fff;
+    border: 1px solid #2563eb;
+    color: #1d4ed8;
+}
+
+.gestion-inscripcion .gestion-formulario-unificado .gestion-boton-guardar:hover:not(:disabled) {
+    background: #eff6ff;
+}
+
+/* Adaptación a dispositivos móviles. */
+
+@media (max-width: 680px) {
+    .gestion-inscripcion .gestion-formulario-unificado {
+        padding: 14px;
+    }
+
+    .gestion-formulario-unificado .gestion-boton-guardar {
+        width: 100%;
+    }
+}
+
+/* Botones de resolución de inscripciones. */
+
+.gestion-inscripcion .gestion-accion {
+    background: #fff;
+    border-color: #cbd5e1;
+    color: #1d4ed8;
+}
+
+.gestion-inscripcion .gestion-accion--aprobar,
+.gestion-inscripcion .gestion-accion--matricular {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+
+.gestion-inscripcion .gestion-accion--dar_baja,
+.gestion-inscripcion .gestion-accion--rechazar {
+    color: #b91c1c;
+    border-color: #b91c1c;
+}
+
+/* Organizacion de las acciones de revision. */
+
+.gestion-inscripcion .gestion-acciones-principales {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+}
+
+.gestion-inscripcion .gestion-otras-acciones {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 16px;
+    margin-top: 8px;
+}
+
+.gestion-inscripcion .gestion-otras-acciones summary {
+    color: #64748b;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gestion-inscripcion .gestion-otras-acciones .gestion-acciones {
+    margin-top: 16px;
+}
+
+.gestion-inscripcion .gestion-accion {
+    font-size: .9rem;
+    padding: 10px 16px;
+    min-height: 42px;
+}
+
+.gestion-inscripcion .gestion-boton-guardar {
+    font-weight: 500;
+}
+
+.gestion-inscripcion .gestion-accion--aprobar {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+}
+
+@media (max-width: 680px) {
+    .gestion-inscripcion .gestion-acciones-principales {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

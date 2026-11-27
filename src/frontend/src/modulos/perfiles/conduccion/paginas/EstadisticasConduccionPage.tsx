@@ -1,179 +1,336 @@
-import "../estilos/ConduccionModulos.css";
-import { useMemo, useState } from "react"
-import "../../shared/estilos/PerfilesCompartidos.css"
-import "../../administrador/estilos/Administrador.css"
-import GraficoIndicadores from "../../shared/componentes/GraficoIndicadores"
-import { SelectorCohorteConduccion, useLegajosConduccion } from "../componentes/SeleccionLegajosConduccion"
-import { contarPorEstado, formatearEstado, construirCSV, descargarCSV } from "../datos/conduccionDatos"
+import { useEffect, useState } from "react";
+import { api } from "../../../../shared/api/client";
+import { useAuth } from "../../../manejo-sesion/useAuth";
+import MensajeSistema from "../../../../shared/componentes/MensajeSistema/MensajeSistema";
+import GraficoIndicadores from "../../shared/componentes/GraficoIndicadores";
 
-type FilaGrafico = readonly [string, number]
-type OpcionGrafico = "estados" | "becas" | "seguimiento" | "resultado"
+import {
+    contarPorEstado,
+    formatearEstado,
+    construirCSV,
+    descargarCSV,
+    type LegajoConduccion,
+    type CarreraConduccion,
+    type CohorteConduccion
+} from "../datos/conduccionDatos";
 
-const ESTADOS_SEGUIMIENTO = ["PENDIENTE", "EN_REVISION", "OBSERVADO", "EN_RIESGO"]
-const ESTADOS_APROBADOS = ["COMPLETADO", "ACTIVO"]
-const ESTADOS_CIERRE = ["RECHAZADO", "BAJA"]
+import "../../administrador/estilos/Administrador.css";
+import "../estilos/EstadisticasConduccion.css";
 
-function total(filas: readonly FilaGrafico[]) {
-  return filas.reduce((acumulado, [, cantidad]) => acumulado + cantidad, 0)
+interface DatosEstadisticas {
+    legajos: LegajoConduccion[];
+    carreras: CarreraConduccion[];
+    cohortes: CohorteConduccion[];
 }
 
-function valorEstado(cantidades: Record<string, number>, estados: string[]) {
-  return estados.reduce((acumulado, estado) => acumulado + (cantidades[estado] ?? 0), 0)
+const estadosAspirantes = [
+    "PENDIENTE",
+    "EN_REVISION",
+    "OBSERVADO",
+    "COMPLETADO",
+    "RECHAZADO",
+    "VENCIDO"
+];
+
+const estadosEstudiantes = [
+    "ACTIVO",
+    "EN_RIESGO",
+    "GRADUADO"
+];
+
+function agrupar(registros: string[]) {
+    const cantidades = new Map<string, number>();
+
+    registros.forEach(nombre => {
+        cantidades.set(nombre, (cantidades.get(nombre) ?? 0) + 1);
+    });
+
+    return [...cantidades.entries()].sort((a, b) => b[1] - a[1]);
 }
 
 export default function EstadisticasConduccionPage() {
-  const datos = useLegajosConduccion()
-  const [grafico, setGrafico] = useState<OpcionGrafico>("estados")
+    const { user } = useAuth();
+    const token = user?.token;
 
-  const resumenDisponible = !datos.cargando && !datos.error
-  const legajos = datos.legajos
-  const cantidades = contarPorEstado(legajos)
-  const becas = legajos.filter((item) => item.solicitud_beca != null).length
-  const sinBeca = Math.max(0, legajos.length - becas)
-  const seguimiento = valorEstado(cantidades, ESTADOS_SEGUIMIENTO)
-  const aprobadas = valorEstado(cantidades, ESTADOS_APROBADOS)
-  const cerradas = valorEstado(cantidades, ESTADOS_CIERRE)
+    const [datos, setDatos] = useState<DatosEstadisticas | null>(null);
+    const [error, setError] = useState("");
+    const [revision, setRevision] = useState(0);
 
-  const filasEstados = useMemo<readonly FilaGrafico[]>(
-    () => Object.entries(cantidades)
-      .sort((a, b) => b[1] - a[1])
-      .map(([estado, cantidad]) => [formatearEstado(estado), cantidad] as const),
-    [cantidades],
-  )
+    useEffect(() => {
+        if (!token) return;
 
-  const filasBecas = useMemo<readonly FilaGrafico[]>(
-    () => [["Con solicitud", becas], ["Sin solicitud", sinBeca]] as const,
-    [becas, sinBeca],
-  )
+        let vigente = true;
 
-  const filasSeguimiento = useMemo<readonly FilaGrafico[]>(
-    () => [
-      ["Pendientes", cantidades.PENDIENTE ?? 0],
-      ["En revisión", cantidades.EN_REVISION ?? 0],
-      ["Observadas", cantidades.OBSERVADO ?? 0],
-      ["En riesgo", cantidades.EN_RIESGO ?? 0],
-    ] as const,
-    [cantidades],
-  )
+        Promise.all([
+            api.get<LegajoConduccion[]>("/inscripcion/", token),
+            api.get<CarreraConduccion[]>("/carreras", token),
+            api.get<CohorteConduccion[]>("/cohortes", token)
+        ])
+            .then(([legajos, carreras, cohortes]) => {
+                if (vigente) {
+                    setDatos({ legajos, carreras, cohortes });
+                    setError("");
+                }
+            })
+            .catch((err: unknown) => {
+                if (vigente) {
+                    setError(
+                        err instanceof Error
+                            ? err.message
+                            : "No se pudieron cargar las estadísticas."
+                    );
+                }
+            });
 
-  const filasResultado = useMemo<readonly FilaGrafico[]>(
-    () => [
-      ["Aprobadas / matriculadas", aprobadas],
-      ["En seguimiento", seguimiento],
-      ["Cerradas", cerradas],
-    ] as const,
-    [aprobadas, seguimiento, cerradas],
-  )
+        return () => {
+            vigente = false;
+        };
+    }, [token, revision]);
 
-  const opcionesGraficos: Record<OpcionGrafico, { titulo: string; filas: readonly FilaGrafico[]; distribucion?: boolean }> = {
-    estados: { titulo: "Estados de las inscripciones", filas: filasEstados },
-    becas: { titulo: "Solicitudes de beca", filas: filasBecas, distribucion: true },
-    seguimiento: { titulo: "Seguimiento de legajos", filas: filasSeguimiento },
-    resultado: { titulo: "Resultado general", filas: filasResultado, distribucion: true },
-  }
+    const legajos = datos?.legajos ?? [];
+    const carreras = datos?.carreras ?? [];
+    const cohortes = datos?.cohortes ?? [];
 
-  const graficoPrincipal = opcionesGraficos[grafico]
-  const adicionales = (["estados", "becas", "seguimiento", "resultado"] as const)
-    .filter((clave) => clave !== grafico)
-    .map((clave) => opcionesGraficos[clave])
-    .filter((item) => total(item.filas) > 0)
+    const aspirantes = legajos.filter(l =>
+        estadosAspirantes.includes(l.estado)
+    );
 
-  const metricasSuperiores = [
-    { etiqueta: "Cohortes registradas", valor: resumenDisponible ? datos.cohortes.length : "—" },
-    { etiqueta: "Cohortes abiertas", valor: resumenDisponible ? datos.cohortes.filter((cohorte) => cohorte.abierta).length : "—" },
-    { etiqueta: "Carreras activas", valor: resumenDisponible ? datos.carreras.filter((carrera) => carrera.activo).length : "—" },
-    { etiqueta: "Legajos de la cohorte", valor: datos.cohorteId && !datos.cargandoLegajos && !datos.error ? legajos.length : "—" },
-  ]
+    const estudiantes = legajos.filter(l =>
+        estadosEstudiantes.includes(l.estado)
+    );
 
-  function descargar() {
-    if (!datos.cohorteId || datos.cargandoLegajos || datos.error || !filasEstados.length) return
-    descargarCSV(
-      `estadisticas_conduccion_${datos.cohorte?.anio ?? "cohorte"}.csv`,
-      construirCSV(["Grupo", "Indicador", "Cantidad"], [
-        ...filasEstados.map(([nombre, cantidad]) => ["Estados de inscripción", nombre, cantidad]),
-        ...filasBecas.map(([nombre, cantidad]) => ["Solicitudes de beca", nombre, cantidad]),
-        ...filasSeguimiento.map(([nombre, cantidad]) => ["Seguimiento", nombre, cantidad]),
-        ...filasResultado.map(([nombre, cantidad]) => ["Resultado general", nombre, cantidad]),
-      ]),
-    )
-  }
+    const cantidades = contarPorEstado(legajos);
 
-  return <section className="admin-dashboard">
-    <header className="admin-dashboard-encabezado admin-reportes-cabecera">
-      <div>
-        <h1>Estadísticas de Conducción</h1>
-        <p>Indicadores de inscripción con información real y una visualización más clara por cohorte.</p>
-      </div>
-      <button
-        type="button"
-        className="conduccion-descargar-csv"
-        disabled={!datos.cohorteId || datos.cargandoLegajos || !!datos.error || !filasEstados.length}
-        onClick={descargar}
-      >
-        Descargar CSV
-      </button>
-    </header>
+    const becas = aspirantes.filter(l =>
+        l.solicitud_beca != null && l.solicitud_beca > 0
+    ).length;
 
-    <section className="admin-reporte-metricas" aria-label="Indicadores generales" aria-busy={datos.cargando}>
-      {metricasSuperiores.map((metrica) => <div key={metrica.etiqueta}><span>{metrica.etiqueta}</span><strong>{metrica.valor}</strong></div>)}
-    </section>
+    const metricas = [
+        {
+            titulo: "Aspirantes pendientes",
+            valor: cantidades.PENDIENTE ?? 0,
+            color: "amarillo"
+        },
+        {
+            titulo: "Pendientes de matriculación",
+            valor: cantidades.COMPLETADO ?? 0,
+            color: "azul"
+        },
+        {
+            titulo: "Estudiantes activos",
+            valor: cantidades.ACTIVO ?? 0,
+            color: "verde"
+        },
+        {
+            titulo: "Estudiantes en riesgo",
+            valor: cantidades.EN_RIESGO ?? 0,
+            color: "rojo"
+        }
+    ];
 
-    <div className="admin-panel admin-reportes-filtros">
-      <h2>Filtros de consulta</h2>
-      <div className="admin-filtros-academicos">
-        <div className="admin-filtro-campo" style={{ gridColumn: "1 / -1" }}>
-          <SelectorCohorteConduccion datos={datos} />
-        </div>
-      </div>
-      <p className="text-sm text-gray-600">
-        Seleccioná una cohorte para cargar el resumen de inscripciones, seguimiento y solicitudes de beca.
-        Los gráficos y métricas se actualizan con la cohorte elegida.
-      </p>
-    </div>
+    const admisiones = [
+        {
+            titulo: "Estados de aspirantes",
+            filas: estadosAspirantes.map(estado => [
+                formatearEstado(estado),
+                cantidades[estado] ?? 0
+            ] as const)
+        },
+        {
+            titulo: "Situación académica",
+            filas: estadosEstudiantes.map(estado => [
+                formatearEstado(estado),
+                cantidades[estado] ?? 0
+            ] as const),
+            distribucion: true
+        },
+        {
+            titulo: "Aspirantes por carrera",
+            filas: agrupar(
+                aspirantes.map(l => l.carrera_elegida || "Sin carrera")
+            )
+        },
+        {
+            titulo: "Solicitudes de beca de aspirantes",
+            filas: [
+                ["Con solicitud", becas],
+                ["Sin solicitud", aspirantes.length - becas]
+            ] as const,
+            distribucion: true
+        }
+    ];
 
-    {!datos.cohorteId && <section className="admin-reporte-analisis"><div className="admin-seccion-encabezado"><h2>Seleccioná una cohorte</h2><p>Elegí una cohorte para visualizar las estadísticas y descargar el reporte correspondiente.</p></div></section>}
+    const oferta = [
+        {
+            titulo: "Estudiantes por carrera",
+            filas: agrupar(
+                estudiantes.map(l => l.carrera_elegida || "Sin carrera")
+            )
+        },
+        {
+            titulo: "Cohortes por año",
+            filas: agrupar(cohortes.map(c => String(c.anio)))
+        },
+        {
+            titulo: "Estado de las inscripciones por cohorte",
+            filas: [
+                ["Abiertas", cohortes.filter(c => c.abierta).length],
+                ["Cerradas", cohortes.filter(c => !c.abierta).length]
+            ] as const,
+            distribucion: true
+        },
+        {
+            titulo: "Estado de las carreras",
+            filas: [
+                ["Activas", carreras.filter(c => c.activo).length],
+                ["Inactivas", carreras.filter(c => !c.activo).length]
+            ] as const,
+            distribucion: true
+        }
+    ];
 
-    {datos.cohorteId && datos.cargandoLegajos && <p role="status">Cargando estadísticas de la cohorte…</p>}
-    {datos.cohorteId && datos.error && <p role="alert">{datos.error}</p>}
+    const graficos = [...admisiones, ...oferta];
 
-    {datos.cohorteId && !datos.cargandoLegajos && !datos.error && <>
-      <section className="admin-reporte-metricas" aria-label="Indicadores principales de la cohorte">
-        <div><span>Inscripciones</span><strong>{legajos.length}</strong></div>
-        <div><span>Solicitudes de beca</span><strong>{becas}</strong></div>
-        <div><span>Legajos en seguimiento</span><strong>{seguimiento}</strong></div>
-        <div><span>Aprobadas / matriculadas</span><strong>{aprobadas}</strong></div>
-      </section>
+    function descargar() {
+        if (!datos || error) return;
 
-      <section className="admin-reporte-analisis" aria-label="Análisis visual por cohorte">
-        <div className="admin-reporte-control">
-          <h2>{datos.cohorte?.nombre ? `Análisis de ${datos.cohorte.nombre}` : "Análisis de la cohorte"}</h2>
-          <label htmlFor="grafico-conduccion">Indicador</label>
-          <select id="grafico-conduccion" value={grafico} onChange={(event) => setGrafico(event.target.value as OpcionGrafico)}>
-            <option value="estados">Estados de las inscripciones</option>
-            <option value="becas">Solicitudes de beca</option>
-            <option value="seguimiento">Seguimiento de legajos</option>
-            <option value="resultado">Resultado general</option>
-          </select>
-        </div>
-        <GraficoIndicadores
-          titulo={graficoPrincipal.titulo}
-          filas={graficoPrincipal.filas}
-          distribucion={graficoPrincipal.distribucion}
-          mostrarPorcentajes
-        />
-      </section>
+        const filas = [
+            ...metricas.map(m => [
+                "Indicadores principales",
+                m.titulo,
+                m.valor
+            ]),
+            ...graficos.flatMap(g =>
+                g.filas.map(([nombre, cantidad]) => [
+                    g.titulo,
+                    nombre,
+                    cantidad
+                ])
+            )
+        ];
 
-      <div className="admin-reportes-graficos">
-        {adicionales.map((item) => <GraficoIndicadores
-          key={item.titulo}
-          titulo={item.titulo}
-          filas={item.filas}
-          distribucion={item.distribucion}
-          mostrarPorcentajes
-        />)}
-      </div>
+        descargarCSV(
+            "estadisticas-coordinador.csv",
+            construirCSV(
+                ["Grupo", "Indicador", "Cantidad"],
+                filas
+            )
+        );
+    }
 
+    return (
+        <section className="admin-dashboard estadisticas-generales-conduccion">
+            <header className="admin-dashboard-encabezado admin-reportes-cabecera">
+                <div>
+                    <h1>Estadísticas y reportes</h1>
+                    <p>
+                        Información consolidada de la gestión académica
+                        de posgrados.
+                    </p>
+                </div>
 
-    </>}
-  </section>
+                <button
+                    type="button"
+                    className="estadisticas-descargar"
+                    disabled={!datos || !!error}
+                    onClick={descargar}
+                >
+                    Descargar CSV
+                </button>
+            </header>
+
+            {!datos && !error && (
+                <div className="estadisticas-mensaje" role="status">
+                    Cargando indicadores académicos…
+                </div>
+            )}
+
+            {error && (
+                <>
+                    <MensajeSistema
+                        tipo="error"
+                        texto={error}
+                    />
+
+                    <button
+                        type="button"
+                        className="estadisticas-descargar"
+                        onClick={() => {
+                            setDatos(null);
+                            setError("");
+                            setRevision(v => v + 1);
+                        }}
+                    >
+                        Reintentar
+                    </button>
+                </>
+            )}
+
+            {datos && !error && (
+                <>
+                    <section
+                        className="estadisticas-metricas"
+                        aria-label="Indicadores principales"
+                    >
+                        {metricas.map(m => (
+                            <article
+                                key={m.titulo}
+                                className={`estadisticas-metrica metrica-${m.color}`}
+                            >
+                                <h2>{m.titulo}</h2>
+                                <strong>{m.valor}</strong>
+                            </article>
+                        ))}
+                    </section>
+
+                    <section aria-labelledby="titulo-admisiones">
+                        <h2
+                            id="titulo-admisiones"
+                            className="estadisticas-seccion-titulo"
+                        >
+                            Admisiones y seguimiento académico
+                        </h2>
+
+                        <div className="admin-reportes-graficos">
+                            {admisiones.map(g => (
+                                <GraficoIndicadores
+                                    key={g.titulo}
+                                    titulo={g.titulo}
+                                    filas={g.filas}
+                                    distribucion={g.distribucion}
+                                    mostrarPorcentajes
+                                />
+                            ))}
+                        </div>
+                    </section>
+
+                    <section aria-labelledby="titulo-oferta">
+                        <h2
+                            id="titulo-oferta"
+                            className="estadisticas-seccion-titulo"
+                        >
+                            Oferta académica
+                        </h2>
+
+                        <div className="admin-reportes-graficos">
+                            {oferta.map(g => (
+                                <GraficoIndicadores
+                                    key={g.titulo}
+                                    titulo={g.titulo}
+                                    filas={g.filas}
+                                    distribucion={g.distribucion}
+                                    mostrarPorcentajes
+                                />
+                            ))}
+                        </div>
+                    </section>
+
+                    <p className="estadisticas-aclaracion">
+                        Los indicadores académicos contabilizan legajos,
+                        no personas únicas.
+                    </p>
+                </>
+            )}
+        </section>
+    );
 }
